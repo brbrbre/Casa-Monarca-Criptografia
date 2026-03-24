@@ -11,7 +11,7 @@ Datos del equipo
 - Ana Sofia Nagao Alvarez A01285034
 - Karen Aylen Estrada Ceferino A00838403
 
-Equipo 3 | Gpo 602 
+Equipo 1 | Gpo 602 
 
 ---
 
