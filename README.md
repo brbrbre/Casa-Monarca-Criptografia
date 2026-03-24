@@ -5,11 +5,11 @@ Proyecto desarrollado para el curso **MA2006B – Uso de Álgebras Modernas para
 Este proyecto busca diseñar una solución basada en criptografía de clave pública que permita a organizaciones sin fines de lucro proteger información sensible, autenticar documentos y fortalecer la confianza en sus procesos digitales.
 
 Datos del equipo
-Mariel Álvarez Salas A01198828
-Brisma Alvarez Valdez A00839238
-Emiliano Ruiz López A01659693
-Ana Sofia Nagao Alvarez A01285034
-Karen Aylen Estrada Ceferino A00838403
+- Mariel Álvarez Salas A01198828
+- Brisma Alvarez Valdez A00839238
+- Emiliano Ruiz López A01659693
+- Ana Sofia Nagao Alvarez A01285034
+- Karen Aylen Estrada Ceferino A00838403
 
 Equipo 3 | Gpo 602 
 
