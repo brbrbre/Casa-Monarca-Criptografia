@@ -1,5 +1,4 @@
 # Casa-Monarca-Criptografia
-## Se espera que esta rama difiera de main ya que será unicamente para registro de experimentos.
 
 Proyecto desarrollado para el curso **MA2006B – Uso de Álgebras Modernas para Seguridad y Criptografía** del Tecnológico de Monterrey.
 
