@@ -1,5 +1,7 @@
 # Rama de Pruebas para herramientas para el reto
 
+## Se espera que esta rama difiera de main ya que será unicamente para registro de experimentos.
+
 Proyecto desarrollado para el curso **MA2006B – Uso de Álgebras Modernas para Seguridad y Criptografía** del Tecnológico de Monterrey.
 
 Este proyecto busca diseñar una solución basada en criptografía de clave pública que permita a organizaciones sin fines de lucro proteger información sensible, autenticar documentos y fortalecer la confianza en sus procesos digitales.
