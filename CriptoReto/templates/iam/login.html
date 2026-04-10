@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casa Monarca — Iniciar sesión</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+    .login-card { width: 380px; background: #fff; padding: 28px; border: 1px solid #ddd; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.05); }
+    h1 { font-size: 24px; margin-bottom: 6px; }
+    p { color: #555; margin-bottom: 18px; }
+    label { display: block; margin-bottom: 8px; font-size: 14px; }
+    input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; margin-bottom: 14px; }
+    .btn { display: block; width: 100%; padding: 12px 14px; border: none; background: #111; color: #fff; border-radius: 10px; cursor: pointer; font-size: 15px; }
+    .hint { font-size: 13px; color: #777; margin-top: 4px; }
+    .message { padding: 12px; border-radius: 10px; margin-bottom: 12px; }
+    .message-error { background: #fdeaea; border: 1px solid #f5c7c7; color: #8e1f1f; }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <h1>Casa Monarca</h1>
+    <p>Gestor de identidades — inicia sesión</p>
+    {% if blocked %}
+      <div class="message message-error">Se ha superado el límite de intentos. Intenta de nuevo después de 15 minutos.</div>
+    {% endif %}
+    <form method="post">
+      {% csrf_token %}
+      <label for="id_username">Usuario</label>
+      {{ form.username }}
+      <label for="id_password">Contraseña</label>
+      {{ form.password }}
+      <label for="id_otp">Código MFA (opcional)</label>
+      {{ form.otp }}
+      <button class="btn" type="submit">Iniciar sesión</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap; margin-bottom:20px;">
+    <div>
+      <h2>Colaboradores</h2>
+      <p style="color:#555;">Administración de identidades y acceso de Casa Monarca.</p>
+    </div>
+    <div class="inline-actions">
+      <a class="btn btn-light" href="{% url 'iam:user_add' %}">+ Alta de colaborador</a>
+      <a class="btn" href="{% url 'iam:audit_log' %}">Ver auditoría</a>
+    </div>
+  </div>
+
+  <div class="card" style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px; margin-bottom:20px;">
+    <div style="padding:14px;background:#f6f9ff;border-radius:12px;"><div style="color:#666;font-size:13px;">Total</div><div style="font-size:24px;font-weight:700;">{{ stats.total }}</div></div>
+    <div style="padding:14px;background:#f6fff6;border-radius:12px;"><div style="color:#666;font-size:13px;">Activos</div><div style="font-size:24px;font-weight:700;">{{ stats.active }}</div></div>
+    <div style="padding:14px;background:#fff7e8;border-radius:12px;"><div style="color:#666;font-size:13px;">Revocados</div><div style="font-size:24px;font-weight:700;">{{ stats.revoked }}</div></div>
+    <div style="padding:14px;background:#fbeaea;border-radius:12px;"><div style="color:#666;font-size:13px;">Eliminados</div><div style="font-size:24px;font-weight:700;">{{ stats.deleted }}</div></div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px;">
+    <form method="get" style="display:grid;grid-template-columns:1fr 180px 140px 140px;gap:12px;align-items:end;">
+      <div class="field-group"><label>Buscar</label>{{ form.query }}</div>
+      <div class="field-group"><label>Área</label>{{ form.area }}</div>
+      <div class="field-group"><label>Nivel</label>{{ form.access_level }}</div>
+      <div class="field-group"><label>Estado</label>{{ form.status }}</div>
+      <div style="grid-column: span 4; text-align:right;"><button class="btn btn-light" type="submit">Filtrar</button></div>
+    </form>
+  </div>
+
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Rol</th>
+          <th>Área</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for collaborator in collaborators %}
+          <tr>
+            <td>{{ collaborator.get_full_name|default:collaborator.username }}<br><small>{{ collaborator.email }}</small></td>
+            <td>{{ collaborator.role }}</td>
+            <td>{{ collaborator.area }}</td>
+            <td>
+              <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">{{ collaborator.status_label }}</span>
+            </td>
+            <td><a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Ver</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay colaboradores registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

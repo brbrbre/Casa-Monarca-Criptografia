@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px;">
+    <div>
+      <h2>Detalle: {{ collaborator.get_full_name|default:collaborator.username }}</h2>
+      <p style="color:#555;">Información de identidad, área, nivel y eventos de auditoría.</p>
+    </div>
+    <div class="inline-actions">
+      {% if can_edit %}
+        <a href="{% url 'iam:user_edit' collaborator.pk %}" class="btn btn-light">Editar</a>
+      {% endif %}
+      <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver</a>
+    </div>
+  </div>
+  <div class="card" style="display:grid;grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px;">
+    <div>
+      <h3>Información personal</h3>
+      <p><strong>Email:</strong> {{ collaborator.email }}</p>
+      <p><strong>Área:</strong> {{ collaborator.area }}</p>
+      <p><strong>Rol:</strong> {{ collaborator.role }}</p>
+      <p><strong>Puesto:</strong> {{ collaborator.job_title }}</p>
+      <p><strong>Teléfono:</strong> {{ collaborator.phone|default:'—' }}</p>
+    </div>
+    <div>
+      <h3>Estado de acceso</h3>
+      <p><strong>Estado:</strong> {{ collaborator.status_label }}</p>
+      <p><strong>Nivel:</strong> {{ collaborator.get_access_level_display }}</p>
+      <p><strong>Onboarding:</strong> {{ collaborator.onboarding_date|default:'Pendiente' }}</p>
+      <p><strong>ID interno:</strong> {{ collaborator.internal_id }}</p>
+      <p><strong>Creado por:</strong> {{ collaborator.created_by }}</p>
+    </div>
+  </div>
+  <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
+    <div><strong>MFA:</strong> {{ collaborator.mfa_enabled|yesno:'Habilitado,Deshabilitado' }}</div>
+    <div><strong>Revocado por:</strong> {{ collaborator.revoked_by|default:'—' }}</div>
+    <div><strong>Revocado:</strong> {{ collaborator.revoked_at|default:'—' }}</div>
+  </div>
+  <div class="card">
+    <h3>Acciones</h3>
+    <div class="inline-actions">
+      {% if can_activate %}
+        <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn {% if collaborator.is_active and not collaborator.is_revoked %}btn-warning{% else %}btn-light{% endif %}">
+          {% if collaborator.is_active and not collaborator.is_revoked %}
+            Revocar acceso
+          {% else %}
+            Reactivar acceso
+          {% endif %}
+        </a>
+      {% endif %}
+      {% if can_delete %}
+        <a href="{% url 'iam:user_delete' collaborator.pk %}" class="btn btn-danger">Eliminar</a>
+      {% endif %}
+    </div>
+  </div>
+  <div class="card">
+    <h3>Historial de auditoría</h3>
+    <table class="table">
+      <thead><tr><th>Fecha</th><th>Acción</th><th>Actor</th><th>Detalles</th></tr></thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td>{{ log.created_at|date:'Y-m-d H:i' }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.actor }}</td>
+            <td>{{ log.details }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">No hay registros de auditoría para este colaborador.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

@@ -1,0 +1,29 @@
+flowchart TD
+  A[Usuario] -->|GET /login/| B[Login Page]
+  B -->|POST credenciales| C[login_view]
+  C --> D["authenticate(username,password)"]
+  D -->|valid| E{MFA activo?}
+  E -->|sí| F[Verificar TOTP]
+  E -->|no| G["login(request,user)"]
+  F -->|válido| G
+  G --> H[Dashboard]
+  H --> I[Colaboradores listados]
+  H --> J[Alta/Edición/Revocación/Eliminar]
+  J --> K[AuditLog]
+  C --> L[LoginAttempt]
+  I -->|filtros| M[Área / Nivel / Estado]
+  H -->|Ver detalle| N[collaborator_detail_view]
+  N --> O[Ver permisos y acciones]
+  O --> K
+  subgraph DB[Base de datos MySQL]
+    DB1[iam_area]
+    DB2[iam_collaborator]
+    DB3[iam_auditlog]
+    DB4[iam_loginattempt]
+  end
+  B --> DB2
+  C --> DB2
+  H --> DB2
+  K --> DB3
+  L --> DB4
+  DB2 --> DB1
