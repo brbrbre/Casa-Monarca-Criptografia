@@ -1,6 +1,8 @@
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
+from iam.certificates import issue_encrypted_certificate
 from iam.models import Area, Collaborator, AuditLog
 
 
@@ -140,5 +142,11 @@ class Command(BaseCommand):
                     action='Creación de usuario de prueba',
                     details=f'Usuario de prueba creado con contraseña temporal.',
                 )
+
+        try:
+            cert = issue_encrypted_certificate(admin, issued_by=admin)
+            print(f'Admin certificate issued: {cert.fingerprint}')
+        except ImproperlyConfigured as exc:
+            print(f'Warning: {exc}')
 
         self.stdout.write(self.style.SUCCESS('Datos de prueba cargados correctamente.'))

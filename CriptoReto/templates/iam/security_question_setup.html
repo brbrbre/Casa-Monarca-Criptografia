@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casa Monarca — Pregunta de seguridad</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
+    .card { width: 420px; background: #fff; padding: 28px; border: 1px solid #ddd; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.05); }
+    h1 { font-size: 22px; margin-bottom: 6px; }
+    p { color: #555; margin-bottom: 18px; font-size: 14px; }
+    label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
+    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; margin-bottom: 14px; font-size: 14px; box-sizing: border-box; }
+    .btn { display: block; width: 100%; padding: 12px 14px; border: none; background: #111; color: #fff; border-radius: 10px; cursor: pointer; font-size: 15px; }
+    .btn:hover { background: #333; }
+    .notice { background: #fff8e1; border: 1px solid #ffe082; color: #7a5c00; padding: 12px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+    .message { padding: 12px; border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
+    .message-success { background: #e8f5e9; border: 1px solid #c8e6c9; color: #1b5e20; }
+    .message-error { background: #fdeaea; border: 1px solid #f5c7c7; color: #8e1f1f; }
+    .back { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: #555; text-decoration: none; }
+    .back:hover { color: #111; }
+    .errorlist { list-style: none; padding: 0; margin: 0 0 10px; color: #8e1f1f; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Pregunta de seguridad</h1>
+    <p>Configura una pregunta y respuesta para poder recuperar tu contraseña en el futuro.</p>
+
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="message message-{{ msg.tags }}">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+
+    {% if already_set %}
+      <div class="notice">Ya tienes una pregunta de seguridad configurada. Puedes cambiarla aquí.</div>
+    {% endif %}
+
+    <form method="post">
+      {% csrf_token %}
+
+      <label for="id_security_question">Pregunta de seguridad</label>
+      {{ form.security_question }}
+      {% if form.security_question.errors %}<ul class="errorlist">{% for e in form.security_question.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <label for="id_security_answer">Respuesta</label>
+      {{ form.security_answer }}
+      {% if form.security_answer.errors %}<ul class="errorlist">{% for e in form.security_answer.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <label for="id_security_answer_confirm">Confirma tu respuesta</label>
+      {{ form.security_answer_confirm }}
+      {% if form.security_answer_confirm.errors %}<ul class="errorlist">{% for e in form.security_answer_confirm.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      {% if form.non_field_errors %}
+        <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+      {% endif %}
+
+      <button class="btn" type="submit">Guardar pregunta</button>
+    </form>
+
+    <a class="back" href="{% url 'iam:dashboard' %}">← Volver al panel</a>
+  </div>
+</body>
+</html>

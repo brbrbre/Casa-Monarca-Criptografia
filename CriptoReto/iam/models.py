@@ -82,10 +82,69 @@ class Collaborator(AbstractUser):
         verbose_name='Creado por',
     )
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+
+    ONBOARDING_STATUS_PENDING = 'pending'
+    ONBOARDING_STATUS_APPROVED = 'approved'
+    ONBOARDING_STATUS_REJECTED = 'rejected'
+    ONBOARDING_STATUS_CHOICES = [
+        (ONBOARDING_STATUS_PENDING, 'Pendiente'),
+        (ONBOARDING_STATUS_APPROVED, 'Aprobado'),
+        (ONBOARDING_STATUS_REJECTED, 'Rechazado'),
+    ]
+
+    onboarding_status = models.CharField(
+        'Estado de onboarding',
+        max_length=16,
+        choices=ONBOARDING_STATUS_CHOICES,
+        default=ONBOARDING_STATUS_PENDING,
+    )
+    onboarding_requested_at = models.DateTimeField('Solicitado el', auto_now_add=True)
+    onboarding_approved_at = models.DateTimeField('Aprobado el', null=True, blank=True)
+    onboarding_approved_by = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='approved_onboardings',
+        verbose_name='Aprobado por',
+    )
+    official_id_document = models.FileField(
+        'Identificación oficial',
+        upload_to='official_ids/',
+        null=True,
+        blank=True,
+    )
+    certificate_delivered_at = models.DateTimeField('Certificado entregado', null=True, blank=True)
     is_deleted = models.BooleanField('Eliminado lógicamente', default=False)
     deleted_at = models.DateTimeField('Fecha de eliminación', null=True, blank=True)
     totp_secret = models.CharField('TOTP secreto', max_length=64, blank=True)
     mfa_enabled = models.BooleanField('MFA activo', default=False)
+
+    ADMIN_TYPE_PRODUCTION = 'production'
+    ADMIN_TYPE_CONTINGENCY = 'contingency'
+    ADMIN_TYPE_CHOICES = [
+        (ADMIN_TYPE_PRODUCTION, 'Producción'),
+        (ADMIN_TYPE_CONTINGENCY, 'Contingencias'),
+    ]
+    admin_type = models.CharField(
+        'Tipo de cuenta admin',
+        max_length=16,
+        choices=ADMIN_TYPE_CHOICES,
+        blank=True,
+    )
+
+    SECURITY_QUESTIONS = [
+        ('mascota', '¿Cuál fue el nombre de tu primera mascota?'),
+        ('comida', '¿Cuál es tu comida favorita?'),
+        ('heroe', '¿Cuál fue el nombre de tu héroe de la infancia?'),
+        ('apodo', '¿Cuál era tu apodo de infancia?'),
+        ('deporte', '¿Cuál es tu deporte favorito?'),
+        ('ciudad', '¿En qué ciudad naciste?'),
+        ('amigo', '¿Cuál es el nombre de tu mejor amigo de la infancia?'),
+        ('escuela', '¿Cuál fue el nombre de tu escuela primaria?'),
+    ]
+    security_question = models.CharField('Pregunta de seguridad', max_length=16, choices=SECURITY_QUESTIONS, blank=True)
+    security_answer_hash = models.CharField('Respuesta de seguridad', max_length=256, blank=True)
 
     USERNAME_FIELD = 'username'
     EMAIL_FIELD = 'email'
@@ -141,9 +200,33 @@ class Collaborator(AbstractUser):
             return 'Eliminado'
         if self.is_revoked:
             return 'Revocado'
+        if self.onboarding_status == self.ONBOARDING_STATUS_PENDING:
+            return 'Pendiente'
         if not self.is_active:
             return 'Inactivo'
         return 'Activo'
+
+    @property
+    def onboarding_pending(self):
+        return self.onboarding_status == self.ONBOARDING_STATUS_PENDING
+
+    @property
+    def onboarding_approved(self):
+        return self.onboarding_status == self.ONBOARDING_STATUS_APPROVED
+
+    @property
+    def onboarding_ready_for_certificate(self):
+        return self.onboarding_status == self.ONBOARDING_STATUS_APPROVED and self.certificate_delivered_at is None
+
+    def set_security_answer(self, answer: str):
+        from django.contrib.auth.hashers import make_password
+        self.security_answer_hash = make_password(answer.strip().lower())
+
+    def check_security_answer(self, answer: str) -> bool:
+        from django.contrib.auth.hashers import check_password
+        if not self.security_answer_hash:
+            return False
+        return check_password(answer.strip().lower(), self.security_answer_hash)
 
     def verify_totp(self, token: str) -> bool:
         if not self.mfa_enabled or not self.totp_secret:
@@ -161,6 +244,48 @@ class Collaborator(AbstractUser):
             name=self.email or self.username,
             issuer_name='Casa Monarca',
         )
+
+
+class UserCertificate(models.Model):
+    collaborator = models.OneToOneField(
+        Collaborator,
+        on_delete=models.PROTECT,
+        related_name='certificate',
+        verbose_name='Colaborador',
+    )
+    certificate_data = models.TextField('Datos del certificado encriptado')
+    fingerprint = models.CharField('Huella digital', max_length=64, unique=True)
+    issued_at = models.DateTimeField('Fecha de emisión', auto_now_add=True)
+    expires_at = models.DateTimeField('Fecha de expiración')
+    is_revoked = models.BooleanField('Certificado revocado', default=False)
+    revoked_at = models.DateTimeField('Fecha de revocación', null=True, blank=True)
+    revoked_by = models.ForeignKey(
+        Collaborator,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='certificates_revoked',
+        verbose_name='Revocado por',
+    )
+    issued_by = models.ForeignKey(
+        Collaborator,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='certificates_issued',
+        verbose_name='Emitido por',
+    )
+
+    class Meta:
+        verbose_name = 'Certificado de usuario'
+        verbose_name_plural = 'Certificados de usuario'
+
+    @property
+    def is_valid(self):
+        return not self.is_revoked and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f'Certificate({self.collaborator.username} | {self.fingerprint[:12]})'
 
 
 class AuditLog(models.Model):
