@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="max-width: 700px; margin: 0 auto;">
+    <div class="card">
+      <h2>Aprobar onboarding</h2>
+      <p>Confirma que el colaborador está listo para recibir el certificado y acceder al sistema.</p>
+      <div style="margin:18px 0;">
+        <p><strong>Usuario:</strong> {{ collaborator.username }}</p>
+        <p><strong>Nombre:</strong> {{ collaborator.get_full_name|default:'—' }}</p>
+        <p><strong>Email:</strong> {{ collaborator.email }}</p>
+        <p><strong>Teléfono:</strong> {{ collaborator.phone|default:'—' }}</p>
+        <p><strong>Onboarding solicitado:</strong> {{ collaborator.onboarding_requested_at|date:'Y-m-d H:i' }}</p>
+      </div>
+      <form method="post">
+        {% csrf_token %}
+        <div class="inline-actions">
+          <button type="submit" class="btn">Aprobar onboarding</button>
+          <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">Cancelar</a>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

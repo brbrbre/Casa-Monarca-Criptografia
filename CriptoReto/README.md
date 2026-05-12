@@ -17,7 +17,10 @@ Aplicación Django para la gestión de identidades y acceso de Casa Monarca.
 
 ```bash
 python3 -m venv venv
+# En macOS / Linux / WSL:
 source venv/bin/activate
+# En PowerShell en Windows:
+.\venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 

@@ -24,7 +24,10 @@
     {% if blocked %}
       <div class="message message-error">Se ha superado el límite de intentos. Intenta de nuevo después de 15 minutos.</div>
     {% endif %}
-    <form method="post">
+    {% for msg in messages %}
+      <div class="message message-{{ msg.tags }}">{{ msg }}</div>
+    {% endfor %}
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       <label for="id_username">Usuario</label>
       {{ form.username }}
@@ -32,8 +35,13 @@
       {{ form.password }}
       <label for="id_otp">Código MFA (opcional)</label>
       {{ form.otp }}
+      <label for="id_certificate">Certificado (.cert) (si aplica)</label>
+      {{ form.certificate }}
       <button class="btn" type="submit">Iniciar sesión</button>
     </form>
+    <p style="text-align:center; margin-top:16px;">
+      <a href="{% url 'iam:password_recovery_request' %}" style="font-size:13px; color:#555; text-decoration:none;">¿Olvidaste tu contraseña?</a>
+    </p>
   </div>
 </body>
 </html>

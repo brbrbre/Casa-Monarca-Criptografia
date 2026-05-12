@@ -8,6 +8,12 @@
     <div class="inline-actions">
       <a class="btn btn-light" href="{% url 'iam:user_add' %}">+ Alta de colaborador</a>
       <a class="btn" href="{% url 'iam:audit_log' %}">Ver auditoría</a>
+      <a class="btn btn-light" href="{% url 'iam:security_question_setup' %}">{% if request.user.security_question %}Cambiar pregunta de seguridad{% else %}Configurar pregunta de seguridad{% endif %}</a>
+      {% if pending_onboarding_count > 0 %}
+        <a class="btn btn-warning" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes ({{ pending_onboarding_count }})</a>
+      {% elif request.user.access_level == 1 or request.user.access_level == 2 or request.user.is_staff %}
+        <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
+      {% endif %}
     </div>
   </div>
 
@@ -42,7 +48,15 @@
       <tbody>
         {% for collaborator in collaborators %}
           <tr>
-            <td>{{ collaborator.get_full_name|default:collaborator.username }}<br><small>{{ collaborator.email }}</small></td>
+            <td>
+              {{ collaborator.get_full_name|default:collaborator.username }}
+              {% if collaborator.admin_type %}
+                <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;vertical-align:middle;{% if collaborator.admin_type == 'production' %}background:#e8f5e9;color:#1b5e20;{% else %}background:#fff3e0;color:#e65100;{% endif %}">
+                  {{ collaborator.get_admin_type_display }}
+                </span>
+              {% endif %}
+              <br><small>{{ collaborator.email }}</small>
+            </td>
             <td>{{ collaborator.role }}</td>
             <td>{{ collaborator.area }}</td>
             <td>

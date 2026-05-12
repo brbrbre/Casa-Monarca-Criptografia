@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="max-width: 700px; margin: 0 auto;">
+    <div class="card">
+      <h2>Emitir certificado</h2>
+      <p>Confirmar emisión de certificado para el siguiente colaborador:</p>
+      <div style="margin: 18px 0;">
+        <p><strong>Usuario:</strong> {{ collaborator.username }}</p>
+        <p><strong>ID interno:</strong> {{ collaborator.internal_id }}</p>
+        <p><strong>Área:</strong> {{ collaborator.area|default:'—' }}</p>
+        <p><strong>Nivel de acceso:</strong> {{ collaborator.get_access_level_display }}</p>
+      </div>
+      <div style="background: #fff3cd; border: 1px solid #ffeeba; padding: 14px 16px; border-radius: 10px; margin-bottom: 18px;">
+        <strong>Advertencia:</strong> This action can only be performed once per user.
+      </div>
+      {% if issued_certificate %}
+        <p>El certificado ya fue emitido. Descarga el archivo .cert y regresa al detalle del colaborador.</p>
+        <div class="inline-actions">
+          <a href="data:text/plain;charset=utf-8,{{ issued_certificate|urlencode }}" download="{{ certificate_filename }}" class="btn">Descargar .cert</a>
+          <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Regresar</a>
+        </div>
+      {% else %}
+        <form method="post">
+          {% csrf_token %}
+          <div class="inline-actions">
+            <button type="submit" class="btn">Confirmar emisión</button>
+            <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Cancelar</a>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
