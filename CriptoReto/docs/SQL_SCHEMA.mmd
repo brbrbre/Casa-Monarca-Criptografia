@@ -1,0 +1,53 @@
+erDiagram
+    iam_area {
+        int id PK
+        varchar slug
+        varchar name
+        text description
+    }
+    iam_collaborator {
+        int id PK
+        varchar username
+        varchar email
+        varchar first_name
+        varchar last_name
+        varchar phone
+        int access_level
+        varchar role
+        varchar job_title
+        date onboarding_date
+        varchar internal_id
+        bool is_revoked
+        datetime revoked_at
+        int revoked_by_id FK
+        int created_by_id FK
+        datetime created_at
+        bool is_deleted
+        datetime deleted_at
+        varchar totp_secret
+        bool mfa_enabled
+        int area_id FK
+        bool is_active
+        bool is_staff
+        bool is_superuser
+    }
+    iam_auditlog {
+        int id PK
+        int actor_id FK
+        int target_id FK
+        varchar action
+        text details
+        datetime created_at
+    }
+    iam_loginattempt {
+        int id PK
+        varchar username
+        varchar ip_address
+        bool successful
+        datetime created_at
+    }
+    iam_collaborator ||--o{ iam_area : belongs_to
+    iam_collaborator ||--o{ iam_collaborator : created_by
+    iam_collaborator ||--o{ iam_collaborator : revoked_by
+    iam_auditlog ||--o{ iam_collaborator : actor
+    iam_auditlog ||--o{ iam_collaborator : target

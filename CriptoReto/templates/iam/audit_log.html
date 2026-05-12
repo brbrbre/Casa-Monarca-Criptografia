@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div>
+      <h2>Auditoría</h2>
+      <p style="color:#555;">Registro de acciones del sistema y de los administradores.</p>
+    </div>
+    <div><a class="btn btn-light" href="{% url 'iam:dashboard' %}">Volver al listado</a></div>
+  </div>
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr><th>Fecha</th><th>Actor</th><th>Objetivo</th><th>Acción</th><th>Detalles</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td>{{ log.created_at|date:'Y-m-d H:i' }}</td>
+            <td>{{ log.actor|default:'Sistema' }}</td>
+            <td>{{ log.target|default:'N/A' }}</td>
+            <td>{{ log.action }}</td>
+            <td>{{ log.details }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="5">No hay eventos de auditoría disponibles.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

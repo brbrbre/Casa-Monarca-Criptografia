@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div style="max-width: 760px; margin: 0 auto;">
+    <div class="card">
+      <h2>Onboarding de usuario</h2>
+      <p>Completa tus datos para que el administrador revise tu registro y, una vez aprobado, descargues tu certificado.</p>
+
+      {% if messages %}
+        {% for message in messages %}
+          <div style="padding: 12px 16px; margin-bottom: 14px; border-radius: 8px; font-size: 14px;
+            {% if message.tags == 'error' %}background: #fdeaea; color: #b71c1c; border: 1px solid #f5c6cb;
+            {% elif message.tags == 'success' %}background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;
+            {% else %}background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;{% endif %}">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      {% if form.errors %}
+        <div style="padding: 12px 16px; margin-bottom: 14px; border-radius: 8px; background: #fdeaea; color: #b71c1c; border: 1px solid #f5c6cb; font-size: 14px;">
+          <strong>Corrige los siguientes errores:</strong>
+          <ul style="margin: 8px 0 0 16px; padding: 0;">
+            {% for field in form %}
+              {% for error in field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+              {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+              <li>{{ error }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+      {% endif %}
+
+      {% if certificate %}
+        <div style="margin-bottom: 18px; padding: 16px; background: #f6f9ff; border-radius: 12px; border: 1px solid #dce9ff;">
+          <strong>Estado del certificado:</strong>
+          {% if cert_available %}
+            Disponible para descarga.
+          {% else %}
+            Verificación pendiente. El administrador aún no ha emitido tu certificado.
+          {% endif %}
+        </div>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="field-group">
+          <label for="id_first_name">Nombre</label>
+          {{ form.first_name }}
+        </div>
+        <div class="field-group">
+          <label for="id_last_name">Apellidos</label>
+          {{ form.last_name }}
+        </div>
+        <div class="field-group">
+          <label for="id_phone">Teléfono (Utiliza solo números)</label>
+          {{ form.phone }}
+        </div>
+        <div class="field-group">
+          <label for="id_official_id_document">Identificación oficial (PDF)</label>
+          {{ form.official_id_document }}
+        </div>
+        <div class="field-group">
+          <label for="id_new_password1">Nueva contraseña</label>
+          {{ form.new_password1 }}
+        </div>
+        <div class="field-group">
+          <label for="id_new_password2">Confirmar contraseña</label>
+          {{ form.new_password2 }}
+        </div>
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
+        <p style="color:#555; font-size:14px; margin-bottom:14px;">Configura una pregunta de seguridad para poder recuperar tu contraseña si la olvidas.</p>
+        <div class="field-group">
+          <label for="id_security_question">Pregunta de seguridad</label>
+          {{ form.security_question }}
+        </div>
+        <div class="field-group">
+          <label for="id_security_answer">Respuesta</label>
+          {{ form.security_answer }}
+        </div>
+        <div class="field-group">
+          <label for="id_security_answer_confirm">Confirma tu respuesta</label>
+          {{ form.security_answer_confirm }}
+        </div>
+        <div class="inline-actions">
+          <button type="submit" class="btn">Guardar y esperar revisión</button>
+          <a href="{% url 'iam:logout' %}" class="btn btn-light">Cerrar sesión</a>
+        </div>
+      </form>
+      {% if cert_available %}
+        <div style="margin-top:20px;">
+          <a href="{% url 'iam:onboarding_download' %}" class="btn">Descargar {{ certificate_filename }}</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:18px;">
+      <div>
+        <h2>Onboardings pendientes</h2>
+        <p style="color:#555;">Revisa los registros de usuarios que están en espera de aprobación.</p>
+      </div>
+      <div class="inline-actions">
+        <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver al dashboard</a>
+      </div>
+    </div>
+    <div class="card">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Email</th>
+            <th>Área</th>
+            <th>Solicitado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for collaborator in collaborators %}
+            <tr>
+              <td>{{ collaborator.get_full_name|default:collaborator.username }}</td>
+              <td>{{ collaborator.email }}</td>
+              <td>{{ collaborator.area }}</td>
+              <td>{{ collaborator.onboarding_requested_at|date:'Y-m-d H:i' }}</td>
+              <td>
+                <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Ver</a>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">No hay solicitudes de onboarding pendientes.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
