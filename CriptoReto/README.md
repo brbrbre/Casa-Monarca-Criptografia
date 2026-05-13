@@ -103,6 +103,5 @@ python manage.py runserver
 
 ## Notas
 
-- El sistema no usa Keycloak ni step-ca.
 - La autenticación y autorización se resuelven completamente dentro de Django.
 - El comando `seed_data` crea los datos de prueba y deja registrado el actor administrador.
