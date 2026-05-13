@@ -14,11 +14,22 @@
         <strong>Advertencia:</strong> This action can only be performed once per user.
       </div>
       {% if issued_certificate %}
-        <p>El certificado ya fue emitido. Descarga el archivo .cert y regresa al detalle del colaborador.</p>
-        <div class="inline-actions">
-          <a href="data:text/plain;charset=utf-8,{{ issued_certificate|urlencode }}" download="{{ certificate_filename }}" class="btn">Descargar .cert</a>
-          <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Regresar</a>
-        </div>
+        {% if is_coordinator %}
+          <p>Certificado emitido para el coordinador. Descarga ambos archivos y entrégalos al colaborador.</p>
+          <div class="inline-actions">
+            <a href="data:text/plain;charset=utf-8,{{ issued_certificate|urlencode }}" download="{{ certificate_filename }}" class="btn">Descargar .cert</a>
+            <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Regresar</a>
+          </div>
+          <p style="font-size:13px; color:#555; margin-top:12px;">
+            El archivo <strong>.key</strong> estará disponible para el propio coordinador en su página de onboarding.
+          </p>
+        {% else %}
+          <p>El certificado ya fue emitido. Descarga el archivo .cert y regresa al detalle del colaborador.</p>
+          <div class="inline-actions">
+            <a href="data:text/plain;charset=utf-8,{{ issued_certificate|urlencode }}" download="{{ certificate_filename }}" class="btn">Descargar .cert</a>
+            <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Regresar</a>
+          </div>
+        {% endif %}
       {% else %}
         <form method="post">
           {% csrf_token %}

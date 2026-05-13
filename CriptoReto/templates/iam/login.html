@@ -1,47 +1,409 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Casa Monarca — Iniciar sesión</title>
   <style>
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
-    .login-card { width: 380px; background: #fff; padding: 28px; border: 1px solid #ddd; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.05); }
-    h1 { font-size: 24px; margin-bottom: 6px; }
-    p { color: #555; margin-bottom: 18px; }
-    label { display: block; margin-bottom: 8px; font-size: 14px; }
-    input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; margin-bottom: 14px; }
-    .btn { display: block; width: 100%; padding: 12px 14px; border: none; background: #111; color: #fff; border-radius: 10px; cursor: pointer; font-size: 15px; }
-    .hint { font-size: 13px; color: #777; margin-top: 4px; }
-    .message { padding: 12px; border-radius: 10px; margin-bottom: 12px; }
-    .message-error { background: #fdeaea; border: 1px solid #f5c7c7; color: #8e1f1f; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 440px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.09);
+      overflow: hidden;
+    }
+
+    .login-header {
+      background: #1a2744;
+      padding: 28px 32px 22px;
+      color: #fff;
+    }
+
+    .login-header h1 {
+      margin: 0 0 4px;
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+    }
+
+    .login-header p {
+      margin: 0;
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .login-body {
+      padding: 26px 32px 30px;
+    }
+
+    .message {
+      padding: 11px 14px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 13.5px;
+      line-height: 1.45;
+    }
+
+    .message-error {
+      background: #fef2f2;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+    }
+
+    .message-info {
+      background: #eff6ff;
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+    }
+
+    .message-success {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      color: #166534;
+    }
+
+    .message-warning {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      color: #92400e;
+    }
+
+    .field-group {
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 5px;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .badge-required {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+
+    .badge-optional {
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    input[type="text"],
+    input[type="password"],
+    input[type="file"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #111827;
+      background: #fff;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input[type="file"] {
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+    }
+
+    .field-hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 18px 0;
+    }
+
+    .cert-section {
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .cert-section-coordinator {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+    }
+
+    .cert-section-admin {
+      background: #fafafa;
+      border: 1px solid #e5e7eb;
+    }
+
+    .cert-section-title {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .cert-section-title.coord-title {
+      color: #1d4ed8;
+    }
+
+    .cert-section-title.admin-title {
+      color: #374151;
+    }
+
+    .cert-section .field-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px 16px;
+      background: #1a2744;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s;
+      margin-top: 2px;
+    }
+
+    .btn-submit:hover {
+      background: #243460;
+    }
+
+    .btn-submit:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+
+    .recovery-link {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+    }
+
+    .recovery-link a {
+      color: #6b7280;
+      text-decoration: none;
+    }
+
+    .recovery-link a:hover {
+      color: #374151;
+      text-decoration: underline;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    .fade-in {
+      animation: fadeIn .22s ease;
+    }
   </style>
 </head>
+
 <body>
   <div class="login-card">
-    <h1>Casa Monarca</h1>
-    <p>Gestor de identidades — inicia sesión</p>
-    {% if blocked %}
-      <div class="message message-error">Se ha superado el límite de intentos. Intenta de nuevo después de 15 minutos.</div>
-    {% endif %}
-    {% for msg in messages %}
+    <div class="login-header">
+      <h1>Casa Monarca</h1>
+      <p>Sistema de gestión de identidades — Acceso seguro</p>
+    </div>
+    <div class="login-body">
+
+      {% if blocked %}
+      <div class="message message-error">
+        Se ha superado el límite de intentos fallidos. Intenta de nuevo después de 15 minutos.
+      </div>
+      {% endif %}
+      {% for msg in messages %}
       <div class="message message-{{ msg.tags }}">{{ msg }}</div>
-    {% endfor %}
-    <form method="post" enctype="multipart/form-data">
-      {% csrf_token %}
-      <label for="id_username">Usuario</label>
-      {{ form.username }}
-      <label for="id_password">Contraseña</label>
-      {{ form.password }}
-      <label for="id_otp">Código MFA (opcional)</label>
-      {{ form.otp }}
-      <label for="id_certificate">Certificado (.cert) (si aplica)</label>
-      {{ form.certificate }}
-      <button class="btn" type="submit">Iniciar sesión</button>
-    </form>
-    <p style="text-align:center; margin-top:16px;">
-      <a href="{% url 'iam:password_recovery_request' %}" style="font-size:13px; color:#555; text-decoration:none;">¿Olvidaste tu contraseña?</a>
-    </p>
+      {% endfor %}
+
+      <form id="loginForm" method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+
+        <div class="field-group">
+          <label for="id_username">Usuario</label>
+          {{ form.username }}
+        </div>
+
+        <div class="field-group">
+          <label for="id_password">Contraseña</label>
+          {{ form.password }}
+        </div>
+
+        <div class="field-group" id="otpGroup" style="display:none;">
+          <label for="id_otp">Código MFA (6 dígitos)</label>
+          {{ form.otp }}
+          <p class="field-hint">Ingresa el código de tu aplicación autenticadora.</p>
+        </div>
+
+        <hr class="divider">
+
+        <!-- Sección coordinador: .cert + .key obligatorios -->
+        <div id="coordCertSection" class="cert-section cert-section-coordinator fade-in" style="display:none;">
+          <p class="cert-section-title coord-title">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            Firma digital del coordinador (e.firma)
+          </p>
+          <div class="field-group">
+            <label for="id_certificate">
+              Certificado digital
+              <span class="badge badge-required">Obligatorio</span>
+            </label>
+            {{ form.certificate }}
+            <p class="field-hint">
+              Archivo <strong>.cert</strong> emitido por Casa Monarca para tu cuenta de coordinador.
+            </p>
+          </div>
+          <div class="field-group">
+            <label for="id_key_file">
+              Llave privada
+              <span class="badge badge-required">Obligatorio</span>
+            </label>
+            {{ form.key_file }}
+            <p class="field-hint">
+              Archivo <strong>.key</strong> correspondiente a tu certificado.
+              Mantenlo en un lugar seguro y no lo compartas.
+            </p>
+          </div>
+        </div>
+
+        <!-- Sección admin: .cert opcional (comportamiento actual) -->
+        <div id="adminCertSection" class="cert-section cert-section-admin fade-in" style="display:none;">
+          <p class="cert-section-title admin-title">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Certificado de administrador
+          </p>
+          <div class="field-group">
+            <label for="id_certificate">
+              Certificado (.cert)
+            </label>
+            {{ form.certificate }}
+            <p class="field-hint">
+              Sube el archivo <strong>.cert</strong> para validación adicional de acceso.
+            </p>
+          </div>
+        </div>
+
+        <button class="btn-submit" type="submit" {% if blocked %}disabled{% endif %}>
+          Iniciar sesión
+        </button>
+      </form>
+
+      <p class="recovery-link">
+        <a href="{% url 'iam:password_recovery_request' %}">¿Olvidaste tu contraseña?</a>
+      </p>
+    </div>
   </div>
+
+  <script>
+    (function () {
+      var usernameInput = document.getElementById('id_username');
+      var coordSection = document.getElementById('coordCertSection');
+      var adminSection = document.getElementById('adminCertSection');
+      var certInput = document.getElementById('id_certificate');
+      var keyInput = document.getElementById('id_key_file');
+      var debounceTimer = null;
+      var lastChecked = '';
+
+      function showSection(role) {
+        coordSection.style.display = 'none';
+        adminSection.style.display = 'none';
+        if (certInput) { certInput.required = false; }
+        if (keyInput) { keyInput.required = false; }
+
+        if (role === 'coordinator') {
+          coordSection.style.display = 'block';
+          if (certInput) { certInput.required = true; }
+          if (keyInput) { keyInput.required = true; }
+        } else if (role === 'admin') {
+          adminSection.style.display = 'block';
+        }
+      }
+
+      function checkRole(username) {
+        if (!username || username === lastChecked) { return; }
+        lastChecked = username;
+        fetch('{% url "iam:user_role_type" %}?u=' + encodeURIComponent(username))
+          .then(function (r) { return r.json(); })
+          .then(function (data) { showSection(data.role || 'unknown'); })
+          .catch(function () { });
+      }
+
+      usernameInput.addEventListener('input', function () {
+        clearTimeout(debounceTimer);
+        var val = this.value.trim();
+        if (!val) { showSection('unknown'); lastChecked = ''; return; }
+        debounceTimer = setTimeout(function () { checkRole(val); }, 400);
+      });
+
+      usernameInput.addEventListener('blur', function () {
+        clearTimeout(debounceTimer);
+        var val = this.value.trim();
+        if (val) { checkRole(val); }
+      });
+
+      // Restore state after a failed form submission
+      var initial = usernameInput.value.trim();
+      if (initial) { checkRole(initial); }
+    })();
+  </script>
 </body>
+
 </html>

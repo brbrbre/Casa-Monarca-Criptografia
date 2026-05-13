@@ -88,9 +88,30 @@
         </div>
       </form>
       {% if cert_available %}
-        <div style="margin-top:20px;">
-          <a href="{% url 'iam:onboarding_download' %}" class="btn">Descargar {{ certificate_filename }}</a>
-        </div>
+        {% if request.user.access_level == 2 %}
+          <!-- Coordinator: must download both .cert and .key -->
+          <div style="margin-top:20px; padding:16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;">
+            <p style="font-size:14px; font-weight:700; color:#1d4ed8; margin:0 0 12px 0;">
+              Descarga tus archivos de firma digital (e.firma)
+            </p>
+            <p style="font-size:13px; color:#374151; margin:0 0 14px 0;">
+              Debes descargar <strong>ambos archivos</strong>. Los necesitarás cada vez que inicies sesión como coordinador.
+              Guárdalos en un lugar seguro.
+            </p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <a href="{% url 'iam:onboarding_download' %}" class="btn" style="flex:1; min-width:160px; text-align:center;">
+                Descargar {{ certificate_filename }}
+              </a>
+              <a href="{% url 'iam:onboarding_key_download' %}" class="btn btn-light" style="flex:1; min-width:160px; text-align:center;">
+                Descargar {{ request.user.username }}.key
+              </a>
+            </div>
+          </div>
+        {% else %}
+          <div style="margin-top:20px;">
+            <a href="{% url 'iam:onboarding_download' %}" class="btn">Descargar {{ certificate_filename }}</a>
+          </div>
+        {% endif %}
       {% endif %}
     </div>
   </div>

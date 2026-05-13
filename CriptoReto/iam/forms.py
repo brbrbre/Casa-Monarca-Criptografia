@@ -21,17 +21,34 @@ def validate_strong_password(password):
 
 
 class LoginForm(forms.Form):
-    username = forms.CharField(label='Usuario', max_length=150, widget=forms.TextInput(attrs={'autofocus': True}))
-    password = forms.CharField(label='Contraseña', widget=forms.PasswordInput)
-    otp = forms.CharField(label='Código MFA', required=False, widget=forms.TextInput(attrs={'placeholder': '123456'}))
+    username = forms.CharField(
+        label='Usuario',
+        max_length=150,
+        widget=forms.TextInput(attrs={'autofocus': True, 'autocomplete': 'username'}),
+    )
+    password = forms.CharField(
+        label='Contraseña',
+        widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
+    )
+    otp = forms.CharField(
+        label='Código MFA',
+        required=False,
+        widget=forms.TextInput(attrs={'placeholder': '123456', 'inputmode': 'numeric'}),
+    )
+    # Used by admin (legacy encrypted JSON cert) and shown for coordinators as the .cert file.
     certificate = forms.FileField(
-        label='Certificado (.cert)',
+        label='Certificado digital (.cert)',
         required=False,
         widget=forms.ClearableFileInput(attrs={'accept': '.cert'}),
-        help_text='Sube el archivo .cert emitido para el acceso del colaborador.',
+        help_text='Archivo de certificado digital emitido para el colaborador.',
     )
-
-    pass
+    # Used exclusively by coordinators: the PKCS#8 DER private key.
+    key_file = forms.FileField(
+        label='Llave privada (.key)',
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'accept': '.key'}),
+        help_text='Archivo de llave privada correspondiente al certificado.',
+    )
 
 
 class OnboardingForm(forms.ModelForm):

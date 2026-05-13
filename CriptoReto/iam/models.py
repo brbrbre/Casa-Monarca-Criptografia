@@ -275,6 +275,8 @@ class UserCertificate(models.Model):
         related_name='certificates_issued',
         verbose_name='Emitido por',
     )
+    # Only populated for coordinators: AES-GCM encrypted PKCS#8 DER private key.
+    key_data = models.TextField('Llave privada cifrada', blank=True)
 
     class Meta:
         verbose_name = 'Certificado de usuario'
