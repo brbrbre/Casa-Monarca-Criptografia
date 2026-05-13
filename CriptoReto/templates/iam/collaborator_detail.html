@@ -159,7 +159,7 @@
   </div>
   {% endif %}
 
-  {# ── Certificate ── #}
+  {% if collaborator.access_level <= 2 %}
   <div class="card" style="margin-bottom:20px;">
     <h3>Certificado digital</h3>
     {% if certificate %}
@@ -192,6 +192,7 @@
       {% endif %}
     {% endif %}
   </div>
+  {% endif %}
 
   {# ── Audit log (Level 1 global; Level 2 own area only) ── #}
   {% if show_logs %}
