@@ -84,10 +84,12 @@ class Collaborator(AbstractUser):
     created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
 
     ONBOARDING_STATUS_PENDING = 'pending'
+    ONBOARDING_STATUS_SUBMITTED = 'submitted'
     ONBOARDING_STATUS_APPROVED = 'approved'
     ONBOARDING_STATUS_REJECTED = 'rejected'
     ONBOARDING_STATUS_CHOICES = [
         (ONBOARDING_STATUS_PENDING, 'Pendiente'),
+        (ONBOARDING_STATUS_SUBMITTED, 'Enviado'),
         (ONBOARDING_STATUS_APPROVED, 'Aprobado'),
         (ONBOARDING_STATUS_REJECTED, 'Rechazado'),
     ]
@@ -99,6 +101,7 @@ class Collaborator(AbstractUser):
         default=ONBOARDING_STATUS_PENDING,
     )
     onboarding_requested_at = models.DateTimeField('Solicitado el', auto_now_add=True)
+    onboarding_submitted_at = models.DateTimeField('Formulario enviado el', null=True, blank=True)
     onboarding_approved_at = models.DateTimeField('Aprobado el', null=True, blank=True)
     onboarding_approved_by = models.ForeignKey(
         'self',
@@ -115,6 +118,8 @@ class Collaborator(AbstractUser):
         blank=True,
     )
     certificate_delivered_at = models.DateTimeField('Certificado entregado', null=True, blank=True)
+    cert_file_downloaded = models.BooleanField('.cert descargado', default=False)
+    key_file_downloaded = models.BooleanField('.key descargado', default=False)
     is_deleted = models.BooleanField('Eliminado lógicamente', default=False)
     deleted_at = models.DateTimeField('Fecha de eliminación', null=True, blank=True)
     totp_secret = models.CharField('TOTP secreto', max_length=64, blank=True)
@@ -195,6 +200,22 @@ class Collaborator(AbstractUser):
     def can_activate(self, target: 'Collaborator'):
         return self.can_edit(target)
 
+    def can_issue_certificate(self, target: 'Collaborator'):
+        """Only Level 1 admins may issue or reissue certificates."""
+        return self.access_level == 1
+
+    def can_revoke_certificate(self, target: 'Collaborator'):
+        """Only Level 1 admins may revoke certificates."""
+        return self.access_level == 1
+
+    def can_view_audit(self, target: 'Collaborator' = None):
+        """Level 1 sees all audit. Level 2 sees own area. Level 3/4 have no audit access."""
+        if self.access_level == 1:
+            return True
+        if self.access_level == 2 and target and target.area == self.area:
+            return True
+        return False
+
     def status_label(self):
         if self.is_deleted:
             return 'Eliminado'
@@ -202,6 +223,10 @@ class Collaborator(AbstractUser):
             return 'Revocado'
         if self.onboarding_status == self.ONBOARDING_STATUS_PENDING:
             return 'Pendiente'
+        if self.onboarding_status == self.ONBOARDING_STATUS_SUBMITTED:
+            return 'Enviado'
+        if self.onboarding_status == self.ONBOARDING_STATUS_REJECTED:
+            return 'Rechazado'
         if not self.is_active:
             return 'Inactivo'
         return 'Activo'
@@ -211,12 +236,32 @@ class Collaborator(AbstractUser):
         return self.onboarding_status == self.ONBOARDING_STATUS_PENDING
 
     @property
+    def onboarding_submitted(self):
+        return self.onboarding_status == self.ONBOARDING_STATUS_SUBMITTED
+
+    @property
     def onboarding_approved(self):
         return self.onboarding_status == self.ONBOARDING_STATUS_APPROVED
 
     @property
+    def onboarding_rejected(self):
+        return self.onboarding_status == self.ONBOARDING_STATUS_REJECTED
+
+    @property
     def onboarding_ready_for_certificate(self):
         return self.onboarding_status == self.ONBOARDING_STATUS_APPROVED and self.certificate_delivered_at is None
+
+    @property
+    def onboarding_complete(self):
+        """True when the collaborator has submitted all required onboarding data."""
+        return (
+            self.onboarding_status == self.ONBOARDING_STATUS_SUBMITTED
+            and bool(self.first_name.strip())
+            and bool(self.last_name.strip())
+            and bool(self.official_id_document)
+            and bool(self.security_question)
+            and bool(self.security_answer_hash)
+        )
 
     def set_security_answer(self, answer: str):
         from django.contrib.auth.hashers import make_password

@@ -1,115 +1,210 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div style="max-width: 760px; margin: 0 auto;">
-    <div class="card">
-      <h2>Onboarding de usuario</h2>
-      {% if is_coordinator %}
-        <p>Completa tus datos para que el administrador revise tu registro y, una vez aprobado, descargues tus archivos de firma digital.</p>
+<div style="max-width: 760px; margin: 0 auto;">
+
+{% if onboarding_state == 'relogin_needed' %}
+<div class="card" style="text-align:center; padding: 40px 32px;">
+  <div style="font-size:48px; margin-bottom:16px;">🔐</div>
+  <h2 style="margin-bottom:12px;">Credenciales descargadas correctamente</h2>
+  <p style="color:#555; margin-bottom:24px; max-width:520px; margin-left:auto; margin-right:auto;">
+    Has descargado tu <strong>certificado digital (.cert)</strong> y tu <strong>llave privada (.key)</strong>.
+    Por seguridad, debes cerrar tu sesión e iniciar sesión nuevamente con estos archivos para acceder a la plataforma.
+  </p>
+  <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; color:#856404; text-align:left;">
+    <strong>Importante:</strong> Guarda ambos archivos en un lugar seguro. Los necesitarás en cada inicio de sesión como coordinador. No los compartas con nadie.
+  </div>
+  <a href="{% url 'iam:logout' %}" class="btn" style="min-width:200px;">Cerrar sesión e ir al inicio</a>
+</div>
+
+{% elif onboarding_state == 'submitted' %}
+<div class="card" style="text-align:center; padding: 40px 32px;">
+  <div style="font-size:48px; margin-bottom:16px;">⏳</div>
+  <h2 style="margin-bottom:12px;">Onboarding enviado</h2>
+  <p style="color:#555; margin-bottom:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+    Tu información fue recibida correctamente.
+  </p>
+  {% if submitted_at %}
+  <p style="color:#555; margin-bottom:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+    El formulario se envió el <strong>{{ submitted_at|date:'d/m/Y \a \l\a\s H:i' }}</strong>.
+  </p>
+  {% endif %}
+  <p style="color:#555; margin-bottom:28px; max-width:520px; margin-left:auto; margin-right:auto;">
+    El administrador revisará tu información y te notificará cuando tu cuenta haya sido aprobada.
+    {% if is_coordinator %}
+    Una vez aprobado, podrás descargar tus archivos de firma digital (.cert y .key).
+    {% endif %}
+  </p>
+  <div style="background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; color:#2e7d32; text-align:left;">
+    <strong>¿Qué sigue?</strong> No es necesario que hagas nada más. Espera la revisión del administrador. Puedes cerrar sesión y volver más tarde.
+  </div>
+  <a href="{% url 'iam:logout' %}" class="btn btn-light" style="min-width:200px;">Cerrar sesión</a>
+</div>
+
+{% elif onboarding_state == 'download' %}
+<div class="card" style="padding: 32px;">
+  <h2 style="margin-bottom:8px;">Tu cuenta ha sido aprobada</h2>
+  <p style="color:#555; margin-bottom:24px;">
+    {% if is_coordinator %}
+    Debes descargar <strong>ambos archivos</strong> de firma digital antes de poder acceder al sistema. Guárdalos en un lugar seguro; los necesitarás en cada inicio de sesión.
+    {% else %}
+    Tu cuenta ha sido aprobada. Descarga tu certificado para completar el proceso.
+    {% endif %}
+  </p>
+
+  {% if is_coordinator %}
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+
+    {% if cert_file_downloaded %}
+    <div style="padding:20px; border-radius:10px; border:2px solid #a5d6a7; background:#e8f5e9; text-align:center;">
+    {% else %}
+    <div style="padding:20px; border-radius:10px; border:2px solid #dce9ff; background:#f6f9ff; text-align:center;">
+    {% endif %}
+      <div style="font-size:32px; margin-bottom:8px;">📄</div>
+      <p style="font-weight:600; margin-bottom:4px;">Certificado digital</p>
+      <p style="font-size:12px; color:#666; margin-bottom:12px;">{{ certificate_filename }}</p>
+      {% if cert_file_downloaded %}
+      <span style="display:inline-block; padding:4px 10px; border-radius:20px; background:#c8e6c9; color:#1b5e20; font-size:12px; font-weight:600;">✓ Descargado</span>
       {% else %}
-        <p>Completa tus datos para que el administrador revise tu registro y apruebe tu acceso al sistema.</p>
-      {% endif %}
-
-      {% if messages %}
-        {% for message in messages %}
-          <div style="padding: 12px 16px; margin-bottom: 14px; border-radius: 8px; font-size: 14px;
-            {% if message.tags == 'error' %}background: #fdeaea; color: #b71c1c; border: 1px solid #f5c6cb;
-            {% elif message.tags == 'success' %}background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9;
-            {% else %}background: #e3f2fd; color: #1565c0; border: 1px solid #bbdefb;{% endif %}">
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
-
-      {% if form.errors %}
-        <div style="padding: 12px 16px; margin-bottom: 14px; border-radius: 8px; background: #fdeaea; color: #b71c1c; border: 1px solid #f5c6cb; font-size: 14px;">
-          <strong>Corrige los siguientes errores:</strong>
-          <ul style="margin: 8px 0 0 16px; padding: 0;">
-            {% for field in form %}
-              {% for error in field.errors %}
-                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-              {% endfor %}
-            {% endfor %}
-            {% for error in form.non_field_errors %}
-              <li>{{ error }}</li>
-            {% endfor %}
-          </ul>
-        </div>
-      {% endif %}
-
-      {% if is_coordinator %}
-        <div style="margin-bottom: 18px; padding: 16px; background: #f6f9ff; border-radius: 12px; border: 1px solid #dce9ff;">
-          <strong>Estado de firma digital:</strong>
-          {% if cert_available %}
-            Disponible para descarga.
-          {% else %}
-            Verificación pendiente. El administrador aún no ha emitido tu certificado digital.
-          {% endif %}
-        </div>
-      {% endif %}
-      <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        <div class="field-group">
-          <label for="id_first_name">Nombre</label>
-          {{ form.first_name }}
-        </div>
-        <div class="field-group">
-          <label for="id_last_name">Apellidos</label>
-          {{ form.last_name }}
-        </div>
-        <div class="field-group">
-          <label for="id_phone">Teléfono (Utiliza solo números)</label>
-          {{ form.phone }}
-        </div>
-        <div class="field-group">
-          <label for="id_official_id_document">Identificación oficial (PDF)</label>
-          {{ form.official_id_document }}
-        </div>
-        <div class="field-group">
-          <label for="id_new_password1">Nueva contraseña</label>
-          {{ form.new_password1 }}
-        </div>
-        <div class="field-group">
-          <label for="id_new_password2">Confirmar contraseña</label>
-          {{ form.new_password2 }}
-        </div>
-        <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;">
-        <p style="color:#555; font-size:14px; margin-bottom:14px;">Configura una pregunta de seguridad para poder recuperar tu contraseña si la olvidas.</p>
-        <div class="field-group">
-          <label for="id_security_question">Pregunta de seguridad</label>
-          {{ form.security_question }}
-        </div>
-        <div class="field-group">
-          <label for="id_security_answer">Respuesta</label>
-          {{ form.security_answer }}
-        </div>
-        <div class="field-group">
-          <label for="id_security_answer_confirm">Confirma tu respuesta</label>
-          {{ form.security_answer_confirm }}
-        </div>
-        <div class="inline-actions">
-          <button type="submit" class="btn">Guardar y esperar revisión</button>
-          <a href="{% url 'iam:logout' %}" class="btn btn-light">Cerrar sesión</a>
-        </div>
-      </form>
-      {% if is_coordinator and cert_available %}
-        <div style="margin-top:20px; padding:16px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;">
-          <p style="font-size:14px; font-weight:700; color:#1d4ed8; margin:0 0 12px 0;">
-            Descarga tus archivos de firma digital (e.firma)
-          </p>
-          <p style="font-size:13px; color:#374151; margin:0 0 14px 0;">
-            Debes descargar <strong>ambos archivos</strong>. Los necesitarás cada vez que inicies sesión como coordinador.
-            Guárdalos en un lugar seguro y no los compartas.
-          </p>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a href="{% url 'iam:onboarding_download' %}" class="btn" style="flex:1; min-width:160px; text-align:center;">
-              Descargar {{ certificate_filename }}
-            </a>
-            <a href="{% url 'iam:onboarding_key_download' %}" class="btn btn-light" style="flex:1; min-width:160px; text-align:center;">
-              Descargar {{ request.user.username }}.key
-            </a>
-          </div>
-        </div>
+      <a href="{% url 'iam:onboarding_download' %}" class="btn" style="width:100%; display:block;">Descargar .cert</a>
       {% endif %}
     </div>
+
+    {% if key_file_downloaded %}
+    <div style="padding:20px; border-radius:10px; border:2px solid #a5d6a7; background:#e8f5e9; text-align:center;">
+    {% else %}
+    <div style="padding:20px; border-radius:10px; border:2px solid #dce9ff; background:#f6f9ff; text-align:center;">
+    {% endif %}
+      <div style="font-size:32px; margin-bottom:8px;">🔑</div>
+      <p style="font-weight:600; margin-bottom:4px;">Llave privada</p>
+      <p style="font-size:12px; color:#666; margin-bottom:12px;">{{ request.user.username }}.key</p>
+      {% if key_file_downloaded %}
+      <span style="display:inline-block; padding:4px 10px; border-radius:20px; background:#c8e6c9; color:#1b5e20; font-size:12px; font-weight:600;">✓ Descargada</span>
+      {% else %}
+      <a href="{% url 'iam:onboarding_key_download' %}" class="btn btn-light" style="width:100%; display:block;">Descargar .key</a>
+      {% endif %}
+    </div>
+
   </div>
+
+  {% if not cert_file_downloaded or not key_file_downloaded %}
+  <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; font-size:13px; color:#856404; margin-bottom:16px;">
+    Debes descargar <strong>ambos archivos</strong> para completar el proceso. Una vez descargados, se te pedirá cerrar sesión e iniciar sesión nuevamente.
+  </div>
+  {% endif %}
+
+  {% else %}
+  {% if cert_available %}
+  <div style="text-align:center; padding:24px;">
+    <a href="{% url 'iam:onboarding_download' %}" class="btn" style="min-width:220px;">Descargar {{ certificate_filename }}</a>
+  </div>
+  {% else %}
+  <div style="background:#fdeaea; border:1px solid #f5c6cb; border-radius:8px; padding:14px; color:#b71c1c;">
+    Tu certificado aún no ha sido emitido. Contacta al administrador.
+  </div>
+  {% endif %}
+  {% endif %}
+
+  <div class="inline-actions" style="margin-top:12px;">
+    <a href="{% url 'iam:logout' %}" class="btn btn-light">Cerrar sesión</a>
+  </div>
+</div>
+
+{% elif onboarding_state == 'rejected' %}
+<div class="card" style="text-align:center; padding: 40px 32px;">
+  <div style="font-size:48px; margin-bottom:16px;">⚠️</div>
+  <h2 style="margin-bottom:12px; color:#b71c1c;">Onboarding rechazado</h2>
+  <p style="color:#555; margin-bottom:28px; max-width:520px; margin-left:auto; margin-right:auto;">
+    Tu solicitud de acceso no fue aprobada. Contacta al administrador del sistema para obtener más información o solicitar una revisión.
+  </p>
+  <a href="{% url 'iam:logout' %}" class="btn btn-light" style="min-width:200px;">Cerrar sesión</a>
+</div>
+
+{% else %}
+<div class="card">
+  <h2 style="margin-bottom:8px;">Onboarding de usuario</h2>
+  {% if is_coordinator %}
+  <p style="color:#555; margin-bottom:18px;">Completa tus datos. Cuando los envíes, el administrador los revisará y aprobará tu acceso. Una vez aprobado podrás descargar tus archivos de firma digital.</p>
+  {% else %}
+  <p style="color:#555; margin-bottom:18px;">Completa tus datos para que el administrador revise tu registro y apruebe tu acceso al sistema.</p>
+  {% endif %}
+
+  {% if messages %}
+  {% for message in messages %}
+  {% if message.tags == 'error' %}
+  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#fdeaea; color:#b71c1c; border:1px solid #f5c6cb;">{{ message }}</div>
+  {% elif message.tags == 'success' %}
+  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;">{{ message }}</div>
+  {% else %}
+  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb;">{{ message }}</div>
+  {% endif %}
+  {% endfor %}
+  {% endif %}
+
+  {% if form.errors %}
+  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; background:#fdeaea; color:#b71c1c; border:1px solid #f5c6cb; font-size:14px;">
+    <strong>Corrige los siguientes errores:</strong>
+    <ul style="margin:8px 0 0 16px; padding:0;">
+      {% for field in form %}
+      {% for error in field.errors %}
+      <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+      {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+      <li>{{ error }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="field-group">
+      <label for="id_first_name">Nombre</label>
+      {{ form.first_name }}
+    </div>
+    <div class="field-group">
+      <label for="id_last_name">Apellidos</label>
+      {{ form.last_name }}
+    </div>
+    <div class="field-group">
+      <label for="id_phone">Teléfono (solo números)</label>
+      {{ form.phone }}
+    </div>
+    <div class="field-group">
+      <label for="id_official_id_document">Identificación oficial (PDF) <span style="color:#b71c1c">*</span></label>
+      {{ form.official_id_document }}
+      <span class="help-text">Requerida para aprobar tu acceso.</span>
+    </div>
+    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
+    <div class="field-group">
+      <label for="id_new_password1">Nueva contraseña</label>
+      {{ form.new_password1 }}
+    </div>
+    <div class="field-group">
+      <label for="id_new_password2">Confirmar contraseña</label>
+      {{ form.new_password2 }}
+    </div>
+    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
+    <p style="color:#555; font-size:13px; margin-bottom:14px;">Configura una pregunta de seguridad para recuperar tu contraseña si la olvidas. <strong>No olvides tu respuesta.</strong></p>
+    <div class="field-group">
+      <label for="id_security_question">Pregunta de seguridad</label>
+      {{ form.security_question }}
+    </div>
+    <div class="field-group">
+      <label for="id_security_answer">Respuesta</label>
+      {{ form.security_answer }}
+    </div>
+    <div class="field-group">
+      <label for="id_security_answer_confirm">Confirma tu respuesta</label>
+      {{ form.security_answer_confirm }}
+    </div>
+    <div class="inline-actions">
+      <button type="submit" class="btn">Enviar onboarding</button>
+      <a href="{% url 'iam:logout' %}" class="btn btn-light">Cerrar sesión</a>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+</div>
 {% endblock %}

@@ -12,6 +12,8 @@
       <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver</a>
     </div>
   </div>
+
+  {# ── Identity ── #}
   <div class="card" style="display:grid;grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px;">
     <div>
       <h3>Información personal</h3>
@@ -32,62 +34,157 @@
         {% endif %}
       </p>
       <p><strong>Onboarding:</strong> {{ collaborator.get_onboarding_status_display }}</p>
-      <p><strong>Onboarding solicitado:</strong> {{ collaborator.onboarding_requested_at|date:'Y-m-d H:i' }}</p>
+      <p><strong>Registrado:</strong> {{ collaborator.onboarding_requested_at|date:'Y-m-d H:i' }}</p>
       <p><strong>ID interno:</strong> {{ collaborator.internal_id }}</p>
-      <p><strong>Creado por:</strong> {{ collaborator.created_by }}</p>
+      {% if request.user.access_level <= 2 %}
+        <p><strong>Creado por:</strong> {{ collaborator.created_by }}</p>
+      {% endif %}
     </div>
   </div>
+
   <div class="card" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;">
     <div><strong>MFA:</strong> {{ collaborator.mfa_enabled|yesno:'Habilitado,Deshabilitado' }}</div>
-    <div><strong>Revocado por:</strong> {{ collaborator.revoked_by|default:'—' }}</div>
-    <div><strong>Revocado:</strong> {{ collaborator.revoked_at|default:'—' }}</div>
+    {% if request.user.access_level <= 2 %}
+      <div><strong>Revocado por:</strong> {{ collaborator.revoked_by|default:'—' }}</div>
+      <div><strong>Revocado:</strong> {{ collaborator.revoked_at|default:'—' }}</div>
+    {% endif %}
   </div>
-  <div class="card">
+
+  {# ── Onboarding data section (admin / coordinator view — no security Q/A) ── #}
+  {% if show_onboarding_data %}
+  <div class="card" style="margin-bottom:20px;">
+    <h3>Datos de onboarding</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px;">
+      <div>
+        <p><strong>Estado del formulario:</strong>
+          <span class="status-pill {% if collaborator.onboarding_status == 'submitted' %}status-active{% elif collaborator.onboarding_status == 'approved' %}status-active{% elif collaborator.onboarding_status == 'pending' %}status-inactive{% else %}status-revoked{% endif %}">
+            {{ collaborator.get_onboarding_status_display }}
+          </span>
+        </p>
+        {% if onboarding_submitted_at %}
+          <p><strong>Formulario enviado el:</strong> {{ onboarding_submitted_at|date:'d/m/Y H:i' }}</p>
+        {% else %}
+          <p><strong>Formulario enviado:</strong> <span style="color:#999;">Pendiente</span></p>
+        {% endif %}
+        {% if collaborator.onboarding_approved_at %}
+          <p><strong>Aprobado el:</strong> {{ collaborator.onboarding_approved_at|date:'d/m/Y H:i' }}</p>
+          <p><strong>Aprobado por:</strong> {{ collaborator.onboarding_approved_by|default:'—' }}</p>
+        {% endif %}
+      </div>
+      <div>
+        <p><strong>INE cargada:</strong>
+          {% if collaborator.official_id_document %}
+            <a href="{{ collaborator.official_id_document.url }}" target="_blank" style="color:#1565c0;">Ver documento</a>
+          {% else %}
+            <span style="color:#b71c1c;">No cargada</span>
+          {% endif %}
+        </p>
+        <p><strong>Pregunta de seguridad:</strong>
+          {% if collaborator.security_question %}
+            <span style="color:#2e7d32;">✓ Configurada</span>
+          {% else %}
+            <span style="color:#b71c1c;">No configurada</span>
+          {% endif %}
+        </p>
+        {# NEVER expose security_question text, security_answer, or security_answer_hash #}
+        {% if collaborator.access_level == 2 %}
+          <p><strong>Certificado descargado:</strong>
+            {{ collaborator.cert_file_downloaded|yesno:'✓ Sí,No' }}
+          </p>
+          <p><strong>Llave descargada:</strong>
+            {{ collaborator.key_file_downloaded|yesno:'✓ Sí,No' }}
+          </p>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if onboarding_missing_fields %}
+    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-top:14px; font-size:13px; color:#856404;">
+      <strong>Datos aún incompletos:</strong>
+      <ul style="margin:6px 0 0 16px; padding:0;">
+        {% for field in onboarding_missing_fields %}<li>{{ field }}</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    {% if collaborator.onboarding_status == 'submitted' and request.user.access_level <= 2 %}
+    <div class="inline-actions" style="margin-top:14px;">
+      <a href="{% url 'iam:approve_onboarding' collaborator.pk %}" class="btn">Revisar y aprobar</a>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {# ── Actions ── #}
+  {% if can_activate or can_delete %}
+  <div class="card" style="margin-bottom:20px;">
     <h3>Acciones</h3>
     <div class="inline-actions">
       {% if can_activate %}
         {% if collaborator.is_active %}
-          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-warning">Desactivar</a>
-          <a href="{% url 'iam:user_revoke' collaborator.pk %}" class="btn btn-danger">Revocar acceso</a>
+          <form method="post" action="{% url 'iam:user_toggle' collaborator.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-warning">Desactivar</button>
+          </form>
+          <form method="post" action="{% url 'iam:user_revoke' collaborator.pk %}" style="display:inline;"
+                onsubmit="return confirm('¿Confirmas la revocación de acceso?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Revocar acceso</button>
+          </form>
         {% elif collaborator.is_revoked %}
-          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-light">Reactivar acceso</a>
+          <form method="post" action="{% url 'iam:user_toggle' collaborator.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-light">Reactivar acceso</button>
+          </form>
         {% else %}
-          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-light">Activar</a>
-          <a href="{% url 'iam:user_revoke' collaborator.pk %}" class="btn btn-danger">Revocar acceso</a>
+          <form method="post" action="{% url 'iam:user_toggle' collaborator.pk %}" style="display:inline;">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-light">Activar</button>
+          </form>
+          <form method="post" action="{% url 'iam:user_revoke' collaborator.pk %}" style="display:inline;"
+                onsubmit="return confirm('¿Confirmas la revocación de acceso?')">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">Revocar acceso</button>
+          </form>
         {% endif %}
       {% endif %}
       {% if can_delete %}
-        <a href="{% url 'iam:user_delete' collaborator.pk %}" class="btn btn-danger">Eliminar</a>
-      {% endif %}
-      {% if collaborator.onboarding_pending and request.user.access_level == 1 or collaborator.onboarding_pending and request.user.access_level == 2 or collaborator.onboarding_pending and request.user.is_staff %}
-        <form action="{% url 'iam:approve_onboarding' collaborator.pk %}" method="post" style="display:inline;">
+        <form method="post" action="{% url 'iam:user_delete' collaborator.pk %}" style="display:inline;"
+              onsubmit="return confirm('Esta acción eliminará lógicamente al colaborador. ¿Continuar?')">
           {% csrf_token %}
-          <button type="submit" class="btn btn-light">Aprobar onboarding</button>
+          <button type="submit" class="btn btn-danger">Eliminar</button>
         </form>
       {% endif %}
     </div>
   </div>
-  <div class="card">
-    <h3>Certificado</h3>
-    {% if collaborator.official_id_document %}
-      <p><strong>ID oficial:</strong> <a href="{{ collaborator.official_id_document.url }}" target="_blank">Descargar</a></p>
-    {% endif %}
+  {% endif %}
+
+  {# ── Certificate ── #}
+  <div class="card" style="margin-bottom:20px;">
+    <h3>Certificado digital</h3>
     {% if certificate %}
       <p><strong>Emitido:</strong> {{ certificate.issued_at|date:'Y-m-d H:i' }}</p>
       <p><strong>Expira:</strong> {{ certificate.expires_at|date:'Y-m-d H:i' }}</p>
-      <p><strong>Estado:</strong> <span class="status-pill {% if certificate.is_valid %}status-active{% else %}status-revoked{% endif %}">{% if certificate.is_valid %}Válido{% else %}No válido{% endif %}</span></p>
-      <p><strong>Huella:</strong> {{ certificate.fingerprint|slice:":12" }}</p>
+      <p><strong>Estado:</strong>
+        <span class="status-pill {% if certificate.is_valid %}status-active{% else %}status-revoked{% endif %}">
+          {% if certificate.is_valid %}Válido{% else %}No válido{% endif %}
+        </span>
+      </p>
+      {% if request.user.access_level <= 2 %}
+        <p><strong>Huella:</strong> {{ certificate.fingerprint|slice:":12" }}</p>
+      {% endif %}
       <div class="inline-actions" style="margin-top:12px;">
         <a href="{% url 'iam:certificate_validate' collaborator.pk %}" class="btn btn-light">Validar</a>
-        {% if request.user.is_staff and not certificate.is_revoked %}
-          <form action="{% url 'iam:certificate_revoke' collaborator.pk %}" method="post" style="display:inline;">
+        {% if can_revoke_certificate and not certificate.is_revoked %}
+          <form action="{% url 'iam:certificate_revoke' collaborator.pk %}" method="post" style="display:inline;"
+                onsubmit="return confirm('¿Confirmas la revocación del certificado?')">
             {% csrf_token %}
-            <button type="submit" class="btn btn-danger">Revocar</button>
+            <button type="submit" class="btn btn-danger">Revocar certificado</button>
           </form>
         {% endif %}
       </div>
     {% else %}
-      <p>Este colaborador no tiene un certificado emitido.</p>
+      <p style="color:#888;">Este colaborador no tiene un certificado emitido.</p>
       {% if can_issue_certificate %}
         <div class="inline-actions" style="margin-top:12px;">
           <a href="{% url 'iam:certificate_issue' collaborator.pk %}" class="btn btn-light">Emitir certificado</a>
@@ -95,6 +192,9 @@
       {% endif %}
     {% endif %}
   </div>
+
+  {# ── Audit log (Level 1 global; Level 2 own area only) ── #}
+  {% if show_logs %}
   <div class="card">
     <h3>Historial de auditoría</h3>
     <table class="table">
@@ -113,4 +213,5 @@
       </tbody>
     </table>
   </div>
+  {% endif %}
 {% endblock %}

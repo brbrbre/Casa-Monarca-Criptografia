@@ -1,42 +1,67 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div>
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:18px;">
-      <div>
-        <h2>Onboardings pendientes</h2>
-        <p style="color:#555;">Revisa los registros de usuarios que están en espera de aprobación.</p>
-      </div>
-      <div class="inline-actions">
-        <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver al dashboard</a>
-      </div>
+<div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:18px;">
+    <div>
+      <h2>Onboardings en proceso</h2>
+      <p style="color:#555;">Colaboradores pendientes de completar o aprobar su onboarding.</p>
     </div>
-    <div class="card">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Usuario</th>
-            <th>Email</th>
-            <th>Área</th>
-            <th>Solicitado</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for collaborator in collaborators %}
-            <tr>
-              <td>{{ collaborator.get_full_name|default:collaborator.username }}</td>
-              <td>{{ collaborator.email }}</td>
-              <td>{{ collaborator.area }}</td>
-              <td>{{ collaborator.onboarding_requested_at|date:'Y-m-d H:i' }}</td>
-              <td>
-                <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Ver</a>
-              </td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="5">No hay solicitudes de onboarding pendientes.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="inline-actions">
+      <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver al dashboard</a>
     </div>
   </div>
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Email</th>
+          <th>Área</th>
+          <th>Nivel</th>
+          <th>Estado</th>
+          <th>Enviado el</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for collaborator in collaborators %}
+          <tr>
+            <td>{{ collaborator.get_full_name|default:collaborator.username }}</td>
+            <td>{{ collaborator.email }}</td>
+            <td>{{ collaborator.area|default:'—' }}</td>
+            <td>{{ collaborator.get_access_level_display }}</td>
+            <td>
+              {% if collaborator.onboarding_status == 'submitted' %}
+                <span class="status-pill status-active">Enviado — listo para revisar</span>
+              {% else %}
+                <span class="status-pill status-inactive">Pendiente — aún no enviado</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if collaborator.onboarding_submitted_at %}
+                {{ collaborator.onboarding_submitted_at|date:'d/m/Y H:i' }}
+              {% else %}
+                <span style="color:#999;">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Ver perfil</a>
+                {% if collaborator.onboarding_status == 'submitted' %}
+                  <a href="{% url 'iam:approve_onboarding' collaborator.pk %}" class="btn">Revisar y aprobar</a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="7" style="text-align:center; color:#888; padding:28px;">
+              No hay onboardings en proceso.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

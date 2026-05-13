@@ -6,14 +6,16 @@
       <p style="color:#555;">Administración de identidades y acceso de Casa Monarca.</p>
     </div>
     <div class="inline-actions">
-      <a class="btn btn-light" href="{% url 'iam:user_add' %}">+ Alta de colaborador</a>
-      <a class="btn" href="{% url 'iam:audit_log' %}">Ver auditoría</a>
-      <a class="btn btn-light" href="{% url 'iam:security_question_setup' %}">{% if request.user.security_question %}Cambiar pregunta de seguridad{% else %}Configurar pregunta de seguridad{% endif %}</a>
-      {% if pending_onboarding_count > 0 %}
-        <a class="btn btn-warning" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes ({{ pending_onboarding_count }})</a>
-      {% elif request.user.access_level == 1 or request.user.access_level == 2 or request.user.is_staff %}
-        <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
+      {% if request.user.access_level <= 2 %}
+        <a class="btn btn-light" href="{% url 'iam:user_add' %}">+ Alta de colaborador</a>
+        <a class="btn" href="{% url 'iam:audit_log' %}">Ver auditoría</a>
+        {% if pending_onboarding_count > 0 %}
+          <a class="btn btn-warning" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes ({{ pending_onboarding_count }})</a>
+        {% else %}
+          <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
+        {% endif %}
       {% endif %}
+      <a class="btn btn-light" href="{% url 'iam:security_question_setup' %}">{% if request.user.security_question %}Cambiar pregunta de seguridad{% else %}Configurar pregunta de seguridad{% endif %}</a>
     </div>
   </div>
 
@@ -24,15 +26,19 @@
     <div style="padding:14px;background:#fbeaea;border-radius:12px;"><div style="color:#666;font-size:13px;">Eliminados</div><div style="font-size:24px;font-weight:700;">{{ stats.deleted }}</div></div>
   </div>
 
+  {% if request.user.access_level <= 2 %}
   <div class="card" style="margin-bottom:20px;">
     <form method="get" style="display:grid;grid-template-columns:1fr 180px 140px 140px;gap:12px;align-items:end;">
       <div class="field-group"><label>Buscar</label>{{ form.query }}</div>
+      {% if request.user.access_level == 1 %}
       <div class="field-group"><label>Área</label>{{ form.area }}</div>
+      {% endif %}
       <div class="field-group"><label>Nivel</label>{{ form.access_level }}</div>
       <div class="field-group"><label>Estado</label>{{ form.status }}</div>
       <div style="grid-column: span 4; text-align:right;"><button class="btn btn-light" type="submit">Filtrar</button></div>
     </form>
   </div>
+  {% endif %}
 
   <div class="card">
     <table class="table">
