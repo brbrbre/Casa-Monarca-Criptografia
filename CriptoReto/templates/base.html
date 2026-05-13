@@ -257,10 +257,20 @@
       <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca">
       <p>Gestión de identidades y acceso</p>
       <ul class="nav-list">
-        <li><a href="{% url 'iam:dashboard' %}"
-            class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Colaboradores</a></li>
-        <li><a href="{% url 'iam:audit_log' %}"
-            class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">Auditoría</a></li>
+        {% if request.user.is_authenticated %}
+          {% if request.user.is_system_admin or request.user.onboarding_status == 'approved' and request.user.certificate_delivered_at and request.user.access_level != 2 or request.user.onboarding_status == 'approved' and request.user.certificate_delivered_at and request.session.cert_validated %}
+            <li><a href="{% url 'iam:dashboard' %}"
+                class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+              {% if request.user.access_level == 3 %}Mi perfil{% else %}Colaboradores{% endif %}
+            </a></li>
+            {% if request.user.access_level <= 2 %}
+            <li><a href="{% url 'iam:audit_log' %}"
+                class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">Auditoría</a></li>
+            <li><a href="{% url 'iam:pending_onboarding' %}"
+                class="{% if request.resolver_match.url_name == 'pending_onboarding' %}active{% endif %}">Onboardings</a></li>
+            {% endif %}
+          {% endif %}
+        {% endif %}
       </ul>
       <p style="font-size:13px;color:#bbb;margin-top:24px;">
         Usuario: {{ request.user.get_full_name|default:request.user.username }}

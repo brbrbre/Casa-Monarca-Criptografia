@@ -118,7 +118,7 @@ class OnboardingForm(forms.ModelForm):
 
 class CollaboratorForm(forms.ModelForm):
     password = forms.CharField(label='Contraseña temporal', required=False, widget=forms.PasswordInput, help_text='Dejar vacío para no cambiar la contraseña.')
-    mfa_enabled = forms.BooleanField(label='Habilitar MFA (TOTP)', required=False)
+   # mfa_enabled = forms.BooleanField(label='Habilitar MFA (TOTP)', required=False)
 
     class Meta:
         model = Collaborator
@@ -134,7 +134,7 @@ class CollaboratorForm(forms.ModelForm):
             'role',
             'job_title',
             'onboarding_date',
-            'mfa_enabled',
+          #  'mfa_enabled',
         ]
         widgets = {
             'onboarding_date': forms.DateInput(attrs={'type': 'date'}),
@@ -147,18 +147,36 @@ class CollaboratorForm(forms.ModelForm):
             raise forms.ValidationError('El teléfono solo puede contener números.')
         return phone
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, current_user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.current_user = current_user
         self.fields['area'].queryset = Area.objects.order_by('name')
         self.fields['email'].help_text = 'Correo institucional válido.'
         self.fields['username'].help_text = 'Identificador único para el acceso.'
         self.fields['admin_type'].required = False
         self.fields['admin_type'].help_text = 'Solo aplica para cuentas de nivel Administración (Nivel 1).'
 
+        if current_user and current_user.access_level == 2:
+            # Level 2 coordinators cannot assign Level 1 or Level 2; can only create/edit Level 3/4
+            self.fields['access_level'].choices = [
+                c for c in Collaborator.ACCESS_LEVEL_CHOICES if c[0] >= 3
+            ]
+            # Coordinators cannot change area or admin_type
+            self.fields['area'].disabled = True
+            self.fields['area'].required = False
+            self.fields['admin_type'].disabled = True
+            self.fields['admin_type'].required = False
+
     def clean(self):
         cleaned = super().clean()
         access_level = cleaned.get('access_level')
         admin_type = cleaned.get('admin_type', '')
+
+        # Level 2 cannot assign levels above their own scope
+        if self.current_user and self.current_user.access_level == 2:
+            if access_level and access_level < 3:
+                self.add_error('access_level', 'No puedes asignar niveles 1 o 2. Contacta al administrador del sistema.')
+
         if access_level == 1 and not admin_type:
             self.add_error('admin_type', 'Las cuentas de Nivel 1 deben tener un tipo de cuenta (Producción o Contingencias).')
         if access_level != 1 and admin_type:
