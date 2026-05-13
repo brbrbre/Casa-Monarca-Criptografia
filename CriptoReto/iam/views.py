@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -14,7 +14,13 @@ from .forms import (
     SecurityAnswerForm, PasswordRecoveryResetForm,
 )
 from .models import AuditLog, Collaborator, LoginAttempt, UserCertificate
-from .certificates import issue_encrypted_certificate, validate_encrypted_certificate
+from .certificates import (
+    issue_encrypted_certificate,
+    validate_encrypted_certificate,
+    issue_coordinator_key_cert,
+    validate_coordinator_cert_and_key,
+    get_coordinator_key_bytes,
+)
 
 
 def get_client_ip(request):
@@ -80,16 +86,48 @@ def onboarding_view(request):
 @login_required(login_url='iam:login')
 @onboarding_required
 def onboarding_certificate_download_view(request):
+    """Download the .cert file.  For coordinators also available separately."""
     user = request.user
     certificate = getattr(user, 'certificate', None)
     if not user.onboarding_approved or certificate is None or not certificate.is_valid:
         messages.error(request, 'Verificación pendiente. El certificado aún no está disponible.')
         return redirect('iam:onboarding')
 
-    user.certificate_delivered_at = timezone.now()
-    user.save(update_fields=['certificate_delivered_at'])
+    if not user.certificate_delivered_at:
+        user.certificate_delivered_at = timezone.now()
+        user.save(update_fields=['certificate_delivered_at'])
+
     response = HttpResponse(certificate.certificate_data, content_type='text/plain; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="{user.username}.cert"'
+    return response
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+def onboarding_key_download_view(request):
+    """Download the .key file (coordinators only)."""
+    user = request.user
+    if user.access_level != 2:
+        messages.error(request, 'Este archivo solo está disponible para coordinadores.')
+        return redirect('iam:onboarding')
+
+    certificate = getattr(user, 'certificate', None)
+    if not user.onboarding_approved or certificate is None or not certificate.is_valid:
+        messages.error(request, 'Verificación pendiente. El certificado aún no está disponible.')
+        return redirect('iam:onboarding')
+
+    try:
+        key_bytes = get_coordinator_key_bytes(certificate)
+    except ValueError:
+        messages.error(request, 'La llave privada no está disponible. Contacta al administrador.')
+        return redirect('iam:onboarding')
+
+    if not user.certificate_delivered_at:
+        user.certificate_delivered_at = timezone.now()
+        user.save(update_fields=['certificate_delivered_at'])
+
+    response = HttpResponse(key_bytes, content_type='application/octet-stream')
+    response['Content-Disposition'] = f'attachment; filename="{user.username}.key"'
     return response
 
 
@@ -118,40 +156,61 @@ def approve_onboarding_view(request, pk):
         collaborator.onboarding_approved_by = request.user
         collaborator.save(update_fields=['onboarding_status', 'onboarding_approved_at', 'onboarding_approved_by'])
         try:
-            issue_encrypted_certificate(collaborator, issued_by=request.user)
+            if collaborator.access_level == 2:
+                issue_coordinator_key_cert(collaborator, issued_by=request.user)
+                msg = 'Onboarding aprobado. El coordinador podrá descargar los archivos .cert y .key desde su onboarding.'
+            else:
+                issue_encrypted_certificate(collaborator, issued_by=request.user)
+                msg = 'Onboarding aprobado y certificado preparado. El usuario podrá descargar el archivo .cert desde su onboarding.'
         except PermissionError:
-            pass
-        messages.success(request, 'Onboarding aprobado y certificado preparado. El usuario podrá descargar el archivo .cert desde su onboarding.')
+            msg = 'Onboarding aprobado (el certificado ya había sido emitido).'
+        messages.success(request, msg)
         return redirect('iam:pending_onboarding')
 
     return render(request, 'iam/approve_onboarding.html', {'collaborator': collaborator})
+
+
+def user_role_type_view(request):
+    """
+    AJAX endpoint: returns the role type for a given username.
+    Used by the login form to show the appropriate certificate fields.
+    Returns: {"role": "coordinator" | "admin" | "other" | "unknown"}
+    """
+    username = request.GET.get('u', '').strip()
+    if not username:
+        return JsonResponse({'role': 'unknown'})
+    try:
+        user = Collaborator.objects.get(username__iexact=username)
+        if user.access_level == 1:
+            role = 'admin'
+        elif user.access_level == 2:
+            role = 'coordinator'
+        else:
+            role = 'other'
+    except Collaborator.DoesNotExist:
+        role = 'unknown'
+    return JsonResponse({'role': role})
 
 
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('iam:dashboard')
 
-    if request.method == 'POST':
-        form = LoginForm(request.POST, request.FILES)
-    else:
-        form = LoginForm()
+    form = LoginForm(request.POST or None, request.FILES or None)
     blocked = False
+
     if request.method == 'POST' and form.is_valid():
         username = form.cleaned_data['username']
         password = form.cleaned_data['password']
         otp = form.cleaned_data.get('otp')
-        certificate = ''
-        certificate_file = form.cleaned_data.get('certificate')
-        if certificate_file:
-            try:
-                certificate = certificate_file.read().decode('utf-8').strip()
-            except Exception:
-                certificate = ''
         blocked = LoginAttempt.is_blocked(username)
+
         if blocked:
             messages.error(request, 'Demasiados intentos fallidos. Intenta de nuevo más tarde.')
         else:
             ip_address = get_client_ip(request)
+
+            # Check account status before authenticating
             try:
                 db_user = Collaborator.objects.get(username__iexact=username)
                 if db_user.is_deleted:
@@ -176,56 +235,81 @@ def login_view(request):
                     messages.error(request, 'Contraseña incorrecta.')
                 else:
                     messages.error(request, 'Usuario no encontrado.')
-            else:
-                if not user.is_system_admin() and user.onboarding_pending:
-                    login(request, user)
-                    messages.info(request, 'Completa tu onboarding para continuar.')
-                    return redirect('iam:onboarding')
+                return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
 
-                if not user.is_system_admin() and user.onboarding_approved and not user.certificate_delivered_at:
-                    login(request, user)
-                    if getattr(user, 'certificate', None) and user.certificate.is_valid:
-                        messages.info(request, 'Tu cuenta fue aprobada. Descarga tu certificado para acceder al sistema.')
-                    else:
-                        messages.info(request, 'Tu cuenta fue aprobada. Espera la emisión del certificado.')
-                    return redirect('iam:onboarding')
-
-                cert_validated = False
-                certificate_required = False
-                try:
-                    user_cert = user.certificate
-                    certificate_required = user_cert.is_valid
-                except UserCertificate.DoesNotExist:
-                    user_cert = None
-                
-                '''if certificate_required and not certificate:
-                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
-                    messages.error(request, 'Se requiere el certificado para este usuario.')
-                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-                '''
-                if user.mfa_enabled:
-                    if not otp or not user.verify_totp(otp):
-                        LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
-                        messages.error(request, 'Código MFA inválido.')
-                        return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-
-                if certificate:
-                    if not validate_encrypted_certificate(user, certificate):
-                        LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
-                        messages.error(request, 'Certificado inválido.')
-                        return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-                    cert_validated = True
-
+            # Redirect users mid-onboarding
+            if not user.is_system_admin() and user.onboarding_pending:
                 login(request, user)
-                request.session['cert_validated'] = cert_validated
-                LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=True)
-                audit_detail = 'Ingreso exitoso'
-                if user.mfa_enabled:
-                    audit_detail += ' con MFA.'
-                if cert_validated:
-                    audit_detail += ' Con certificado validado.'
-                AuditLog.objects.create(actor=user, target=user, action='Inicio de sesión', details=audit_detail)
-                return redirect('iam:dashboard')
+                messages.info(request, 'Completa tu onboarding para continuar.')
+                return redirect('iam:onboarding')
+
+            if not user.is_system_admin() and user.onboarding_approved and not user.certificate_delivered_at:
+                login(request, user)
+                if getattr(user, 'certificate', None) and user.certificate.is_valid:
+                    messages.info(request, 'Tu cuenta fue aprobada. Descarga tu certificado para acceder al sistema.')
+                else:
+                    messages.info(request, 'Tu cuenta fue aprobada. Espera la emisión del certificado.')
+                return redirect('iam:onboarding')
+
+            # MFA validation (applies to all roles)
+            if user.mfa_enabled:
+                if not otp or not user.verify_totp(otp):
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(request, 'Código MFA inválido.')
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+
+            cert_validated = False
+
+            # --- Coordinator: require both .cert and .key ---
+            if user.access_level == 2:
+                cert_file = form.cleaned_data.get('certificate')
+                key_file = form.cleaned_data.get('key_file')
+                if not cert_file or not key_file:
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(
+                        request,
+                        'Los coordinadores deben proporcionar el certificado digital (.cert) y la llave privada (.key).',
+                    )
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                try:
+                    cert_bytes = cert_file.read()
+                    key_bytes = key_file.read()
+                except Exception:
+                    cert_bytes, key_bytes = b'', b''
+                if not validate_coordinator_cert_and_key(user, cert_bytes, key_bytes):
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(request, 'El certificado digital o la llave privada son inválidos.')
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                cert_validated = True
+
+            # --- Admin: optional legacy .cert (keep existing behavior) ---
+            elif user.is_system_admin():
+                certificate_file = form.cleaned_data.get('certificate')
+                if certificate_file:
+                    try:
+                        certificate_str = certificate_file.read().decode('utf-8').strip()
+                    except Exception:
+                        certificate_str = ''
+                    if certificate_str:
+                        if not validate_encrypted_certificate(user, certificate_str):
+                            LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                            messages.error(request, 'Certificado inválido.')
+                            return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                        cert_validated = True
+
+            # --- Other roles: no certificate required ---
+
+            login(request, user)
+            request.session['cert_validated'] = cert_validated
+            LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=True)
+
+            audit_detail = 'Ingreso exitoso'
+            if user.mfa_enabled:
+                audit_detail += ' con MFA.'
+            if cert_validated:
+                audit_detail += ' Con certificado validado.'
+            AuditLog.objects.create(actor=user, target=user, action='Inicio de sesión', details=audit_detail)
+            return redirect('iam:dashboard')
 
     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
 
@@ -452,12 +536,16 @@ def issue_certificate_view(request, pk):
 
     issued_certificate = None
     certificate_filename = None
+    is_coordinator = collaborator.access_level == 2
     if request.method == 'POST':
         try:
-            certificate = issue_encrypted_certificate(collaborator, issued_by=request.user)
+            if is_coordinator:
+                certificate = issue_coordinator_key_cert(collaborator, issued_by=request.user)
+            else:
+                certificate = issue_encrypted_certificate(collaborator, issued_by=request.user)
             issued_certificate = certificate.certificate_data
             certificate_filename = f'{collaborator.username}.cert'
-            messages.success(request, 'Certificado emitido correctamente. Descarga el archivo .cert y regresa al detalle del colaborador.')
+            messages.success(request, 'Certificado emitido correctamente.')
         except PermissionError as exc:
             messages.error(request, str(exc))
 
@@ -465,6 +553,7 @@ def issue_certificate_view(request, pk):
         'collaborator': collaborator,
         'issued_certificate': issued_certificate,
         'certificate_filename': certificate_filename,
+        'is_coordinator': is_coordinator,
     })
 
 

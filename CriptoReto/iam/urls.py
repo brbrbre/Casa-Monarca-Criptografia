@@ -19,6 +19,7 @@ urlpatterns = [
     path('users/<int:pk>/certificate/revoke/', views.revoke_certificate_view, name='certificate_revoke'),
     path('onboarding/', views.onboarding_view, name='onboarding'),
     path('onboarding/download/', views.onboarding_certificate_download_view, name='onboarding_download'),
+    path('onboarding/download/key/', views.onboarding_key_download_view, name='onboarding_key_download'),
     path('onboarding/pending/', views.pending_onboarding_view, name='pending_onboarding'),
     path('users/<int:pk>/onboarding/approve/', views.approve_onboarding_view, name='approve_onboarding'),
     path('audit/', views.audit_log_view, name='audit_log'),
@@ -26,4 +27,5 @@ urlpatterns = [
     path('recovery/answer/', views.password_recovery_answer_view, name='password_recovery_answer'),
     path('recovery/reset/', views.password_recovery_reset_view, name='password_recovery_reset'),
     path('security-question/', views.security_question_setup_view, name='security_question_setup'),
+    path('api/user-role/', views.user_role_type_view, name='user_role_type'),
 ]

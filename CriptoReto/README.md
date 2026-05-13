@@ -31,7 +31,7 @@ Por defecto usa SQLite para desarrollo. Para MySQL, sigue estos pasos:
 1. Crea la base de datos y el usuario MySQL.
 
 ```bash
-cd /Users/brismaalvarezvaldez/Documents/CriptoReto
+cd CriptoReto
 mysql -u root -p < mysql_setup.sql
 ```
 
