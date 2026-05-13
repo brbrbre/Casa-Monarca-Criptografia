@@ -75,7 +75,7 @@ casamonarca
 5. Ejecuta migraciones y carga datos de prueba:
 
 ```bash
-python manage.py migrate
+
 python manage.py seed_data
 ```
 

@@ -46,13 +46,15 @@
     <h3>Acciones</h3>
     <div class="inline-actions">
       {% if can_activate %}
-        <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn {% if collaborator.is_active and not collaborator.is_revoked %}btn-warning{% else %}btn-light{% endif %}">
-          {% if collaborator.is_active and not collaborator.is_revoked %}
-            Revocar acceso
-          {% else %}
-            Reactivar acceso
-          {% endif %}
-        </a>
+        {% if collaborator.is_active %}
+          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-warning">Desactivar</a>
+          <a href="{% url 'iam:user_revoke' collaborator.pk %}" class="btn btn-danger">Revocar acceso</a>
+        {% elif collaborator.is_revoked %}
+          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-light">Reactivar acceso</a>
+        {% else %}
+          <a href="{% url 'iam:user_toggle' collaborator.pk %}" class="btn btn-light">Activar</a>
+          <a href="{% url 'iam:user_revoke' collaborator.pk %}" class="btn btn-danger">Revocar acceso</a>
+        {% endif %}
       {% endif %}
       {% if can_delete %}
         <a href="{% url 'iam:user_delete' collaborator.pk %}" class="btn btn-danger">Eliminar</a>

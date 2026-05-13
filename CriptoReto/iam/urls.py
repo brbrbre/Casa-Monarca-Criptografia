@@ -12,6 +12,7 @@ urlpatterns = [
     path('users/<int:pk>/', views.collaborator_detail_view, name='detail'),
     path('users/<int:pk>/edit/', views.collaborator_edit_view, name='user_edit'),
     path('users/<int:pk>/toggle/', views.collaborator_toggle_view, name='user_toggle'),
+    path('users/<int:pk>/revoke/', views.collaborator_revoke_view, name='user_revoke'),
     path('users/<int:pk>/delete/', views.collaborator_delete_view, name='user_delete'),
     path('users/<int:pk>/certificate/issue/', views.issue_certificate_view, name='certificate_issue'),
     path('users/<int:pk>/certificate/validate/', views.validate_certificate_view, name='certificate_validate'),

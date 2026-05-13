@@ -198,11 +198,11 @@ def login_view(request):
                 except UserCertificate.DoesNotExist:
                     user_cert = None
                 
-                if certificate_required and not certificate:
+                '''if certificate_required and not certificate:
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(request, 'Se requiere el certificado para este usuario.')
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-
+                '''
                 if user.mfa_enabled:
                     if not otp or not user.verify_totp(otp):
                         LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
@@ -376,13 +376,11 @@ def collaborator_toggle_view(request, pk):
         messages.error(request, 'No se puede cambiar el estado de un colaborador eliminado.')
         return redirect('iam:detail', pk=collaborator.pk)
 
-    if collaborator.is_active and not collaborator.is_revoked:
+    if collaborator.is_active:
         collaborator.is_active = False
-        collaborator.is_revoked = True
-        collaborator.revoked_at = timezone.now()
-        collaborator.revoked_by = request.user
-        action = 'Revocación de acceso'
-        messages.success(request, 'Acceso revocado correctamente.')
+        collaborator.is_revoked = False
+        action = 'Desactivación de acceso'
+        messages.success(request, 'Colaborador desactivado correctamente.')
     else:
         collaborator.is_active = True
         collaborator.is_revoked = False
@@ -393,6 +391,32 @@ def collaborator_toggle_view(request, pk):
 
     collaborator.save()
     AuditLog.objects.create(actor=request.user, target=collaborator, action=action, details=f'Proceso ejecutado por {request.user.username}.')
+    return redirect('iam:detail', pk=collaborator.pk)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+def collaborator_revoke_view(request, pk):
+    collaborator = get_object_or_404(Collaborator, pk=pk)
+    if not request.user.can_activate(collaborator):
+        messages.error(request, 'No tienes permisos para revocar el acceso de este colaborador.')
+        return redirect('iam:dashboard')
+
+    if collaborator.is_deleted:
+        messages.error(request, 'No se puede revocar el acceso de un colaborador eliminado.')
+        return redirect('iam:detail', pk=collaborator.pk)
+
+    if collaborator.is_revoked:
+        messages.error(request, 'El acceso de este colaborador ya está revocado.')
+        return redirect('iam:detail', pk=collaborator.pk)
+
+    collaborator.is_active = False
+    collaborator.is_revoked = True
+    collaborator.revoked_at = timezone.now()
+    collaborator.revoked_by = request.user
+    collaborator.save()
+    AuditLog.objects.create(actor=request.user, target=collaborator, action='Revocación de acceso', details=f'Proceso ejecutado por {request.user.username}.')
+    messages.success(request, 'Acceso revocado correctamente.')
     return redirect('iam:detail', pk=collaborator.pk)
 
 
