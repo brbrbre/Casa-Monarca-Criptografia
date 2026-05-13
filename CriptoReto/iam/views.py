@@ -346,6 +346,11 @@ def approve_onboarding_view(request, pk):
 
 def _onboarding_missing_fields(collaborator):
     """Return a list of human-readable missing field names for the approval UI."""
+    if collaborator.onboarding_status in (
+        Collaborator.ONBOARDING_STATUS_APPROVED,
+        Collaborator.ONBOARDING_STATUS_REJECTED,
+    ):
+        return []
     if collaborator.onboarding_status != Collaborator.ONBOARDING_STATUS_SUBMITTED:
         return ['formulario de onboarding no enviado']
     missing = []
