@@ -151,17 +151,31 @@ def login_view(request):
         if blocked:
             messages.error(request, 'Demasiados intentos fallidos. Intenta de nuevo más tarde.')
         else:
-            user = authenticate(request, username=username, password=password)
             ip_address = get_client_ip(request)
+            try:
+                db_user = Collaborator.objects.get(username__iexact=username)
+                if db_user.is_deleted:
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(request, 'Esta cuenta ha sido eliminada. Contacta al administrador.')
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                elif db_user.is_revoked:
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(request, 'Tu cuenta ha sido revocada. Contacta al administrador.')
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                elif not db_user.is_active:
+                    LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                    messages.error(request, 'Tu cuenta está inactiva. Contacta al administrador.')
+                    return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+            except Collaborator.DoesNotExist:
+                pass
+
+            user = authenticate(request, username=username, password=password)
             if user is None:
                 LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                 if Collaborator.objects.filter(username__iexact=username).exists():
                     messages.error(request, 'Contraseña incorrecta.')
                 else:
                     messages.error(request, 'Usuario no encontrado.')
-            elif not user.is_active or user.is_deleted or user.is_revoked:
-                LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
-                messages.error(request, 'Cuenta inactiva o revocada. Contacta al administrador.')
             else:
                 if not user.is_system_admin() and user.onboarding_pending:
                     login(request, user)
@@ -188,7 +202,7 @@ def login_view(request):
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(request, 'Se requiere el certificado para este usuario.')
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-                
+
                 if user.mfa_enabled:
                     if not otp or not user.verify_totp(otp):
                         LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
