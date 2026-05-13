@@ -59,8 +59,9 @@ def onboarding_view(request):
     if user.onboarding_status == Collaborator.ONBOARDING_STATUS_APPROVED and user.certificate_delivered_at:
         return redirect('iam:dashboard')
 
-    certificate = getattr(user, 'certificate', None)
-    cert_available = user.onboarding_approved and certificate is not None and certificate.is_valid
+    is_coordinator = (user.access_level == 2)
+    certificate = getattr(user, 'certificate', None) if is_coordinator else None
+    cert_available = is_coordinator and user.onboarding_approved and certificate is not None and certificate.is_valid
 
     if request.method == 'POST':
         form = OnboardingForm(request.POST, request.FILES, instance=user)
@@ -77,6 +78,7 @@ def onboarding_view(request):
 
     return render(request, 'iam/onboarding.html', {
         'form': form,
+        'is_coordinator': is_coordinator,
         'certificate': certificate,
         'cert_available': cert_available,
         'certificate_filename': f'{user.username}.cert',
@@ -155,15 +157,18 @@ def approve_onboarding_view(request, pk):
         collaborator.onboarding_approved_at = timezone.now()
         collaborator.onboarding_approved_by = request.user
         collaborator.save(update_fields=['onboarding_status', 'onboarding_approved_at', 'onboarding_approved_by'])
-        try:
-            if collaborator.access_level == 2:
+        if collaborator.access_level == 2:
+            # Coordinator: issue .key + .cert; user must download before accessing dashboard.
+            try:
                 issue_coordinator_key_cert(collaborator, issued_by=request.user)
-                msg = 'Onboarding aprobado. El coordinador podrá descargar los archivos .cert y .key desde su onboarding.'
-            else:
-                issue_encrypted_certificate(collaborator, issued_by=request.user)
-                msg = 'Onboarding aprobado y certificado preparado. El usuario podrá descargar el archivo .cert desde su onboarding.'
-        except PermissionError:
-            msg = 'Onboarding aprobado (el certificado ya había sido emitido).'
+                msg = 'Onboarding aprobado. El coordinador podrá descargar sus archivos .cert y .key desde su onboarding.'
+            except PermissionError:
+                msg = 'Onboarding aprobado (los archivos de firma ya habían sido emitidos).'
+        else:
+            # Operativo / Externo: no certificate flow. Mark delivered immediately so user can log in.
+            collaborator.certificate_delivered_at = timezone.now()
+            collaborator.save(update_fields=['certificate_delivered_at'])
+            msg = 'Onboarding aprobado. El usuario ya puede acceder al sistema.'
         messages.success(request, msg)
         return redirect('iam:pending_onboarding')
 
@@ -244,12 +249,19 @@ def login_view(request):
                 return redirect('iam:onboarding')
 
             if not user.is_system_admin() and user.onboarding_approved and not user.certificate_delivered_at:
-                login(request, user)
-                if getattr(user, 'certificate', None) and user.certificate.is_valid:
-                    messages.info(request, 'Tu cuenta fue aprobada. Descarga tu certificado para acceder al sistema.')
+                if user.access_level == 2:
+                    # Coordinator must download .cert + .key before accessing dashboard.
+                    login(request, user)
+                    if getattr(user, 'certificate', None) and user.certificate.is_valid:
+                        messages.info(request, 'Tu cuenta fue aprobada. Descarga tus archivos de firma digital para acceder al sistema.')
+                    else:
+                        messages.info(request, 'Tu cuenta fue aprobada. Espera la emisión de tu certificado digital.')
+                    return redirect('iam:onboarding')
                 else:
-                    messages.info(request, 'Tu cuenta fue aprobada. Espera la emisión del certificado.')
-                return redirect('iam:onboarding')
+                    # Non-coordinator: certificate_delivered_at was never set (legacy record or race).
+                    # Auto-complete so they can log in normally.
+                    user.certificate_delivered_at = timezone.now()
+                    user.save(update_fields=['certificate_delivered_at'])
 
             # MFA validation (applies to all roles)
             if user.mfa_enabled:

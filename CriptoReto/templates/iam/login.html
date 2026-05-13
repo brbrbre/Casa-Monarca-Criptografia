@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="es">
 
@@ -14,7 +15,7 @@
 
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: #f0f2f5;
+      background: #fff0e9;
       min-height: 100vh;
       display: flex;
       align-items: center;
@@ -32,9 +33,13 @@
     }
 
     .login-header {
-      background: #1a2744;
+      background: #ad2b4e;
       padding: 28px 32px 22px;
       color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
     }
 
     .login-header h1 {
@@ -44,10 +49,17 @@
       letter-spacing: -0.3px;
     }
 
+    .login-header img {
+      max-height: 100px;
+      width: auto;
+      display: block;
+      margin-bottom: 8px;
+    }
+
     .login-header p {
       margin: 0;
       font-size: 13px;
-      color: #94a3b8;
+      color: #fff0e9;
     }
 
     .login-body {
@@ -197,7 +209,7 @@
     .btn-submit {
       width: 100%;
       padding: 12px 16px;
-      background: #1a2744;
+      background: #ad2b4e;
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -254,8 +266,8 @@
 <body>
   <div class="login-card">
     <div class="login-header">
-      <h1>Casa Monarca</h1>
-      <p>Sistema de gestión de identidades — Acceso seguro</p>
+      <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca">
+      <p>Sistema de gestión de identidades</p>
     </div>
     <div class="login-body">
 
