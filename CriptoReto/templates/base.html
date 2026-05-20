@@ -269,6 +269,17 @@
             <li><a href="{% url 'iam:pending_onboarding' %}"
                 class="{% if request.resolver_match.url_name == 'pending_onboarding' %}active{% endif %}">Onboardings</a></li>
             {% endif %}
+            <!-- ── Registros Migrantes ── -->
+            {% if request.user.access_level <= 3 %}
+            <li><a href="{% url 'registros:registro_list' %}"
+                class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name != 'registro_new' %}active{% endif %}">
+              Registros
+            </a></li>
+            {% endif %}
+            <li><a href="{% url 'registros:registro_new' %}"
+                class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
+              Nuevo Registro
+            </a></li>
           {% endif %}
         {% endif %}
       </ul>
