@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'iam',
+    'registros',
 ]
 
 MIDDLEWARE = [
@@ -110,6 +111,11 @@ if CERT_ENCRYPTION_KEY is None and DEBUG:
 CERT_ISSUER_NAME = os.environ.get('CERT_ISSUER_NAME', 'Casa Monarca IAM')
 CERT_EXPIRATION_DAYS = int(os.environ.get('CERT_EXPIRATION_DAYS', '365'))
 CERT_PRIVATE_KEY_PATH = os.environ.get('CERT_PRIVATE_KEY_PATH', '')
+
+# --- ECC Signature Settings ---
+# Path to the server's ECDSA private key (secp256k1).
+# Auto-generated at BASE_DIR/ecc_signing_key.pem if not set.
+ECC_PRIVATE_KEY_PATH = os.environ.get('ECC_PRIVATE_KEY_PATH', '')
 
 if not DEBUG and CERT_ENCRYPTION_KEY is None:
     raise ImproperlyConfigured('CERT_ENCRYPTION_KEY must be set in production.')

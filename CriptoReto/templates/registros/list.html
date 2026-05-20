@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .sig-badge {
+    display:inline-flex;padding:3px 8px;border-radius:999px;font-size:12px;border:1px solid;
+  }
+  .sig-valid   { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
+  .sig-none    { background:#f2f2f2;color:#555;border-color:#ccc; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <h2 style="margin:0;">{{ title }}</h2>
+  <a href="{% url 'registros:registro_new' %}" class="btn" style="background:#ad2b4e;border-color:#ad2b4e;color:#fff;">
+    + Nuevo registro
+  </a>
+</div>
+
+<!-- Search -->
+<form method="get" style="margin-bottom:16px;display:flex;gap:10px;max-width:480px;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre, nacionalidad o documento…"
+         style="flex:1;padding:9px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+  <button type="submit" class="btn btn-light">Buscar</button>
+  {% if q %}<a href="{% url 'registros:registro_list' %}" class="btn btn-light">Limpiar</a>{% endif %}
+</form>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if registrations %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Nombre completo</th>
+          <th>Nacionalidad</th>
+          <th>Ingreso</th>
+          <th>Creado por</th>
+          <th>Firma</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reg in registrations %}
+          <tr>
+            <td>{{ reg.pk }}</td>
+            <td>{{ reg.full_name }}</td>
+            <td>{{ reg.nationality }}</td>
+            <td>{{ reg.entry_date|date:"d/m/Y" }}</td>
+            <td>{{ reg.created_by.get_full_name|default:reg.created_by.username }}</td>
+            <td>
+              {% if reg.signature %}
+                <span class="sig-badge sig-valid">&#10003; Firmado</span>
+              {% else %}
+                <span class="sig-badge sig-none">Sin firma</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="{% url 'registros:registro_detail' reg.pk %}" class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver</a>
+                {% if request.user.access_level <= 2 %}
+                  <a href="{% url 'registros:registro_edit' reg.pk %}" class="btn btn-light" style="font-size:12px;padding:5px 10px;">Editar</a>
+                {% endif %}
+                {% if request.user.access_level == 1 %}
+                  <form method="post" action="{% url 'registros:registro_delete' reg.pk %}"
+                        onsubmit="return confirm('¿Eliminar el registro #{{ reg.pk }}? Esta acción no se puede deshacer.')">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger" style="font-size:12px;padding:5px 10px;">Eliminar</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="padding:40px;text-align:center;color:#888;">
+      {% if q %}
+        No se encontraron registros para <strong>{{ q }}</strong>.
+      {% else %}
+        Aún no hay registros.
+        <a href="{% url 'registros:registro_new' %}" style="color:#ad2b4e;">Crear el primero.</a>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
