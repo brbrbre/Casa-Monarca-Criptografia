@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver al detalle</a>
+</div>
+
+<h2>Ejecutar solicitud aprobada #{{ wf.pk }}</h2>
+
+<div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
+  <strong>Atención:</strong> Esta acción ejecutará <em>{{ wf.get_action_type_display }}</em>
+  sobre el registro #{{ wf.registration.pk }} ({{ wf.registration.full_name }}).
+  La operación quedará firmada criptográficamente y es irreversible.
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card" style="max-width:560px;">
+  <h4 style="margin:0 0 16px;">Resumen de la solicitud</h4>
+  <table style="width:100%;font-size:14px;border-collapse:collapse;margin-bottom:20px;">
+    <tr><td style="color:#888;padding:5px 0;width:40%;">Tipo de acción</td>
+        <td>{{ wf.get_action_type_display }}</td></tr>
+    <tr><td style="color:#888;padding:5px 0;">Solicitante</td>
+        <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td></tr>
+    <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
+        <td>
+          <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+            #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
+          </a>
+        </td></tr>
+    <tr><td style="color:#888;padding:5px 0;">Notas</td>
+        <td>{{ wf.notes|default:"—" }}</td></tr>
+  </table>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom:20px;">
+      <label for="id_notes" style="font-weight:600;display:block;margin-bottom:6px;">Observaciones de ejecución (opcional)</label>
+      <textarea name="notes" id="id_notes" rows="3"
+                style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
+                placeholder="Notas sobre la ejecución…"></textarea>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label for="id_password" style="font-weight:600;display:block;margin-bottom:6px;">
+        Contraseña (confirma tu identidad para la firma digital)
+      </label>
+      <input type="password" name="password" id="id_password" autocomplete="current-password"
+             style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
+             required>
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn" style="background:#198754;color:#fff;border-color:#198754;">
+        Ejecutar y firmar
+      </button>
+      <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

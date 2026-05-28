@@ -1,0 +1,169 @@
+{% comment %}
+Reusable Aviso de Privacidad modal.
+
+Usage:
+{% include 'partials/aviso_privacidad_modal.html' %}
+
+The page that includes this partial must have:
+- An element with id="link-aviso" that triggers the modal
+- A checkbox with id="privacy_accept" that gets auto-checked on acceptance
+{% endcomment %}
+
+<!-- ══ MODAL AVISO DE PRIVACIDAD ══════════════════════════════════════════ -->
+<div id="modal-privacidad" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.6); z-index:9999; justify-content:center; align-items:center;">
+  <div style="background:#fff; border-radius:12px; max-width:680px; width:95%;
+              max-height:85vh; display:flex; flex-direction:column; overflow:hidden;
+              box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+
+    <!-- Header -->
+    <div
+      style="padding:20px 24px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;">
+      <h3 style="margin:0; font-size:16px; color:#ad2b4e;">Aviso de Privacidad Integral</h3>
+      <button onclick="document.getElementById('modal-privacidad').style.display='none'"
+        style="background:none; border:none; font-size:22px; cursor:pointer; color:#666; line-height:1;">&#215;</button>
+    </div>
+
+    <!-- Contenido scrolleable -->
+    <div style="overflow-y:auto; padding:24px; flex:1; font-size:13px; line-height:1.7; color:#333;">
+
+      <p style="text-align:center; font-weight:bold; margin-bottom:4px;">
+        AVISO DE PRIVACIDAD INTEGRAL Y ACUERDO DE TRATAMIENTO DE DATOS PERSONALES
+      </p>
+      <p style="text-align:center; font-size:12px; color:#666; margin-bottom:16px;">
+        Con fundamento en la Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP) y
+        su Reglamento
+      </p>
+
+      <p><strong>I. IDENTIDAD Y DOMICILIO DEL RESPONSABLE</strong><br>
+        La Casa Monarca Ayuda Humanitaria al Migrante A.B.P., con domicilio en Nuevo León 501, Mirador de Santa
+        Catarina,
+        66350 Cdad. Santa Catarina, N.L. Para consultas o ejercicio de Derechos ARCO contactar a:<br>
+        encargado@casamonarca.org.mx | 81 4193 7820</p>
+
+      <p><strong>II. DATOS PERSONALES QUE SE RECABAN</strong></p>
+      <p><em>a) Identificación:</em> Nombre completo, fecha de nacimiento, género, nacionalidad, país de origen, tipo y
+        número de documento.</p>
+      <p><em>b) Contacto:</em> Teléfono, correo electrónico.</p>
+      <p><em>c) Información migratoria:</em> Fecha de ingreso, punto de ingreso, países de tránsito, destino final,
+        situación migratoria, motivo de migración, albergue actual.</p>
+      <p><em>d) Grupo familiar:</em> Estado civil, viaje en solitario o acompañado, número de personas en el grupo,
+        número de menores.</p>
+      <p><em>e) Asistencia solicitada:</em> Asesoría legal, atención médica, apoyo alimentario, alojamiento temporal,
+        apoyo psicológico, servicios educativos, apoyo laboral, gestión documental, apoyo de transporte, otro.</p>
+      <p><em>f) Contacto de emergencia:</em> Nombre, teléfono y parentesco.</p>
+      <p><em>g) Observaciones adicionales</em> relevantes para la prestación de servicios.</p>
+      <p>En caso de datos sensibles (salud, origen étnico, situación migratoria), se recabará consentimiento expreso
+        conforme al artículo 9 de la LFPDPPP.</p>
+
+      <p><strong>III. FINALIDADES DEL TRATAMIENTO</strong></p>
+      <p><em>Primarias:</em> Apertura y gestión del expediente del beneficiario; prestación, seguimiento y evaluación de
+        servicios; registro de actividades durante su permanencia; cumplimiento de obligaciones legales; comunicación
+        con el beneficiario.</p>
+      <p><em>Secundarias:</em> Elaboración de estadísticas e informes internos en forma anonimizada; mejora continua de
+        programas y servicios. Puede oponerse a las finalidades secundarias sin afectar los servicios principales.</p>
+
+      <p><strong>IV. DERECHOS ARCO Y MECANISMO DE EJERCICIO</strong></p>
+      <p><em>Acceso:</em> Conocer qué datos tenemos y cómo los usamos. Respuesta en 20 días hábiles.</p>
+      <p><em>Rectificación:</em> Corregir datos desactualizados o inexactos. Respuesta en 20 días hábiles.</p>
+      <p><em>Cancelación:</em> Solicitar eliminación de sus datos. Solo el Administrador del sistema puede ejecutar esta
+        acción.</p>
+      <p><em>Oposición:</em> Oponerse al uso de sus datos para fines específicos previstos por la ley.</p>
+      <p>Solicitudes por escrito a encargado@casamonarca.org.mx o de forma presencial en las instalaciones.</p>
+
+      <p><strong>V. NIVELES DE ACCESO Y FLUJO INTERNO ARCO</strong><br>
+        Voluntario &#8594; Operativo &#8594; Coordinador &#8594; Administrador (único con facultades para ejecutar
+        Cancelación). Cada etapa cuenta con supervisión y trazabilidad criptográfica.</p>
+
+      <p><strong>VI. TRANSFERENCIAS DE DATOS</strong><br>
+        Solo a autoridades competentes (IMSS, ISSSTE, dependencias gubernamentales) cuando lo exija la ley. En otros
+        casos se requiere consentimiento expreso del titular.</p>
+
+      <p><strong>VII. SEGURIDAD</strong><br>
+        Medidas administrativas, técnicas y físicas conforme al artículo 19 de la LFPDPPP: control de acceso por
+        niveles, registro de actividades, firma digital ECDSA, restricción de visualización de datos ARCO al personal no
+        autorizado.</p>
+
+      <p><strong>VIII. CONSENTIMIENTO</strong><br>
+        El tratamiento se realiza con consentimiento expreso del beneficiario, recabado al momento del alta y al momento
+        de la salida de Casa Monarca.</p>
+
+      <p><strong>IX. CAMBIOS AL AVISO DE PRIVACIDAD</strong><br>
+        El Responsable podrá modificar este aviso en cualquier momento. Las actualizaciones estarán disponibles en el
+        tablero de avisos en instalaciones o por correo electrónico.</p>
+
+      <p><strong>X. AUTORIDAD SUPERVISORA</strong><br>
+        INAI — Instituto Nacional de Transparencia, Acceso a la Información y Protección de Datos Personales.<br>
+        www.inai.org.mx | 800 835 4324<br>
+        Insurgentes Sur 3211, Col. Insurgentes Cuicuilco, Alcaldía Coyoacán, C.P. 04530, Ciudad de México.</p>
+
+      <hr style="margin:16px 0; border:none; border-top:1px solid #eee;">
+
+      <p style="font-weight:bold; margin-bottom:8px;">ACUSE DE RECIBO Y CONSENTIMIENTO</p>
+      <table style="width:100%; font-size:13px; border-collapse:collapse;">
+        <tr>
+          <td style="padding:6px 0; width:40%; color:#555;">Nombre completo:</td>
+          <td style="padding:6px 0;"><strong id="aviso-nombre">—</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; color:#555;">Tipo de documento:</td>
+          <td style="padding:6px 0;"><strong>Identificación Oficial</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; color:#555;">Lugar y fecha:</td>
+          <td style="padding:6px 0;"><strong id="aviso-fecha">—</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; color:#555; vertical-align:top;">Firma del titular:</td>
+          <td style="padding:6px 0; color:#388e3c; font-weight:bold;">&#10003; Aceptado digitalmente al marcar la
+            casilla de consentimiento</td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; color:#555; vertical-align:top;">Nombre del Responsable:</td>
+          <td style="padding:6px 0;"><strong>Casa Monarca Ayuda Humanitaria al Migrante A.B.P.</strong></td>
+        </tr>
+        <tr>
+          <td style="padding:6px 0; color:#555;">Firma del Responsable:</td>
+          <td style="padding:6px 0; color:#1565c0; font-weight:bold;">Aprobado digitalmente por Casa Monarca IAM</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:16px 24px; border-top:1px solid #eee; text-align:right;">
+      <button onclick="document.getElementById('modal-privacidad').style.display='none';
+                       document.getElementById('privacy_accept').checked=true;" class="btn"
+        style="min-width:160px; background:#ad2b4e; border-color:#ad2b4e; color:#fff;">
+        Acepto y cerrar
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var trigger = document.getElementById('link-aviso');
+    if (!trigger) return;
+    trigger.addEventListener('click', function (e) {
+      e.preventDefault();
+      // Auto-detect name field (registration uses full_name; onboarding uses first+last)
+      var nombre;
+      var fullEl = document.getElementById('id_full_name');
+      if (fullEl) {
+        nombre = fullEl.value.trim() || '(completa tu nombre primero)';
+      } else {
+        var first = (document.getElementById('id_first_name') || {}).value || '';
+        var last = (document.getElementById('id_last_name') || {}).value || '';
+        nombre = (first.trim() + ' ' + last.trim()).trim() || '(completa tu nombre primero)';
+      }
+      document.getElementById('aviso-nombre').textContent = nombre;
+
+      var ahora = new Date();
+      document.getElementById('aviso-fecha').textContent =
+        'Monterrey, Nuevo León, ' +
+        ahora.toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+
+      document.getElementById('modal-privacidad').style.display = 'flex';
+    });
+  })();
+</script>

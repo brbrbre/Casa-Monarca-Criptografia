@@ -239,6 +239,10 @@
 
       <!-- Consent – last field so the user must scroll to see it -->
       <div class="field-group {% if form.data_consent.errors %}field-error{% endif %}" id="consent-field" style="margin-top:16px;background:#fafafa;border:1px solid #ddd;border-radius:8px;padding:14px;">
+        <p style="font-size:13px;margin:0 0 10px;color:#555;">
+          Antes de continuar, lee el
+          <a href="#" id="link-aviso" style="color:#ad2b4e;text-decoration:underline;">Aviso de Privacidad Integral</a>.
+        </p>
         <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
           {{ form.data_consent }}
           <span style="font-size:13px;line-height:1.5;">{{ form.data_consent.label }}</span>
@@ -300,5 +304,7 @@
   {% endif %}
 })();
 </script>
+
+{% include 'partials/aviso_privacidad_modal.html' %}
 
 {% endblock %}

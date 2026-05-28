@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .state-badge {
+    display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid;
+  }
+  .state-submitted    { background:#fff3cd;color:#856404;border-color:#ffc107; }
+  .state-pending      { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
+  .state-escalated    { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
+  .state-approved     { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
+  .state-rejected     { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
+  .state-executed     { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
+  .state-signed       { background:#d0f0fd;color:#055160;border-color:#6edff6; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <h2 style="margin:0;">Solicitudes de flujo de aprobación</h2>
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+{% if pending_count %}
+  <div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+    Tienes <strong>{{ pending_count }}</strong> solicitud{{ pending_count|pluralize:",es" }} pendiente{{ pending_count|pluralize:",s" }} de acción.
+  </div>
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if requests %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Solicitado por</th>
+          <th>Registro</th>
+          <th>Estado</th>
+          <th>Nivel actual</th>
+          <th>Fecha</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for wf in requests %}
+          <tr>
+            <td>{{ wf.pk }}</td>
+            <td>{{ wf.get_action_type_display }}</td>
+            <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td>
+            <td>
+              {% if wf.registration %}
+                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+                  #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
+                </a>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <span class="state-badge state-{{ wf.state }}">{{ wf.get_state_display }}</span>
+            </td>
+            <td>
+              {% if wf.current_approver_level == 1 %}Admin
+              {% elif wf.current_approver_level == 2 %}Coordinador
+              {% elif wf.current_approver_level == 3 %}Operativo
+              {% elif wf.current_approver_level == 4 %}Voluntario
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ wf.created_at|date:"d/m/Y H:i" }}</td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver</a>
+                {% if wf.is_pending_for request.user %}
+                  <a href="{% url 'registros:workflow_decide' wf.pk %}" class="btn" style="font-size:12px;padding:5px 10px;background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
+                    Decidir
+                  </a>
+                {% endif %}
+                {% if wf.state == 'approved' and request.user.access_level <= wf.current_approver_level %}
+                  <a href="{% url 'registros:workflow_execute' wf.pk %}" class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
+                    Ejecutar
+                  </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="padding:40px;text-align:center;color:#888;">
+      No hay solicitudes de flujo registradas.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

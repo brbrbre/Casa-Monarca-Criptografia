@@ -6,6 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Casa Monarca — {{ title|default:'IAM' }}</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
     * {
       box-sizing: border-box;
@@ -34,6 +35,10 @@
       background: #ad2b4e;
       color: #fff;
       padding: 20px 16px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
     }
 
     .sidebar img {
@@ -64,7 +69,9 @@
     }
 
     .nav-list a {
-      display: block;
+      display: flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 10px;
       color: #ddd;
       border-radius: 6px;
@@ -96,10 +103,82 @@
       font-weight: 700;
     }
 
-    .topbar>div {
+    .topbar > div {
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .profile-menu-wrap {
+      position: relative;
+    }
+
+    .topbar-profile {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #ad2b4e;
+      font-size: 22px;
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      transition: opacity 0.15s;
+    }
+
+    .topbar-profile:hover {
+      opacity: 0.75;
+    }
+
+    .profile-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      width: 272px;
+      background: #fff;
+      border: 1px solid #e2e2e2;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.10);
+      z-index: 1000;
+      overflow: hidden;
+    }
+
+    .profile-dropdown-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .profile-dropdown-header strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: #111;
+    }
+
+    .profile-dropdown-header span {
+      display: block;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .profile-dropdown-links a {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      font-size: 14px;
+      color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+
+    .profile-dropdown-links a:last-child {
+      border-bottom: none;
+    }
+
+    .profile-dropdown-links a:hover {
+      background: #f9f9f9;
+      color: #ad2b4e;
     }
 
     .page-content {
@@ -118,6 +197,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 6px;
       padding: 10px 14px;
       border: 1px solid #333;
       background: #111;
@@ -256,44 +336,76 @@
     <nav class="sidebar">
       <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca">
       <p>Gestión de identidades y acceso</p>
+{# djlint:off #}
       <ul class="nav-list">
         {% if request.user.is_authenticated %}
-          {% if request.user.is_system_admin or request.user.onboarding_status == 'approved' and request.user.certificate_delivered_at and request.user.access_level != 2 or request.user.onboarding_status == 'approved' and request.user.certificate_delivered_at and request.session.cert_validated %}
-            <li><a href="{% url 'iam:dashboard' %}"
-                class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
-              {% if request.user.access_level == 3 %}Mi perfil{% else %}Colaboradores{% endif %}
-            </a></li>
-            {% if request.user.access_level <= 2 %}
-            <li><a href="{% url 'iam:audit_log' %}"
-                class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">Auditoría</a></li>
-            <li><a href="{% url 'iam:pending_onboarding' %}"
-                class="{% if request.resolver_match.url_name == 'pending_onboarding' %}active{% endif %}">Onboardings</a></li>
-            {% endif %}
-            <!-- ── Registros Migrantes ── -->
-            {% if request.user.access_level <= 3 %}
-            <li><a href="{% url 'registros:registro_list' %}"
-                class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name != 'registro_new' %}active{% endif %}">
-              Registros
-            </a></li>
-            {% endif %}
-            <li><a href="{% url 'registros:registro_new' %}"
-                class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
-              Nuevo Registro
-            </a></li>
-          {% endif %}
+        {% with lvl=request.user.access_level st=request.user.onboarding_status cd=request.user.certificate_delivered_at %}
+        {% if request.user.is_system_admin or st == 'approved' and cd and lvl != 2 or st == 'approved' and cd and request.session.cert_validated %}
+        <li>
+          <a href="{% url 'iam:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+            {% if lvl == 3 %}<i class="fa-solid fa-user"></i> Mi perfil{% else %}<i class="fa-solid fa-users"></i> Colaboradores{% endif %}
+          </a>
+        </li>
+        {% if lvl <= 2 %}
+        <li>
+          <a href="{% url 'iam:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
+            <i class="fa-solid fa-clock-rotate-left"></i> Auditoría
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'iam:pending_onboarding' %}" class="{% if request.resolver_match.url_name == 'pending_onboarding' %}active{% endif %}">
+            <i class="fa-solid fa-user-clock"></i> Onboardings
+          </a>
+        </li>
+        {% endif %}
+        {% if lvl <= 3 %}
+        <li>
+          <a href="{% url 'registros:registro_list' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name != 'registro_new' %}active{% endif %}">
+            <i class="fa-solid fa-file-lines"></i> Registros
+          </a>
+        </li>
+        {% endif %}
+        <li>
+          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
+            <i class="fa-solid fa-plus"></i> Nuevo Registro
+          </a>
+        </li>
+        {% endif %}
+        {% endwith %}
         {% endif %}
       </ul>
+{# djlint:on #}
       <p style="font-size:13px;color:#bbb;margin-top:24px;">
         Usuario: {{ request.user.get_full_name|default:request.user.username }}
       </p>
       <p style="font-size:13px;color:#bbb;">Nivel: {{ request.user.get_access_level_display }}</p>
-      <a href="{% url 'iam:logout' %}" class="btn btn-light">Cerrar sesión</a>
+      <a href="{% url 'iam:logout' %}" class="btn btn-light">
+        <i class="fa-solid fa-right-from-bracket"></i> Cerrar sesión
+      </a>
     </nav>
     <main class="main-area">
       <div class="topbar">
         <div class="brand">{{ title|default:'Casa Monarca IAM' }}</div>
-        <div>
-          <span>{{ request.user.email }}</span>
+        <div class="profile-menu-wrap">
+          <button class="topbar-profile" id="profile-btn" type="button" aria-expanded="false" title="{{ request.user.get_full_name|default:request.user.username }}">
+            <i class="fa-solid fa-circle-user"></i>
+          </button>
+          <div class="profile-dropdown" id="profile-dropdown" hidden>
+            <div class="profile-dropdown-header">
+              <strong>{{ request.user.get_full_name|default:request.user.username }}</strong>
+              <span>{{ request.user.email }}</span>
+              <span>{{ request.user.get_access_level_display }}</span>
+              <span>{{ request.user.get_onboarding_status_display }}</span>
+            </div>
+            <div class="profile-dropdown-links">
+              <a href="{% url 'iam:password_change' %}">
+                <i class="fa-solid fa-lock"></i> Cambiar contraseña
+              </a>
+              <a href="{% url 'iam:security_question_setup' %}">
+                <i class="fa-solid fa-shield-halved"></i> Cambiar pregunta de seguridad
+              </a>
+            </div>
+          </div>
         </div>
       </div>
       <div class="page-content">
@@ -306,6 +418,23 @@
       </div>
     </main>
   </div>
+  <script>
+    (function () {
+      var btn = document.getElementById('profile-btn');
+      var menu = document.getElementById('profile-dropdown');
+      if (!btn || !menu) return;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        menu.hidden = open;
+      });
+      document.addEventListener('click', function () {
+        btn.setAttribute('aria-expanded', 'false');
+        menu.hidden = true;
+      });
+    })();
+  </script>
 </body>
 
 </html>

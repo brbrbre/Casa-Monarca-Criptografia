@@ -271,6 +271,36 @@ class PasswordRecoveryResetForm(forms.Form):
         return cleaned
 
 
+class PasswordChangeAuthForm(forms.Form):
+    current_password = forms.CharField(label='Contraseña actual', widget=forms.PasswordInput)
+    new_password1 = forms.CharField(label='Nueva contraseña', widget=forms.PasswordInput)
+    new_password2 = forms.CharField(label='Confirma la nueva contraseña', widget=forms.PasswordInput)
+
+    def __init__(self, user, *args, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
+    def clean_current_password(self):
+        password = self.cleaned_data.get('current_password')
+        if not self.user.check_password(password):
+            raise forms.ValidationError('La contraseña actual es incorrecta.')
+        return password
+
+    def clean_new_password1(self):
+        password = self.cleaned_data.get('new_password1')
+        if password:
+            validate_strong_password(password)
+        return password
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get('new_password1')
+        p2 = cleaned.get('new_password2')
+        if p1 and p2 and p1 != p2:
+            raise forms.ValidationError('Las contraseñas no coinciden.')
+        return cleaned
+
+
 class CollaboratorSearchForm(forms.Form):
     query = forms.CharField(label='Buscar', required=False)
     area = forms.ModelChoiceField(label='Área', required=False, queryset=Area.objects.order_by('name'))

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:registro_detail' registration.pk %}" style="color:#ad2b4e;text-decoration:none;">
+    ← Volver al registro #{{ registration.pk }}
+  </a>
+</div>
+
+<h2>Nueva solicitud ARCO</h2>
+<p style="color:#666;margin-bottom:4px;">
+  Registro: <strong>{{ registration.full_name }}</strong>
+</p>
+<p style="color:#888;font-size:13px;margin-bottom:24px;">
+  De acuerdo con la LFPDPPP, el titular de datos personales puede ejercer sus derechos de Acceso,
+  Rectificación, Cancelación u Oposición. Esta solicitud será gestionada según el nivel de aprobación requerido.
+</p>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<!-- ARCO type info table -->
+<div class="card" style="max-width:680px;margin-bottom:20px;font-size:13px;">
+  <h4 style="margin:0 0 10px;font-size:14px;">¿Qué derecho deseas ejercer?</h4>
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="background:#f8f9fa;">
+        <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Tipo</th>
+        <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Descripción</th>
+        <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Aprueba</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Acceso</strong></td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Conocer qué datos personales se tienen almacenados.</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Operativo</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Rectificación</strong></td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Corregir datos personales inexactos o incompletos.</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Coordinador</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Cancelación</strong></td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Suprimir definitivamente los datos personales.</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Admin</td>
+      </tr>
+      <tr style="background:#f8f9fa;">
+        <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Oposición</strong></td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Oponerse al tratamiento de datos para fines específicos.</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Operativo</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom:20px;">
+      <label for="{{ form.arco_type.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
+        {{ form.arco_type.label }}
+      </label>
+      {{ form.arco_type }}
+      {% if form.arco_type.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.arco_type.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label for="{{ form.description.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
+        {{ form.description.label }}
+      </label>
+      {{ form.description }}
+      <small style="color:#888;font-size:12px;">Mínimo 20 caracteres. Sé específico/a sobre tu solicitud.</small>
+      {% if form.description.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.description.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
+        Enviar solicitud ARCO
+      </button>
+      <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn btn-light">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

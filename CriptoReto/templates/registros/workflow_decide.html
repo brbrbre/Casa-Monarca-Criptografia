@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver al detalle</a>
+</div>
+
+<h2>Decisión sobre solicitud #{{ wf.pk }}</h2>
+<p style="color:#666;margin-bottom:24px;">
+  <strong>Acción:</strong> {{ wf.get_action_type_display }} &nbsp;|&nbsp;
+  <strong>Solicitado por:</strong> {{ wf.requested_by.get_full_name|default:wf.requested_by.username }}
+  {% if wf.registration %}
+    &nbsp;|&nbsp; <strong>Registro:</strong>
+    <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+      #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
+    </a>
+  {% endif %}
+</p>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card" style="max-width:560px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <div style="margin-bottom:20px;">
+      <label style="font-weight:600;display:block;margin-bottom:8px;">{{ form.decision.label }}</label>
+      {% for radio in form.decision %}
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
+          {{ radio.tag }}
+          <span>{{ radio.choice_label }}</span>
+        </label>
+      {% endfor %}
+      {% if form.decision.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.decision.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <label for="{{ form.notes.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
+        {{ form.notes.label }}
+      </label>
+      {{ form.notes }}
+      {% if form.notes.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.notes.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <label for="{{ form.password.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
+        {{ form.password.label }}
+      </label>
+      {{ form.password }}
+      <small style="color:#888;font-size:12px;">Tu contraseña confirma tu identidad en el registro de auditoría.</small>
+      {% if form.password.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.password.errors.0 }}</div>
+      {% endif %}
+    </div>
+
+    <div style="display:flex;gap:12px;">
+      <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
+        Confirmar decisión
+      </button>
+      <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+{% endblock %}

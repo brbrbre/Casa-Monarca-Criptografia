@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .state-badge {
+    display:inline-flex;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid;
+  }
+  .state-submitted  { background:#fff3cd;color:#856404;border-color:#ffc107; }
+  .state-pending    { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
+  .state-escalated  { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
+  .state-approved   { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
+  .state-rejected   { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
+  .state-executed   { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
+  .step-row { border-left:3px solid #dee2e6;padding:10px 16px;margin:8px 0; }
+  .step-approved { border-color:#198754; }
+  .step-rejected { border-color:#dc3545; }
+</style>
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:workflow_list' %}" style="color:#ad2b4e;text-decoration:none;">← Volver a solicitudes</a>
+</div>
+
+<h2>Solicitud de flujo #{{ wf.pk }} — {{ wf.get_action_type_display }}</h2>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+  <div class="card">
+    <h4 style="margin:0 0 12px;">Detalles</h4>
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      <tr><td style="color:#888;padding:4px 0;width:40%;">Estado</td>
+          <td><span class="state-badge state-{{ wf.state }}">{{ wf.get_state_display }}</span></td></tr>
+      <tr><td style="color:#888;padding:4px 0;">Solicitado por</td>
+          <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}
+              (Nivel {{ wf.requested_by_role }})</td></tr>
+      <tr><td style="color:#888;padding:4px 0;">Registro</td>
+          <td>{% if wf.registration %}
+                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+                  #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
+                </a>
+              {% else %}—{% endif %}</td></tr>
+      <tr><td style="color:#888;padding:4px 0;">Creada el</td>
+          <td>{{ wf.created_at|date:"d/m/Y H:i" }}</td></tr>
+      <tr><td style="color:#888;padding:4px 0;">Actualizada</td>
+          <td>{{ wf.updated_at|date:"d/m/Y H:i" }}</td></tr>
+      {% if wf.current_approver_level %}
+        <tr><td style="color:#888;padding:4px 0;">Aprobador actual</td>
+            <td>Nivel {{ wf.current_approver_level }}</td></tr>
+      {% endif %}
+    </table>
+  </div>
+
+  <div class="card">
+    <h4 style="margin:0 0 12px;">Notas del solicitante</h4>
+    <p style="font-size:14px;color:#444;">{{ wf.notes|default:"Sin notas adicionales." }}</p>
+    {% if wf.payload %}
+      <h5 style="margin:12px 0 6px;font-size:13px;color:#888;">Datos de la solicitud</h5>
+      <pre style="background:#f8f9fa;border-radius:6px;padding:10px;font-size:12px;overflow:auto;max-height:160px;">{{ wf.payload|pprint }}</pre>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Approval steps -->
+<div class="card" style="margin-bottom:24px;">
+  <h4 style="margin:0 0 16px;">Historial de aprobación</h4>
+  {% if steps %}
+    {% for step in steps %}
+      <div class="step-row {% if step.action == 'approved' %}step-approved{% else %}step-rejected{% endif %}">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong>{{ step.get_action_display }}</strong> por
+            {{ step.actor.get_full_name|default:step.actor.username }}
+            (Nivel {{ step.actor_role }})
+          </div>
+          <small style="color:#888;">{{ step.created_at|date:"d/m/Y H:i" }}</small>
+        </div>
+        {% if step.notes %}
+          <div style="margin-top:6px;font-size:13px;color:#555;">{{ step.notes }}</div>
+        {% endif %}
+        <div style="margin-top:4px;font-size:11px;color:#aaa;font-family:monospace;">
+          Hash: {{ step.step_hash|slice:":32" }}…
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p style="color:#888;font-size:14px;">Aún no hay pasos de aprobación.</p>
+  {% endif %}
+</div>
+
+<!-- Action buttons -->
+<div style="display:flex;gap:12px;">
+  {% if wf.is_pending_for request.user %}
+    <a href="{% url 'registros:workflow_decide' wf.pk %}"
+       class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
+      Aprobar / Rechazar
+    </a>
+  {% endif %}
+  {% if wf.state == 'approved' and can_execute %}
+    <a href="{% url 'registros:workflow_execute' wf.pk %}"
+       class="btn" style="background:#198754;color:#fff;border-color:#198754;">
+      Ejecutar solicitud
+    </a>
+  {% endif %}
+  {% if wf.action_signature %}
+    <div style="padding:8px 14px;background:#e2f4e4;border-radius:8px;font-size:13px;color:#1c6a2a;border:1px solid #a9d6ad;">
+      <i class="fa-solid fa-check"></i> Firmado criptográficamente — posición en cadena: {{ wf.action_signature.chain_position }}
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

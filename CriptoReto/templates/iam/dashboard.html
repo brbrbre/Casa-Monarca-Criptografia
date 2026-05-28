@@ -15,7 +15,6 @@
           <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
         {% endif %}
       {% endif %}
-      <a class="btn btn-light" href="{% url 'iam:security_question_setup' %}">{% if request.user.security_question %}Cambiar pregunta de seguridad{% else %}Configurar pregunta de seguridad{% endif %}</a>
     </div>
   </div>
 

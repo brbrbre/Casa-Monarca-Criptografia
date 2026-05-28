@@ -7,6 +7,36 @@
     </div>
     <div><a class="btn btn-light" href="{% url 'iam:dashboard' %}">Volver al listado</a></div>
   </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <form method="get" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end;">
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Fecha desde</label>
+        <input type="date" name="date_from" value="{{ filters.date_from }}">
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Fecha hasta</label>
+        <input type="date" name="date_to" value="{{ filters.date_to }}">
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Acción</label>
+        <input type="text" name="action" value="{{ filters.action }}" placeholder="Ej: Creación de usuario">
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Actor</label>
+        <input type="text" name="actor" value="{{ filters.actor }}" placeholder="Nombre o correo">
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Objetivo</label>
+        <input type="text" name="target" value="{{ filters.target }}" placeholder="Nombre o correo">
+      </div>
+      <div style="grid-column:span 3;display:flex;gap:10px;align-items:flex-end;">
+        <button type="submit" class="btn btn-light"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+        <a href="{% url 'iam:audit_log' %}" class="btn btn-light"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+      </div>
+    </form>
+  </div>
+
   <div class="card">
     <table class="table">
       <thead>
@@ -22,7 +52,7 @@
             <td>{{ log.details }}</td>
           </tr>
         {% empty %}
-          <tr><td colspan="5">No hay eventos de auditoría disponibles.</td></tr>
+          <tr><td colspan="5" style="text-align:center;color:#888;padding:28px;">No hay eventos de auditoría para los filtros aplicados.</td></tr>
         {% endfor %}
       </tbody>
     </table>

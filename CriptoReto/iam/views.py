@@ -1,7 +1,7 @@
 from functools import wraps
 
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -11,7 +11,7 @@ from django.utils import timezone
 from .decorators import require_access_level, require_admin, require_post
 from .forms import (
     CollaboratorForm, CollaboratorSearchForm, LoginForm, OnboardingForm,
-    SecurityQuestionSetupForm, PasswordRecoveryRequestForm,
+    PasswordChangeAuthForm, SecurityQuestionSetupForm, PasswordRecoveryRequestForm,
     SecurityAnswerForm, PasswordRecoveryResetForm,
 )
 from .models import AuditLog, Collaborator, LoginAttempt, UserCertificate
@@ -273,7 +273,21 @@ def pending_onboarding_view(request):
     if user.access_level == 2:
         collaborators = collaborators.filter(area=user.area)
 
-    return render(request, 'iam/pending_onboardings.html', {'collaborators': collaborators})
+    # Filters
+    from .models import Area as AreaModel
+    area_id = request.GET.get('area', '').strip()
+    nivel = request.GET.get('nivel', '').strip()
+    if area_id:
+        collaborators = collaborators.filter(area_id=area_id)
+    if nivel:
+        collaborators = collaborators.filter(access_level=nivel)
+
+    return render(request, 'iam/pending_onboardings.html', {
+        'collaborators': collaborators,
+        'areas': AreaModel.objects.order_by('name'),
+        'access_level_choices': Collaborator.ACCESS_LEVEL_CHOICES,
+        'filters': {'area': area_id, 'nivel': nivel},
+    })
 
 
 @login_required(login_url='iam:login')
@@ -893,13 +907,66 @@ def audit_log_view(request):
             AuditLog.objects.filter(actor__area=user.area) |
             AuditLog.objects.filter(target__area=user.area)
         )
-    logs = logs.select_related('actor', 'target')[:200]
-    return render(request, 'iam/audit_log.html', {'logs': logs})
+
+    # Filters
+    date_from = request.GET.get('date_from', '').strip()
+    date_to = request.GET.get('date_to', '').strip()
+    action = request.GET.get('action', '').strip()
+    target_q = request.GET.get('target', '').strip()
+    actor_q = request.GET.get('actor', '').strip()
+
+    if date_from:
+        logs = logs.filter(created_at__date__gte=date_from)
+    if date_to:
+        logs = logs.filter(created_at__date__lte=date_to)
+    if action:
+        logs = logs.filter(action__icontains=action)
+    if target_q:
+        logs = logs.filter(
+            Q(target__first_name__icontains=target_q) |
+            Q(target__last_name__icontains=target_q) |
+            Q(target__username__icontains=target_q) |
+            Q(target__email__icontains=target_q)
+        )
+    if actor_q:
+        logs = logs.filter(
+            Q(actor__first_name__icontains=actor_q) |
+            Q(actor__last_name__icontains=actor_q) |
+            Q(actor__username__icontains=actor_q) |
+            Q(actor__email__icontains=actor_q)
+        )
+
+    logs = logs.select_related('actor', 'target').order_by('-created_at')[:500]
+    return render(request, 'iam/audit_log.html', {
+        'logs': logs,
+        'filters': {
+            'date_from': date_from,
+            'date_to': date_to,
+            'action': action,
+            'target': target_q,
+            'actor': actor_q,
+        },
+    })
 
 
 # ─────────────────────────────────────────────
 # SECURITY QUESTION & PASSWORD RECOVERY
 # ─────────────────────────────────────────────
+
+@login_required(login_url='iam:login')
+@onboarding_required
+def password_change_view(request):
+    user = request.user
+    form = PasswordChangeAuthForm(user, request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        user.set_password(form.cleaned_data['new_password1'])
+        user.save(update_fields=['password'])
+        update_session_auth_hash(request, user)
+        _log(user, 'Cambio de contraseña', 'El usuario cambió su contraseña.', target=user, request=request)
+        messages.success(request, 'Contraseña actualizada correctamente.')
+        return redirect('iam:dashboard')
+    return render(request, 'iam/password_change.html', {'form': form, 'title': 'Cambiar contraseña'})
+
 
 @login_required(login_url='iam:login')
 def security_question_setup_view(request):

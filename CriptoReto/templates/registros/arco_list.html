@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .arco-badge {
+    display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid;
+  }
+  .arco-access        { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
+  .arco-rectification { background:#fff3cd;color:#856404;border-color:#ffc107; }
+  .arco-cancellation  { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
+  .arco-opposition    { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
+  .state-submitted { background:#fff3cd;color:#856404;border-color:#ffc107; }
+  .state-in_review { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
+  .state-approved  { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
+  .state-rejected  { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
+  .state-executed  { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
+  .state-escalated { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <h2 style="margin:0;">Solicitudes ARCO</h2>
+</div>
+
+<div class="alert" style="background:#f0f4ff;border:1px solid #b0c4ff;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1a3a7a;">
+  <strong>Derechos ARCO</strong> — Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).<br>
+  Acceso y Oposición: Operativo (Nivel 3). Rectificación: Coordinador (Nivel 2). Cancelación: Admin (Nivel 1).
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if arco_requests %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tipo</th>
+          <th>Registro afectado</th>
+          <th>Solicitante</th>
+          <th>Estado</th>
+          <th>Plazo legal</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for arco in arco_requests %}
+          <tr>
+            <td>{{ arco.pk }}</td>
+            <td>
+              <span class="arco-badge arco-{{ arco.arco_type }}">
+                {{ arco.get_arco_type_display }}
+              </span>
+            </td>
+            <td>
+              <a href="{% url 'registros:registro_detail' arco.registration.pk %}" style="color:#ad2b4e;">
+                #{{ arco.registration.pk }} — {{ arco.registration.full_name }}
+              </a>
+            </td>
+            <td>{{ arco.requested_by.get_full_name|default:arco.requested_by.username }}</td>
+            <td>
+              <span class="arco-badge state-{{ arco.state }}">{{ arco.get_state_display }}</span>
+            </td>
+            <td>
+              {% if arco.legal_deadline %}
+                {{ arco.legal_deadline|date:"d/m/Y" }}
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                {% if arco.workflow_request %}
+                  <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}"
+                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver flujo</a>
+                {% endif %}
+                {% if arco.state == 'approved' and arco.can_execute request.user %}
+                  <a href="{% url 'registros:arco_execute' arco.pk %}"
+                     class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
+                    Ejecutar
+                  </a>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="padding:40px;text-align:center;color:#888;">
+      No hay solicitudes ARCO registradas.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

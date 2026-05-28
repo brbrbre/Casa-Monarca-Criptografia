@@ -10,6 +10,34 @@
       <a href="{% url 'iam:dashboard' %}" class="btn btn-light">Volver al dashboard</a>
     </div>
   </div>
+
+  <div class="card" style="margin-bottom:18px;">
+    <form method="get" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Área</label>
+        <select name="area">
+          <option value="">Todas las áreas</option>
+          {% for area in areas %}
+            <option value="{{ area.pk }}" {% if filters.area == area.pk|stringformat:'s' %}selected{% endif %}>{{ area.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field-group" style="margin-bottom:0;">
+        <label>Nivel de acceso</label>
+        <select name="nivel">
+          <option value="">Todos los niveles</option>
+          {% for value, label in access_level_choices %}
+            <option value="{{ value }}" {% if filters.nivel == value|stringformat:'s' %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button type="submit" class="btn btn-light"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+        <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light"><i class="fa-solid fa-xmark"></i> Limpiar</a>
+      </div>
+    </form>
+  </div>
+
   <div class="card">
     <table class="table">
       <thead>
@@ -56,7 +84,7 @@
         {% empty %}
           <tr>
             <td colspan="7" style="text-align:center; color:#888; padding:28px;">
-              No hay onboardings en proceso.
+              No hay onboardings en proceso para los filtros aplicados.
             </td>
           </tr>
         {% endfor %}

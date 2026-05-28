@@ -81,7 +81,7 @@
         </p>
         <p><strong>Pregunta de seguridad:</strong>
           {% if collaborator.security_question %}
-            <span style="color:#2e7d32;">✓ Configurada</span>
+            <span style="color:#2e7d32;"><i class="fa-solid fa-check"></i> Configurada</span>
           {% else %}
             <span style="color:#b71c1c;">No configurada</span>
           {% endif %}
@@ -89,10 +89,10 @@
         {# NEVER expose security_question text, security_answer, or security_answer_hash #}
         {% if collaborator.access_level == 2 %}
           <p><strong>Certificado descargado:</strong>
-            {{ collaborator.cert_file_downloaded|yesno:'✓ Sí,No' }}
+            {% if collaborator.cert_file_downloaded %}<span style="color:#2e7d32;"><i class="fa-solid fa-check"></i> Sí</span>{% else %}No{% endif %}
           </p>
           <p><strong>Llave descargada:</strong>
-            {{ collaborator.key_file_downloaded|yesno:'✓ Sí,No' }}
+            {% if collaborator.key_file_downloaded %}<span style="color:#2e7d32;"><i class="fa-solid fa-check"></i> Sí</span>{% else %}No{% endif %}
           </p>
         {% endif %}
       </div>

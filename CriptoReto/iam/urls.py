@@ -26,6 +26,7 @@ urlpatterns = [
     path('recovery/', views.password_recovery_request_view, name='password_recovery_request'),
     path('recovery/answer/', views.password_recovery_answer_view, name='password_recovery_answer'),
     path('recovery/reset/', views.password_recovery_reset_view, name='password_recovery_reset'),
+    path('password/change/', views.password_change_view, name='password_change'),
     path('security-question/', views.security_question_setup_view, name='security_question_setup'),
     path('api/user-role/', views.user_role_type_view, name='user_role_type'),
 ]
