@@ -232,6 +232,12 @@ def reject_request(wf, actor, notes: str = '') -> bool:
         action='workflow_step_rejected',
         details=f'[Nivel {actor.access_level}] WF#{wf.pk} rechazado.',
     )
+    _notify(
+        wf.requested_by,
+        wf,
+        f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue rechazada.'
+        + (f' Notas: {notes}' if notes else ''),
+    )
     return True
 
 
@@ -296,17 +302,33 @@ def execute_request(wf, actor, password_verified: bool = False, notes: str = '')
         details=f'[Nivel {actor.access_level}] WF#{wf.pk} ejecutado. '
                 f'Firma: {action_sig.message_hash[:16]}…',
     )
+    _notify(
+        wf.requested_by,
+        wf,
+        f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue aprobada y ejecutada.',
+    )
     return True
 
 
 def _perform_action(wf, actor):
     """Dispatch the actual DB mutation for the approved workflow request."""
     if wf.action_type == 'update_registration' and wf.registration:
+        import datetime
+        from django.db.models import DateField
         reg = wf.registration
         payload = wf.payload or {}
+        date_field_names = {
+            f.name for f in reg._meta.get_fields() if isinstance(f, DateField)
+        }
         for field, value in payload.items():
-            if hasattr(reg, field):
-                setattr(reg, field, value)
+            if not hasattr(reg, field):
+                continue
+            if field in date_field_names and isinstance(value, str):
+                try:
+                    value = datetime.date.fromisoformat(value)
+                except (ValueError, TypeError):
+                    continue
+            setattr(reg, field, value)
         reg.save()
 
     elif wf.action_type == 'delete_registration' and wf.registration:
@@ -326,3 +348,13 @@ def pending_requests_for(user):
         ],
         current_approver_level=user.access_level,
     ).select_related('requested_by', 'registration')
+
+
+def _notify(recipient, wf, message: str):
+    """Create an in-app Notification for the recipient."""
+    from .models import Notification
+    Notification.objects.create(
+        recipient=recipient,
+        workflow_request=wf,
+        message=message,
+    )

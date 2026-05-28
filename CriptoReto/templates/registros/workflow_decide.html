@@ -1,6 +1,16 @@
 {% extends "base.html" %}
 {% block content %}
 
+<style>
+  .diff-changed { background:#fffbea; }
+  .diff-unchanged { color:#888; }
+  .diff-table td, .diff-table th { padding:8px 12px; font-size:13px; }
+  .diff-table { width:100%; border-collapse:collapse; margin-bottom:8px; }
+  .diff-table th { background:#fafafa; color:#555; font-weight:600; border-bottom:2px solid #eee; }
+  .diff-table td { border-bottom:1px solid #f0f0f0; }
+  .tag-changed { background:#f2b01f;color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600; }
+</style>
+
 <div style="margin-bottom:20px;">
   <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver al detalle</a>
 </div>
@@ -17,10 +27,37 @@
   {% endif %}
 </p>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
+{% if wf.notes %}
+  <div class="card" style="max-width:740px;margin-bottom:20px;background:#fffdf5;border-color:#fce8b2;">
+    <strong style="font-size:13px;color:#856404;">Justificación del solicitante:</strong>
+    <p style="margin:6px 0 0;font-size:14px;">{{ wf.notes }}</p>
+  </div>
+{% endif %}
+
+{% if diff_data %}
+  <div class="card" style="max-width:740px;margin-bottom:24px;">
+    <h4 style="margin:0 0 14px;font-size:15px;">Cambios propuestos</h4>
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>Campo</th>
+          <th>Valor actual</th>
+          <th>Valor propuesto</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in diff_data %}
+          <tr class="{% if row.changed %}diff-changed{% else %}diff-unchanged{% endif %}">
+            <td>{{ row.label }}</td>
+            <td>{{ row.current|default:"—" }}</td>
+            <td>{{ row.proposed|default:"—" }}</td>
+            <td>{% if row.changed %}<span class="tag-changed">Modificado</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 {% endif %}
 
 <div class="card" style="max-width:560px;">
@@ -36,17 +73,17 @@
         </label>
       {% endfor %}
       {% if form.decision.errors %}
-        <div style="color:#dc3545;font-size:13px;">{{ form.decision.errors.0 }}</div>
+        <div style="color:#c0392b;font-size:13px;">{{ form.decision.errors.0 }}</div>
       {% endif %}
     </div>
 
     <div style="margin-bottom:20px;">
       <label for="{{ form.notes.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
-        {{ form.notes.label }}
+        Notas / Motivo de rechazo
       </label>
       {{ form.notes }}
       {% if form.notes.errors %}
-        <div style="color:#dc3545;font-size:13px;">{{ form.notes.errors.0 }}</div>
+        <div style="color:#c0392b;font-size:13px;">{{ form.notes.errors.0 }}</div>
       {% endif %}
     </div>
 
@@ -57,7 +94,7 @@
       {{ form.password }}
       <small style="color:#888;font-size:12px;">Tu contraseña confirma tu identidad en el registro de auditoría.</small>
       {% if form.password.errors %}
-        <div style="color:#dc3545;font-size:13px;">{{ form.password.errors.0 }}</div>
+        <div style="color:#c0392b;font-size:13px;">{{ form.password.errors.0 }}</div>
       {% endif %}
     </div>
 

@@ -57,12 +57,38 @@
   <div class="card">
     <h4 style="margin:0 0 12px;">Notas del solicitante</h4>
     <p style="font-size:14px;color:#444;">{{ wf.notes|default:"Sin notas adicionales." }}</p>
-    {% if wf.payload %}
-      <h5 style="margin:12px 0 6px;font-size:13px;color:#888;">Datos de la solicitud</h5>
-      <pre style="background:#f8f9fa;border-radius:6px;padding:10px;font-size:12px;overflow:auto;max-height:160px;">{{ wf.payload|pprint }}</pre>
-    {% endif %}
   </div>
 </div>
+
+{% if diff_data %}
+<div class="card" style="margin-bottom:24px;">
+  <h4 style="margin:0 0 14px;font-size:15px;">Cambios propuestos</h4>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead>
+      <tr>
+        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Campo</th>
+        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Valor actual</th>
+        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Valor propuesto</th>
+        <th style="padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in diff_data %}
+        <tr style="{% if row.changed %}background:#fffbea;{% else %}color:#aaa;{% endif %}border-bottom:1px solid #f0f0f0;">
+          <td style="padding:8px 12px;">{{ row.label }}</td>
+          <td style="padding:8px 12px;">{{ row.current|default:"—" }}</td>
+          <td style="padding:8px 12px;">{{ row.proposed|default:"—" }}</td>
+          <td style="padding:8px 12px;">
+            {% if row.changed %}
+              <span style="background:#f2b01f;color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600;">Modificado</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
 <!-- Approval steps -->
 <div class="card" style="margin-bottom:24px;">
@@ -93,7 +119,7 @@
 
 <!-- Action buttons -->
 <div style="display:flex;gap:12px;">
-  {% if wf.is_pending_for request.user %}
+  {% if can_act %}
     <a href="{% url 'registros:workflow_decide' wf.pk %}"
        class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
       Aprobar / Rechazar

@@ -129,17 +129,44 @@
   {% endif %}
 
   <!-- ── Actions ──────────────────────────────────────────────────── -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+
     {% if request.user.access_level <= 2 %}
-      <a href="{% url 'registros:registro_edit' registration.pk %}" class="btn btn-primary">Editar</a>
+      {# Coordinadores y Admin editan directamente #}
+      <a href="{% url 'registros:registro_edit' registration.pk %}" class="btn btn-primary">
+        <i class="fa-solid fa-pen"></i> Editar
+      </a>
+    {% elif request.user.access_level == 3 %}
+      {# Operativos solicitan actualización #}
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'update_registration' %}"
+         class="btn btn-primary">
+        <i class="fa-solid fa-pen-to-square"></i> Solicitar actualización
+      </a>
     {% endif %}
+
     {% if request.user.access_level == 1 %}
+      {# Admin elimina directamente #}
       <form method="post" action="{% url 'registros:registro_delete' registration.pk %}"
-            onsubmit="return confirm('¿Eliminar este registro permanentemente?')">
+            onsubmit="return confirm('¿Eliminar este registro permanentemente?')" style="margin:0;">
         {% csrf_token %}
-        <button type="submit" class="btn btn-danger">Eliminar</button>
+        <button type="submit" class="btn btn-danger">
+          <i class="fa-solid fa-trash"></i> Eliminar
+        </button>
       </form>
+    {% elif request.user.access_level == 2 %}
+      {# Coordinadores solicitan eliminación al Admin #}
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}"
+         class="btn btn-danger">
+        <i class="fa-solid fa-trash-arrow-up"></i> Solicitar eliminación
+      </a>
+    {% elif request.user.access_level == 3 %}
+      {# Operativos solicitan eliminación #}
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}"
+         class="btn btn-danger">
+        <i class="fa-solid fa-trash-arrow-up"></i> Solicitar eliminación
+      </a>
     {% endif %}
+
     <a href="{% url 'registros:registro_verify' registration.pk %}" target="_blank" class="btn btn-light">
       Verificar firma (JSON)
     </a>

@@ -108,3 +108,61 @@ class WorkflowApprovalForm(forms.Form):
         widget=forms.PasswordInput(attrs={'autocomplete': 'current-password'}),
         label='Contraseña (para confirmar identidad)',
     )
+
+
+class WorkflowUpdateRequestForm(forms.ModelForm):
+    """
+    Form for operators/volunteers to propose field changes via a WorkflowRequest.
+    Mirrors MigrantRegistrationForm but omits the privacy consent checkbox.
+    """
+    assistance_requested = forms.MultipleChoiceField(
+        choices=MigrantRegistration.ASSISTANCE_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        label='Tipo de asistencia solicitada',
+        required=False,
+    )
+
+    class Meta:
+        model = MigrantRegistration
+        exclude = [
+            'created_by', 'created_by_role',
+            'created_at', 'updated_at',
+            'is_deleted', 'deleted_at', 'deleted_by',
+            'privacy_accepted_at', 'privacy_accepted_ip', 'privacy_notice_version',
+            'data_consent',
+        ]
+        widgets = {
+            'birth_date': forms.DateInput(attrs={'type': 'date'}),
+            'entry_date': forms.DateInput(attrs={'type': 'date'}),
+            'migration_reason': forms.Textarea(attrs={'rows': 4}),
+            'transit_countries': forms.Textarea(attrs={'rows': 2}),
+            'observations': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk and self.instance.assistance_requested:
+            self.initial['assistance_requested'] = [
+                v.strip() for v in self.instance.assistance_requested.split(',') if v.strip()
+            ]
+
+    def clean_assistance_requested(self):
+        values = self.cleaned_data.get('assistance_requested', [])
+        return ','.join(values) if values else ''
+
+    def clean_group_size(self):
+        value = self.cleaned_data.get('group_size', 1)
+        if value < 1:
+            raise forms.ValidationError('El tamaño del grupo debe ser al menos 1.')
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        minors = cleaned.get('minors_in_group', 0)
+        group = cleaned.get('group_size', 1)
+        travels_alone = cleaned.get('travels_alone', True)
+        if minors > group:
+            self.add_error('minors_in_group', 'Los menores no pueden superar el tamaño del grupo.')
+        if travels_alone and group > 1:
+            self.add_error('travels_alone', 'Si viaja acompañado/a, desmarca "Viaja solo/a".')
+        return cleaned

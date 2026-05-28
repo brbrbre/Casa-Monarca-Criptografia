@@ -10,10 +10,10 @@ from django.views.decorators.http import require_POST
 
 from iam.models import AuditLog
 from iam.views import onboarding_required
-from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm
+from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
     ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
-    WorkflowRequest, PRIVACY_NOTICE_VERSION,
+    Notification, WorkflowRequest, PRIVACY_NOTICE_VERSION,
 )
 from .services import (
     batch_sign_actions, get_public_key_pem,
@@ -361,6 +361,33 @@ def chain_audit_view(request):
 # WORKFLOW VIEWS
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _build_diff_data(wf):
+    """Return a list of {label, current, proposed, changed} dicts for update requests."""
+    if wf.action_type != 'update_registration' or not wf.payload or not wf.registration:
+        return []
+    reg = wf.registration
+    field_labels = {
+        f.name: str(f.verbose_name)
+        for f in MigrantRegistration._meta.get_fields()
+        if hasattr(f, 'verbose_name')
+    }
+    rows = []
+    for field, proposed in wf.payload.items():
+        if not hasattr(reg, field):
+            continue
+        current = getattr(reg, field)
+        if hasattr(current, 'isoformat'):
+            current = current.isoformat()
+        current_str = str(current) if current is not None else ''
+        proposed_str = str(proposed) if proposed is not None else ''
+        rows.append({
+            'label': field_labels.get(field, field),
+            'current': current_str,
+            'proposed': proposed_str,
+            'changed': current_str != proposed_str,
+        })
+    return rows
+
 @login_required(login_url='iam:login')
 @onboarding_required
 @require_level(3)
@@ -377,11 +404,19 @@ def workflow_list(request):
             current_approver_level=user.access_level
         ) | WorkflowRequest.objects.filter(requested_by=user)
 
-    qs = qs.select_related('requested_by', 'registration').order_by('-created_at')
+    all_requests = list(qs.select_related('requested_by', 'registration').order_by('-created_at'))
     pending = pending_requests_for(user)
+    pending_pks = {wf.pk for wf in all_requests if wf.is_pending_for(user)}
+    executable_pks = {wf.pk for wf in all_requests if wf.can_execute_by(user)}
+    unread_notifications = Notification.objects.filter(
+        recipient=user, is_read=False,
+    ).select_related('workflow_request').order_by('-created_at')
     return render(request, 'registros/workflow_list.html', {
-        'requests': qs,
-        'pending': pending,
+        'requests': all_requests,
+        'pending_count': pending.count(),
+        'pending_pks': pending_pks,
+        'executable_pks': executable_pks,
+        'unread_notifications': unread_notifications,
         'title': 'Solicitudes de Flujo de Trabajo',
     })
 
@@ -393,9 +428,12 @@ def workflow_detail(request, pk):
     wf = get_object_or_404(WorkflowRequest, pk=pk)
     steps = wf.approval_steps.select_related('actor').order_by('created_at')
     form = WorkflowApprovalForm() if wf.is_pending_for(request.user) else None
+    diff_data = _build_diff_data(wf)
     return render(request, 'registros/workflow_detail.html', {
         'wf': wf, 'steps': steps, 'form': form,
         'can_act': wf.is_pending_for(request.user),
+        'can_execute': wf.can_execute_by(request.user),
+        'diff_data': diff_data,
         'title': f'Solicitud #{wf.pk}',
     })
 
@@ -411,13 +449,18 @@ def workflow_decide(request, pk):
         messages.error(request, 'No tienes autorización para decidir sobre esta solicitud.')
         return redirect('registros:workflow_detail', pk=pk)
 
+    diff_data = _build_diff_data(wf)
     if request.method == 'GET':
         form = WorkflowApprovalForm()
-        return render(request, 'registros/workflow_decide.html', {'wf': wf, 'form': form})
+        return render(request, 'registros/workflow_decide.html', {
+            'wf': wf, 'form': form, 'diff_data': diff_data,
+        })
 
     form = WorkflowApprovalForm(request.POST)
     if not form.is_valid():
-        return render(request, 'registros/workflow_decide.html', {'wf': wf, 'form': form})
+        return render(request, 'registros/workflow_decide.html', {
+            'wf': wf, 'form': form, 'diff_data': diff_data,
+        })
 
     if not request.user.check_password(form.cleaned_data['password']):
         form.add_error('password', 'Contraseña incorrecta.')
@@ -478,16 +521,62 @@ def workflow_request_create(request, pk, action):
     """
     registration = get_object_or_404(MigrantRegistration, pk=pk, is_deleted=False)
 
-    # If the user CAN do it directly, redirect to the direct view
     if can_act_directly(action, request.user.access_level):
         if action == 'update_registration':
             return redirect('registros:registro_edit', pk=pk)
-        if action == 'delete_registration':
-            return redirect('registros:registro_detail', pk=pk)
+        return redirect('registros:registro_detail', pk=pk)
+
+    # Block duplicate pending requests from the same user for the same record+action
+    existing = WorkflowRequest.objects.filter(
+        registration=registration,
+        action_type=action,
+        state__in=[
+            WorkflowRequest.STATE_SUBMITTED,
+            WorkflowRequest.STATE_PENDING_REVIEW,
+            WorkflowRequest.STATE_ESCALATED,
+        ],
+        requested_by=request.user,
+    ).first()
+    if existing:
+        messages.warning(
+            request,
+            f'Ya tienes una solicitud pendiente (#{existing.pk}) para este registro. '
+            'Espera a que sea revisada antes de enviar otra.',
+        )
+        return redirect('registros:workflow_detail', pk=existing.pk)
+
+    from .workflow import get_approval_chain
+    chain = get_approval_chain(action, request.user.access_level)
+    level_labels = {1: 'Admin', 2: 'Coordinador', 3: 'Operativo', 4: 'Voluntario'}
+    chain_display = ' → '.join(level_labels.get(lvl, str(lvl)) for lvl in chain)
+
+    update_form = None
+    if action == 'update_registration':
+        update_form = WorkflowUpdateRequestForm(
+            request.POST if request.method == 'POST' else None,
+            instance=registration,
+        )
+
+    action_labels = dict(WorkflowRequest.ACTION_CHOICES)
+    ctx = {
+        'registration': registration,
+        'action': action,
+        'action_type': action,
+        'action_label': action_labels.get(action, action),
+        'chain_display': chain_display,
+        'form': update_form,
+        'title': 'Solicitar: ' + action_labels.get(action, action),
+    }
 
     if request.method == 'POST':
         notes = request.POST.get('notes', '')
         payload = {}
+
+        if action == 'update_registration':
+            if not update_form.is_valid():
+                return render(request, 'registros/workflow_request_create.html', ctx)
+            for field, value in update_form.cleaned_data.items():
+                payload[field] = value.isoformat() if hasattr(value, 'isoformat') else value
 
         try:
             wf = create_workflow_request(
@@ -497,19 +586,22 @@ def workflow_request_create(request, pk, action):
                 payload=payload,
                 notes=notes,
             )
-            messages.success(request,
-                             f'Solicitud #{wf.pk} creada. Será revisada por el nivel correspondiente.')
+            if action == 'update_registration':
+                messages.success(
+                    request,
+                    f'Tu solicitud #{wf.pk} fue enviada. '
+                    'Será revisada por el coordinador.',
+                )
+            else:
+                messages.success(
+                    request,
+                    f'Tu solicitud de eliminación #{wf.pk} fue enviada para aprobación.',
+                )
             return redirect('registros:workflow_detail', pk=wf.pk)
         except ValueError as exc:
             messages.error(request, str(exc))
 
-    action_labels = dict(WorkflowRequest.ACTION_CHOICES)
-    return render(request, 'registros/workflow_request_create.html', {
-        'registration': registration,
-        'action': action,
-        'action_label': action_labels.get(action, action),
-        'title': 'Crear Solicitud',
-    })
+    return render(request, 'registros/workflow_request_create.html', ctx)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -679,3 +771,15 @@ def arco_execute(request, pk):
 
     messages.success(request, f'Solicitud ARCO #{arco.pk} marcada como ejecutada.')
     return redirect('registros:arco_list')
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NOTIFICATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='iam:login')
+@require_POST
+def notifications_mark_read(request):
+    """Mark all unread notifications for the current user as read."""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return redirect(request.POST.get('next', 'registros:workflow_list'))

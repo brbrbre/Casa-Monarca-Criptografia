@@ -35,4 +35,7 @@ urlpatterns = [
 
     # ── Audit chain ────────────────────────────────────────────────────────────
     path('cadena/', views.chain_audit_view, name='chain_audit'),
+
+    # ── Notifications ──────────────────────────────────────────────────────────
+    path('notificaciones/marcar-leidas/', views.notifications_mark_read, name='notifications_mark_read'),
 ]

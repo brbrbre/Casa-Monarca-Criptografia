@@ -402,6 +402,11 @@ class WorkflowRequest(models.Model):
     def can_approve(self, user) -> bool:
         return user.access_level <= self.current_approver_level and self.is_pending_for(user)
 
+    def can_execute_by(self, user) -> bool:
+        from .workflow import can_act_directly
+        return (self.state == self.STATE_APPROVED and
+                can_act_directly(self.action_type, user.access_level))
+
 
 class ApprovalStep(models.Model):
     """
@@ -580,3 +585,35 @@ class ArcoRequest(models.Model):
 
     def can_execute(self, user) -> bool:
         return user.access_level <= self.required_executor_level
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# IN-APP NOTIFICATIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='notifications',
+        verbose_name='Destinatario',
+    )
+    workflow_request = models.ForeignKey(
+        WorkflowRequest,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='notifications',
+        verbose_name='Solicitud relacionada',
+    )
+    message = models.TextField('Mensaje')
+    is_read = models.BooleanField('Leída', default=False)
+    created_at = models.DateTimeField('Creada el', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Notificación'
+        verbose_name_plural = 'Notificaciones'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Notif#{self.pk} → {self.recipient} — {self.message[:50]}'
