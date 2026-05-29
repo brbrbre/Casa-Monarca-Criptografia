@@ -39,6 +39,8 @@
   <div class="card">
     <div class="section-title">Datos personales</div>
     <div class="detail-grid">
+      <span class="detail-label">ID interno</span>
+      <span>{{ registration.internal_id|default:registration.pk }}</span>
       <span class="detail-label">Nombre completo</span><span>{{ registration.full_name }}</span>
       <span class="detail-label">Fecha de nacimiento</span><span>{{ registration.birth_date|date:"d/m/Y" }}</span>
       <span class="detail-label">Género</span><span>{{ registration.get_gender_display }}</span>

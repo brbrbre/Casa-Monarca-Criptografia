@@ -1,3 +1,4 @@
+import uuid
 import hashlib
 import json
 
@@ -57,6 +58,7 @@ class MigrantRegistration(models.Model):
     ]
 
     # ── Personal ──────────────────────────────────────────────────────────────
+    internal_id = models.CharField('Identificador interno', max_length=32, unique=True, blank=True, null=True)
     full_name = models.CharField('Nombre completo', max_length=255)
     birth_date = models.DateField('Fecha de nacimiento')
     gender = models.CharField('Género', max_length=20, choices=GENDER_CHOICES)
@@ -134,7 +136,12 @@ class MigrantRegistration(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.full_name} — #{self.pk}'
+        return f'{self.full_name} — {self.internal_id or self.pk}'
+
+    def save(self, *args, **kwargs):
+        if not self.internal_id:
+            self.internal_id = f'MIG-{uuid.uuid4().hex[:8].upper()}'
+        super().save(*args, **kwargs)
 
     def get_assistance_list(self):
         label_map = dict(self.ASSISTANCE_CHOICES)

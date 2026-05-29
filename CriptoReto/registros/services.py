@@ -98,6 +98,7 @@ def _verify_bytes(payload: bytes, message_hash: str, r: int, s: int, pub_pem: st
 def _canonical_payload(registration) -> bytes:
     data = {
         'id': registration.pk,
+        'internal_id': registration.internal_id,
         'full_name': registration.full_name,
         'birth_date': str(registration.birth_date),
         'gender': registration.gender,
