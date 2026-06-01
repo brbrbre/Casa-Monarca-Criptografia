@@ -624,3 +624,118 @@ class Notification(models.Model):
 
     def __str__(self):
         return f'Notif#{self.pk} → {self.recipient} — {self.message[:50]}'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TICKETS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Maps access_level → (prefix, rol display)
+_TICKET_ROLE_MAP = {
+    1: ('ADMIN', 'Administración'),
+    2: ('COORD', 'Coordinador'),
+    3: ('OPER',  'Operativo'),
+    4: ('VOL',   'Voluntario'),
+}
+
+
+def _ticket_id(prefix: str) -> str:
+    """Return a unique ticket code like COORD-A3F2B1C0."""
+    return f'{prefix}-{uuid.uuid4().hex[:8].upper()}'
+
+
+class Ticket(models.Model):
+    PRIORITY_ALTA  = 'alta'
+    PRIORITY_MEDIA = 'media'
+    PRIORITY_BAJA  = 'baja'
+    PRIORITY_CHOICES = [
+        (PRIORITY_ALTA,  'Alta'),
+        (PRIORITY_MEDIA, 'Media'),
+        (PRIORITY_BAJA,  'Baja'),
+    ]
+
+    STATUS_ABIERTO  = 'abierto'
+    STATUS_EN_PROCESO = 'en_proceso'
+    STATUS_CERRADO  = 'cerrado'
+    STATUS_CHOICES = [
+        (STATUS_ABIERTO,    'Abierto'),
+        (STATUS_EN_PROCESO, 'En proceso'),
+        (STATUS_CERRADO,    'Cerrado'),
+    ]
+
+    ticket_id = models.CharField('ID de caso', max_length=20, unique=True)
+    registration = models.OneToOneField(
+        MigrantRegistration,
+        on_delete=models.CASCADE,
+        related_name='ticket',
+        verbose_name='Registro migrante',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='tickets_created',
+        verbose_name='Solicitante',
+    )
+    rol_display = models.CharField('Rol del solicitante', max_length=30)
+    summary = models.CharField('Resumen corto', max_length=255)
+    description = models.TextField('Descripción')
+    priority = models.CharField(
+        'Prioridad', max_length=10, choices=PRIORITY_CHOICES, default=PRIORITY_MEDIA,
+    )
+    status = models.CharField(
+        'Estado', max_length=15, choices=STATUS_CHOICES, default=STATUS_ABIERTO,
+    )
+    created_at = models.DateTimeField('Fecha de creación', auto_now_add=True)
+    updated_at = models.DateTimeField('Última actualización', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Ticket'
+        verbose_name_plural = 'Tickets'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'[{self.ticket_id}] {self.summary}'
+
+    @classmethod
+    def create_for_registration(cls, registration, created_by):
+        """Auto-generate a ticket when a MigrantRegistration is created."""
+        level = getattr(created_by, 'access_level', 4)
+        prefix, rol = _TICKET_ROLE_MAP.get(level, ('VOL', 'Voluntario'))
+
+        assistances = [a.strip() for a in registration.assistance_requested.split(',') if a.strip()]
+        priority = cls._infer_priority(assistances)
+
+        summary = (
+            f'Nuevo registro migrante: {registration.internal_id} — {registration.full_name}'
+        )
+
+        lines = [
+            f'Folio del beneficiario: {registration.internal_id}',
+            f'Nombre completo: {registration.full_name}',
+            f'Nacionalidad: {registration.nationality}',
+            f'Fecha de ingreso: {registration.entry_date}',
+            f'Asistencia solicitada: {", ".join(assistances) if assistances else "No especificada"}',
+            f'Registrado por: {created_by.get_full_name() or created_by.username} '
+            f'(Nivel {level} — {rol})',
+        ]
+        description = '\n'.join(lines)
+
+        return cls.objects.create(
+            ticket_id=_ticket_id(prefix),
+            registration=registration,
+            created_by=created_by,
+            rol_display=rol,
+            summary=summary,
+            description=description,
+            priority=priority,
+        )
+
+    @staticmethod
+    def _infer_priority(assistances: list) -> str:
+        high = {'legal', 'medica'}
+        medium = {'alojamiento', 'psicologica', 'documentacion'}
+        if any(a in high for a in assistances):
+            return Ticket.PRIORITY_ALTA
+        if any(a in medium for a in assistances):
+            return Ticket.PRIORITY_MEDIA
+        return Ticket.PRIORITY_BAJA

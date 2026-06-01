@@ -38,4 +38,8 @@ urlpatterns = [
 
     # ── Notifications ──────────────────────────────────────────────────────────
     path('notificaciones/marcar-leidas/', views.notifications_mark_read, name='notifications_mark_read'),
+
+    # ── Tickets ────────────────────────────────────────────────────────────────
+    path('tickets/',              views.ticket_list,   name='ticket_list'),
+    path('tickets/<str:ticket_id>/', views.ticket_detail, name='ticket_detail'),
 ]

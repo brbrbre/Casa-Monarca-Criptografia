@@ -376,6 +376,13 @@
           </a>
         </li>
         {% endif %}
+        {% if lvl <= 3 %}
+        <li>
+          <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
+            <i class="fa-solid fa-ticket"></i> Tickets
+          </a>
+        </li>
+        {% endif %}
         <li>
           <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
             <i class="fa-solid fa-plus"></i> Nuevo Registro

@@ -13,7 +13,7 @@ from iam.views import onboarding_required
 from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
     ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
-    Notification, WorkflowRequest, PRIVACY_NOTICE_VERSION,
+    Notification, Ticket, WorkflowRequest, PRIVACY_NOTICE_VERSION,
 )
 from .services import (
     batch_sign_actions, get_public_key_pem,
@@ -168,6 +168,9 @@ def registro_review(request):
         registration.privacy_accepted_ip = _get_ip(request)
         registration.privacy_notice_version = PRIVACY_NOTICE_VERSION
         registration.save()
+
+        # ── Ticket ──────────────────────────────────────────────────────────
+        Ticket.create_for_registration(registration, request.user)
 
         # ── Sign ────────────────────────────────────────────────────────────
         sig_data = sign_registration(registration)
@@ -783,3 +786,66 @@ def notifications_mark_read(request):
     """Mark all unread notifications for the current user as read."""
     Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
     return redirect(request.POST.get('next', 'registros:workflow_list'))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# TICKETS
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='iam:login')
+@onboarding_required
+def ticket_list(request):
+    tickets = Ticket.objects.select_related('registration', 'created_by')
+    if request.user.access_level > 2:
+        tickets = tickets.filter(created_by=request.user)
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        tickets = tickets.filter(
+            ticket_id__icontains=q
+        ) | tickets.filter(
+            summary__icontains=q
+        ) | tickets.filter(
+            registration__full_name__icontains=q
+        )
+
+    priority = request.GET.get('priority', '').strip()
+    if priority:
+        tickets = tickets.filter(priority=priority)
+
+    status = request.GET.get('status', '').strip()
+    if status:
+        tickets = tickets.filter(status=status)
+
+    return render(request, 'registros/ticket_list.html', {
+        'title': 'Tickets de soporte',
+        'tickets': tickets.order_by('-created_at'),
+        'q': q,
+        'priority': priority,
+        'status': status,
+        'priority_choices': Ticket.PRIORITY_CHOICES,
+        'status_choices': Ticket.STATUS_CHOICES,
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+def ticket_detail(request, ticket_id):
+    ticket = get_object_or_404(Ticket, ticket_id=ticket_id)
+    if request.user.access_level > 2 and ticket.created_by != request.user:
+        messages.error(request, 'No tienes acceso a este ticket.')
+        return redirect('registros:ticket_list')
+
+    if request.method == 'POST' and request.user.access_level <= 2:
+        new_status = request.POST.get('status')
+        if new_status in dict(Ticket.STATUS_CHOICES):
+            ticket.status = new_status
+            ticket.save(update_fields=['status', 'updated_at'])
+            messages.success(request, 'Estado del ticket actualizado.')
+
+    return render(request, 'registros/ticket_detail.html', {
+        'title': f'Ticket {ticket.ticket_id}',
+        'ticket': ticket,
+        'status_choices': Ticket.STATUS_CHOICES,
+        'can_update_status': request.user.access_level <= 2,
+    })
