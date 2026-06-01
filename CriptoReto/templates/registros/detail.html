@@ -110,11 +110,6 @@
       <strong style="font-size:15px;display:block;margin-bottom:12px;">Firma digital ECDSA</strong>
       <div class="detail-grid">
         <span class="detail-label">Curva</span><span>{{ sig.curve_name }}</span>
-        <span class="detail-label">Hash (SHA-256)</span><span class="mono">{{ sig.message_hash }}</span>
-        <span class="detail-label">Firma R</span><span class="mono">{{ sig.signature_r }}</span>
-        <span class="detail-label">Firma S</span><span class="mono">{{ sig.signature_s }}</span>
-        <span class="detail-label">Clave pública</span>
-        <span class="mono" style="white-space:pre-wrap;">{{ sig.public_key }}</span>
         <span class="detail-label">Firmado por</span>
         <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }} (Nivel {{ sig.signed_by_role }})</span>
         <span class="detail-label">Fecha de firma</span><span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
@@ -169,12 +164,6 @@
       </a>
     {% endif %}
 
-    <a href="{% url 'registros:registro_verify' registration.pk %}" target="_blank" class="btn btn-light">
-      Verificar firma (JSON)
-    </a>
-    <a href="{% url 'registros:export_public_key' %}" class="btn btn-light" download>
-      Descargar clave pública
-    </a>
   </div>
 
 </div>

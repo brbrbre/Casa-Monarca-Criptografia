@@ -73,8 +73,6 @@
           <td>{{ recent_batch.signed_at|date:"d/m/Y H:i:s" }}</td></tr>
       <tr><td style="color:#888;padding:4px 0;">Elementos</td>
           <td>{{ recent_batch.item_count }}</td></tr>
-      <tr><td style="color:#888;padding:4px 0;">Hash raíz</td>
-          <td style="font-family:monospace;font-size:12px;">{{ recent_batch.batch_root_hash|slice:":48" }}…</td></tr>
     </table>
   </div>
 {% endif %}
