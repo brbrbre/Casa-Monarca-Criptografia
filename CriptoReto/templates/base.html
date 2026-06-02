@@ -119,6 +119,13 @@
           </a>
         </li>
         {% endif %}
+        {% if lvl == 1 %}
+        <li class="nav-parent" style="margin-top:10px;">
+          <a href="{% url 'iam:certificate_mgmt_list' %}" class="{% if 'certificate_mgmt' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fa-solid fa-certificate"></i> Certificados
+          </a>
+        </li>
+        {% endif %}
         <li class="nav-parent" style="margin-top:10px;">
           <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
             <i class="fa-solid fa-ticket"></i> Tickets

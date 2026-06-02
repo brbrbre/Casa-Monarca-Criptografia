@@ -292,6 +292,19 @@ class Collaborator(AbstractUser):
 
 
 class UserCertificate(models.Model):
+    STATUS_ACTIVE = 'ACTIVE'
+    STATUS_SUSPENDED = 'SUSPENDED'
+    STATUS_REVOKED = 'REVOKED'
+    STATUS_INACTIVE = 'INACTIVE'
+    STATUS_EXPIRED = 'EXPIRED'
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, 'Activo'),
+        (STATUS_SUSPENDED, 'Suspendido'),
+        (STATUS_REVOKED, 'Revocado'),
+        (STATUS_INACTIVE, 'Inactivo'),
+        (STATUS_EXPIRED, 'Expirado'),
+    ]
+
     collaborator = models.OneToOneField(
         Collaborator,
         on_delete=models.PROTECT,
@@ -323,16 +336,101 @@ class UserCertificate(models.Model):
     # Only populated for coordinators: AES-GCM encrypted PKCS#8 DER private key.
     key_data = models.TextField('Llave privada cifrada', blank=True)
 
+    # ── Certificate lifecycle management fields ──────────────────────────────
+    status = models.CharField(
+        'Estado', max_length=16, choices=STATUS_CHOICES, default=STATUS_ACTIVE, db_index=True,
+    )
+    serial_number = models.CharField('Número de serie', max_length=128, blank=True)
+    revocation_reason = models.TextField('Motivo de revocación', blank=True)
+    suspended_at = models.DateTimeField('Fecha de suspensión', null=True, blank=True)
+    suspended_by = models.ForeignKey(
+        Collaborator,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='certificates_suspended',
+        verbose_name='Suspendido por',
+    )
+    suspension_reason = models.TextField('Motivo de suspensión', blank=True)
+    deactivated_at = models.DateTimeField('Fecha de baja', null=True, blank=True)
+    deactivated_by = models.ForeignKey(
+        Collaborator,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='certificates_deactivated',
+        verbose_name='Dado de baja por',
+    )
+    deactivation_reason = models.TextField('Motivo de baja', blank=True)
+
     class Meta:
         verbose_name = 'Certificado de usuario'
         verbose_name_plural = 'Certificados de usuario'
 
     @property
     def is_valid(self):
-        return not self.is_revoked and self.expires_at > timezone.now()
+        if self.is_revoked:
+            return False
+        if self.status in (self.STATUS_REVOKED, self.STATUS_SUSPENDED, self.STATUS_INACTIVE):
+            return False
+        return self.expires_at > timezone.now()
+
+    @property
+    def effective_status(self):
+        if self.status == self.STATUS_ACTIVE and self.expires_at <= timezone.now():
+            return self.STATUS_EXPIRED
+        return self.status
+
+    @property
+    def effective_status_display(self):
+        return dict(self.STATUS_CHOICES).get(self.effective_status, self.effective_status)
 
     def __str__(self):
         return f'Certificate({self.collaborator.username} | {self.fingerprint[:12]})'
+
+
+class CertificateAuditLog(models.Model):
+    ACTION_ISSUED = 'ISSUED'
+    ACTION_REVOKED = 'REVOKED'
+    ACTION_SUSPENDED = 'SUSPENDED'
+    ACTION_REACTIVATED = 'REACTIVATED'
+    ACTION_DEACTIVATED = 'DEACTIVATED'
+
+    certificate = models.ForeignKey(
+        UserCertificate,
+        on_delete=models.PROTECT,
+        related_name='cert_audit_logs',
+        verbose_name='Certificado',
+    )
+    action = models.CharField('Acción', max_length=32)
+    performed_by = models.ForeignKey(
+        Collaborator,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='cert_audit_actions',
+        verbose_name='Realizado por',
+    )
+    timestamp = models.DateTimeField('Fecha y hora', auto_now_add=True)
+    previous_status = models.CharField('Estado anterior', max_length=16, blank=True)
+    new_status = models.CharField('Estado nuevo', max_length=16, blank=True)
+    metadata = models.JSONField('Metadatos', default=dict, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = 'Auditoría de certificado'
+        verbose_name_plural = 'Auditorías de certificados'
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            return  # append-only: never update
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionError('Los registros de auditoría no se pueden eliminar.')
+
+    def __str__(self):
+        return f'{self.timestamp:%Y-%m-%d %H:%M} — {self.action}'
 
 
 class AuditLog(models.Model):

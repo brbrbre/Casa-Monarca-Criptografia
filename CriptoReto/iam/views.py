@@ -4,6 +4,7 @@ from functools import wraps
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,7 +16,7 @@ from .forms import (
     PasswordChangeAuthForm, SecurityQuestionSetupForm, PasswordRecoveryRequestForm,
     SecurityAnswerForm, PasswordRecoveryResetForm,
 )
-from .models import AuditLog, Collaborator, LoginAttempt, UserCertificate
+from .models import Area, AuditLog, CertificateAuditLog, Collaborator, LoginAttempt, UserCertificate
 from .certificates import (
     issue_encrypted_certificate,
     validate_encrypted_certificate,
@@ -24,6 +25,7 @@ from .certificates import (
     get_coordinator_key_bytes,
     issue_cert_and_key,
     validate_cert_and_key,
+    extract_cert_serial_number,
 )
 
 
@@ -1083,3 +1085,331 @@ def password_recovery_reset_view(request):
         messages.success(request, 'Contraseña restablecida correctamente. Ya puedes iniciar sesión.')
         return redirect('iam:login')
     return render(request, 'iam/password_recovery_reset.html', {'form': form})
+
+
+# ─────────────────────────────────────────────
+# CERTIFICATE MANAGEMENT (Admin-only, Level 1)
+# ─────────────────────────────────────────────
+
+def _flush_user_sessions(user_pk: int) -> None:
+    """Delete all active sessions for the given user (called on certificate revocation)."""
+    try:
+        from django.contrib.sessions.models import Session
+        now = timezone.now()
+        to_delete = []
+        for session in Session.objects.filter(expire_date__gte=now):
+            try:
+                if str(session.get_decoded().get('_auth_user_id', '')) == str(user_pk):
+                    to_delete.append(session.pk)
+            except Exception:
+                pass
+        if to_delete:
+            Session.objects.filter(pk__in=to_delete).delete()
+    except Exception:
+        pass
+
+
+def _cert_audit(certificate, action, performed_by, prev_status, new_status, metadata=None):
+    CertificateAuditLog.objects.create(
+        certificate=certificate,
+        action=action,
+        performed_by=performed_by,
+        previous_status=prev_status,
+        new_status=new_status,
+        metadata=metadata or {},
+    )
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_list_view(request):
+    now = timezone.now()
+    qs = UserCertificate.objects.select_related(
+        'collaborator', 'collaborator__area', 'issued_by',
+    ).order_by('-issued_at')
+
+    # Filters
+    status_filter = request.GET.get('status', '')
+    area_filter = request.GET.get('area', '')
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    search = request.GET.get('search', '').strip()
+
+    if status_filter == 'EXPIRED':
+        qs = qs.filter(
+            Q(status='EXPIRED') | Q(status='ACTIVE', expires_at__lte=now)
+        )
+    elif status_filter:
+        qs = qs.filter(status=status_filter).exclude(
+            status='ACTIVE', expires_at__lte=now
+        )
+    if area_filter:
+        qs = qs.filter(collaborator__area__slug=area_filter)
+    if date_from:
+        qs = qs.filter(issued_at__date__gte=date_from)
+    if date_to:
+        qs = qs.filter(issued_at__date__lte=date_to)
+    if search:
+        qs = qs.filter(
+            Q(collaborator__first_name__icontains=search)
+            | Q(collaborator__last_name__icontains=search)
+            | Q(collaborator__username__icontains=search)
+            | Q(serial_number__icontains=search)
+        )
+
+    # Stats
+    all_certs = UserCertificate.objects.all()
+    stats = {
+        'active': all_certs.filter(status='ACTIVE', expires_at__gt=now).count(),
+        'suspended': all_certs.filter(status='SUSPENDED').count(),
+        'revoked': all_certs.filter(status='REVOKED').count(),
+        'expired': all_certs.filter(
+            Q(status='EXPIRED') | Q(status='ACTIVE', expires_at__lte=now)
+        ).count(),
+        'inactive': all_certs.filter(status='INACTIVE').count(),
+    }
+
+    paginator = Paginator(qs, 20)
+    page = request.GET.get('page', 1)
+    certs_page = paginator.get_page(page)
+
+    areas = Area.objects.all()
+    filters = {
+        'status': status_filter,
+        'area': area_filter,
+        'date_from': date_from,
+        'date_to': date_to,
+        'search': search,
+    }
+    return render(request, 'iam/certificate_mgmt_list.html', {
+        'title': 'Gestión de certificados',
+        'certs': certs_page,
+        'stats': stats,
+        'areas': areas,
+        'filters': filters,
+        'now': now,
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_detail_view(request, cert_id):
+    cert = get_object_or_404(
+        UserCertificate.objects.select_related(
+            'collaborator', 'collaborator__area',
+            'issued_by', 'revoked_by', 'suspended_by', 'deactivated_by',
+        ),
+        pk=cert_id,
+    )
+    audit_logs = CertificateAuditLog.objects.filter(
+        certificate=cert,
+    ).select_related('performed_by').order_by('-timestamp')
+    return render(request, 'iam/certificate_mgmt_detail.html', {
+        'title': 'Detalle de certificado',
+        'cert': cert,
+        'audit_logs': audit_logs,
+        'now': timezone.now(),
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_audit_view(request, cert_id):
+    cert = get_object_or_404(UserCertificate, pk=cert_id)
+    audit_logs = CertificateAuditLog.objects.filter(
+        certificate=cert,
+    ).select_related('performed_by').order_by('-timestamp')
+    return render(request, 'iam/certificate_mgmt_detail.html', {
+        'title': 'Auditoría del certificado',
+        'cert': cert,
+        'audit_logs': audit_logs,
+        'now': timezone.now(),
+        'audit_only': True,
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_issue_view(request, user_id):
+    """Link the existing onboarding-generated cert to the Certificate Management module."""
+    if request.method != 'POST':
+        return redirect('iam:certificate_mgmt_list')
+
+    collaborator = get_object_or_404(Collaborator, pk=user_id)
+    cert = getattr(collaborator, 'certificate', None)
+    if not cert:
+        messages.error(request, f'El colaborador {collaborator} no tiene ningún certificado emitido todavía.')
+        return redirect('iam:detail', pk=user_id)
+
+    if cert.status == UserCertificate.STATUS_REVOKED:
+        messages.error(request, 'El certificado está revocado y no puede activarse.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert.pk)
+
+    prev_status = cert.status
+    serial = extract_cert_serial_number(cert.certificate_data)
+    cert.serial_number = serial or cert.serial_number
+    if cert.status not in (UserCertificate.STATUS_REVOKED, UserCertificate.STATUS_INACTIVE):
+        now = timezone.now()
+        if cert.expires_at <= now:
+            cert.status = UserCertificate.STATUS_EXPIRED
+        else:
+            cert.status = UserCertificate.STATUS_ACTIVE
+    cert.save(update_fields=['status', 'serial_number'])
+
+    _cert_audit(cert, CertificateAuditLog.ACTION_ISSUED, request.user, prev_status, cert.status, {
+        'serial_number': cert.serial_number,
+        'fingerprint': cert.fingerprint,
+        'expires_at': cert.expires_at.isoformat(),
+    })
+    _log(request.user, 'CERT_MGMT_ISSUED',
+         f'Certificado vinculado al módulo de gestión. Serie: {cert.serial_number or cert.fingerprint[:12]}.',
+         target=collaborator, request=request)
+    messages.success(request, 'Certificado vinculado al sistema de gestión correctamente.')
+    return redirect('iam:certificate_mgmt_detail', cert_id=cert.pk)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_revoke_view(request, cert_id):
+    if request.method != 'POST':
+        return redirect('iam:certificate_mgmt_list')
+
+    cert = get_object_or_404(UserCertificate.objects.select_related('collaborator'), pk=cert_id)
+
+    if cert.status == UserCertificate.STATUS_REVOKED:
+        messages.error(request, 'El certificado ya está revocado.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    if cert.status in (UserCertificate.STATUS_INACTIVE,):
+        messages.error(request, 'Un certificado dado de baja no puede ser revocado.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    reason = request.POST.get('reason', '').strip()
+    if not reason:
+        messages.error(request, 'Debes proporcionar un motivo de revocación.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    prev_status = cert.status
+    now = timezone.now()
+    cert.status = UserCertificate.STATUS_REVOKED
+    cert.is_revoked = True  # backward compat
+    cert.revoked_at = now
+    cert.revoked_by = request.user
+    cert.revocation_reason = reason
+    cert.save(update_fields=['status', 'is_revoked', 'revoked_at', 'revoked_by', 'revocation_reason'])
+
+    _cert_audit(cert, CertificateAuditLog.ACTION_REVOKED, request.user, prev_status,
+                UserCertificate.STATUS_REVOKED, {'reason': reason})
+    _log(request.user, 'CERT_MGMT_REVOKED',
+         f'Certificado {cert.fingerprint[:12]} revocado. Motivo: {reason}',
+         target=cert.collaborator, request=request)
+    _flush_user_sessions(cert.collaborator_id)
+    messages.success(request, 'Certificado revocado correctamente. Las sesiones activas del usuario han sido cerradas.')
+    return redirect('iam:certificate_mgmt_list')
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_suspend_view(request, cert_id):
+    if request.method != 'POST':
+        return redirect('iam:certificate_mgmt_list')
+
+    cert = get_object_or_404(UserCertificate.objects.select_related('collaborator'), pk=cert_id)
+
+    if cert.status != UserCertificate.STATUS_ACTIVE:
+        messages.error(request, 'Solo se puede suspender un certificado activo.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    if cert.expires_at <= timezone.now():
+        messages.error(request, 'El certificado ya está expirado.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    reason = request.POST.get('reason', '').strip()
+    if not reason:
+        messages.error(request, 'Debes proporcionar un motivo de suspensión.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    prev_status = cert.status
+    cert.status = UserCertificate.STATUS_SUSPENDED
+    cert.suspended_at = timezone.now()
+    cert.suspended_by = request.user
+    cert.suspension_reason = reason
+    cert.save(update_fields=['status', 'suspended_at', 'suspended_by', 'suspension_reason'])
+
+    _cert_audit(cert, CertificateAuditLog.ACTION_SUSPENDED, request.user, prev_status,
+                UserCertificate.STATUS_SUSPENDED, {'reason': reason})
+    _log(request.user, 'CERT_MGMT_SUSPENDED',
+         f'Certificado {cert.fingerprint[:12]} suspendido. Motivo: {reason}',
+         target=cert.collaborator, request=request)
+    messages.success(request, 'Certificado suspendido correctamente.')
+    return redirect('iam:certificate_mgmt_list')
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_reactivate_view(request, cert_id):
+    if request.method != 'POST':
+        return redirect('iam:certificate_mgmt_list')
+
+    cert = get_object_or_404(UserCertificate.objects.select_related('collaborator'), pk=cert_id)
+
+    if cert.status != UserCertificate.STATUS_SUSPENDED:
+        messages.error(request, 'Solo se puede reactivar un certificado suspendido.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    if cert.expires_at <= timezone.now():
+        messages.error(request, 'El certificado está expirado y no puede reactivarse. Emite uno nuevo.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    prev_status = cert.status
+    cert.status = UserCertificate.STATUS_ACTIVE
+    cert.save(update_fields=['status'])
+
+    _cert_audit(cert, CertificateAuditLog.ACTION_REACTIVATED, request.user, prev_status,
+                UserCertificate.STATUS_ACTIVE, {})
+    _log(request.user, 'CERT_MGMT_REACTIVATED',
+         f'Certificado {cert.fingerprint[:12]} reactivado.',
+         target=cert.collaborator, request=request)
+    messages.success(request, 'Certificado reactivado correctamente.')
+    return redirect('iam:certificate_mgmt_list')
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def certificate_mgmt_deactivate_view(request, cert_id):
+    if request.method != 'POST':
+        return redirect('iam:certificate_mgmt_list')
+
+    cert = get_object_or_404(UserCertificate.objects.select_related('collaborator'), pk=cert_id)
+
+    if cert.status in (UserCertificate.STATUS_REVOKED, UserCertificate.STATUS_INACTIVE):
+        messages.error(request, 'El certificado ya está dado de baja o revocado.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    reason = request.POST.get('reason', '').strip()
+    if not reason:
+        messages.error(request, 'Debes proporcionar un motivo de baja.')
+        return redirect('iam:certificate_mgmt_detail', cert_id=cert_id)
+
+    prev_status = cert.status
+    cert.status = UserCertificate.STATUS_INACTIVE
+    cert.deactivated_at = timezone.now()
+    cert.deactivated_by = request.user
+    cert.deactivation_reason = reason
+    cert.save(update_fields=['status', 'deactivated_at', 'deactivated_by', 'deactivation_reason'])
+
+    _cert_audit(cert, CertificateAuditLog.ACTION_DEACTIVATED, request.user, prev_status,
+                UserCertificate.STATUS_INACTIVE, {'reason': reason})
+    _log(request.user, 'CERT_MGMT_DEACTIVATED',
+         f'Certificado {cert.fingerprint[:12]} dado de baja. Motivo: {reason}',
+         target=cert.collaborator, request=request)
+    messages.success(request, 'Certificado dado de baja correctamente.')
+    return redirect('iam:certificate_mgmt_list')
