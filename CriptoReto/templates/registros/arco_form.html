@@ -30,18 +30,18 @@
       <tr style="background:#f8f9fa;">
         <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Tipo</th>
         <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Descripción</th>
-        <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Aprueba</th>
+        <th style="padding:8px 12px;text-align:left;border:1px solid #dee2e6;">Ejecuta</th>
       </tr>
     </thead>
     <tbody>
       <tr>
         <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Acceso</strong></td>
         <td style="padding:7px 12px;border:1px solid #dee2e6;">Conocer qué datos personales se tienen almacenados.</td>
-        <td style="padding:7px 12px;border:1px solid #dee2e6;">Operativo</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Coordinador</td>
       </tr>
       <tr style="background:#f8f9fa;">
         <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Rectificación</strong></td>
-        <td style="padding:7px 12px;border:1px solid #dee2e6;">Corregir datos personales inexactos o incompletos.</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Corregir datos personales inexactos o incompletos. <em>Requiere PDF de respaldo.</em></td>
         <td style="padding:7px 12px;border:1px solid #dee2e6;">Coordinador</td>
       </tr>
       <tr>
@@ -52,14 +52,14 @@
       <tr style="background:#f8f9fa;">
         <td style="padding:7px 12px;border:1px solid #dee2e6;"><strong>Oposición</strong></td>
         <td style="padding:7px 12px;border:1px solid #dee2e6;">Oponerse al tratamiento de datos para fines específicos.</td>
-        <td style="padding:7px 12px;border:1px solid #dee2e6;">Operativo</td>
+        <td style="padding:7px 12px;border:1px solid #dee2e6;">Coordinador</td>
       </tr>
     </tbody>
   </table>
 </div>
 
 <div class="card" style="max-width:560px;">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data" id="arcoForm">
     {% csrf_token %}
 
     <div style="margin-bottom:20px;">
@@ -83,6 +83,18 @@
       {% endif %}
     </div>
 
+    <!-- PDF field: visible only for Rectificación -->
+    <div id="pdfField" style="margin-bottom:24px;display:none;">
+      <label for="{{ form.attached_document.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
+        {{ form.attached_document.label }}
+      </label>
+      {{ form.attached_document }}
+      <small style="color:#888;font-size:12px;">{{ form.attached_document.help_text }}</small>
+      {% if form.attached_document.errors %}
+        <div style="color:#dc3545;font-size:13px;">{{ form.attached_document.errors.0 }}</div>
+      {% endif %}
+    </div>
+
     <div style="display:flex;gap:12px;">
       <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
         Enviar solicitud ARCO
@@ -91,5 +103,19 @@
     </div>
   </form>
 </div>
+
+<script>
+(function () {
+  var typeSelect = document.getElementById('{{ form.arco_type.id_for_label }}');
+  var pdfField = document.getElementById('pdfField');
+
+  function togglePdf() {
+    pdfField.style.display = (typeSelect.value === 'rectification') ? 'block' : 'none';
+  }
+
+  typeSelect.addEventListener('change', togglePdf);
+  togglePdf();  // run on load in case of form re-render with errors
+}());
+</script>
 
 {% endblock %}

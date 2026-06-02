@@ -68,9 +68,16 @@ class MigrantRegistrationForm(forms.ModelForm):
 
 
 class ArcoRequestForm(forms.ModelForm):
+    attached_document = forms.FileField(
+        label='Documento de respaldo (PDF)',
+        required=False,
+        help_text='Solo Rectificación: adjunta el PDF con la evidencia de los datos correctos. Máx. 5 MB.',
+        widget=forms.ClearableFileInput(attrs={'accept': '.pdf,application/pdf'}),
+    )
+
     class Meta:
         model = ArcoRequest
-        fields = ['arco_type', 'description']
+        fields = ['arco_type', 'description', 'attached_document']
         widgets = {
             'description': forms.Textarea(attrs={
                 'rows': 5,
@@ -90,6 +97,28 @@ class ArcoRequestForm(forms.ModelForm):
         if len(val) < 20:
             raise forms.ValidationError('La descripción debe tener al menos 20 caracteres.')
         return val
+
+    def clean_attached_document(self):
+        doc = self.cleaned_data.get('attached_document')
+        if not doc:
+            return doc
+        # Validate PDF by content type or extension
+        content_type = getattr(doc, 'content_type', '')
+        name = doc.name.lower()
+        if content_type not in ('application/pdf', 'application/octet-stream') and not name.endswith('.pdf'):
+            raise forms.ValidationError('Solo se aceptan archivos PDF (.pdf).')
+        if doc.size > 5 * 1024 * 1024:
+            raise forms.ValidationError('El archivo no puede superar los 5 MB.')
+        return doc
+
+    def clean(self):
+        cleaned = super().clean()
+        arco_type = cleaned.get('arco_type')
+        doc = cleaned.get('attached_document')
+        if arco_type == ArcoRequest.ARCO_RECTIFICATION and not doc:
+            # Not a hard error — document is optional but recommended
+            pass
+        return cleaned
 
 
 class WorkflowApprovalForm(forms.Form):

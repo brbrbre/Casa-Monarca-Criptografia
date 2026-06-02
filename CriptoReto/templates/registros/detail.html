@@ -141,6 +141,14 @@
       </a>
     {% endif %}
 
+    {# Operativo o superior puede abrir un caso ARCO #}
+    {% if request.user.access_level <= 3 %}
+      <a href="{% url 'registros:arco_create' registration.pk %}"
+         class="btn" style="background:#5a2d82;border-color:#5a2d82;color:#fff;">
+        <i class="fa-solid fa-shield-halved"></i> Nueva solicitud ARCO
+      </a>
+    {% endif %}
+
     {% if request.user.access_level == 1 %}
       {# Admin elimina directamente #}
       <form method="post" action="{% url 'registros:registro_delete' registration.pk %}"
@@ -165,6 +173,41 @@
     {% endif %}
 
   </div>
+
+  {# Casos ARCO relacionados a este registro #}
+  {% with arcos=registration.arco_requests.all %}
+  {% if arcos %}
+  <div class="card" style="margin-top:8px;">
+    <div class="section-title">Solicitudes ARCO vinculadas</div>
+    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#f8f9fa;">
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">ID de caso</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Tipo</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Estado</th>
+          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Plazo</th>
+          <th style="padding:7px 10px;border-bottom:1px solid #eee;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for arco in arcos %}
+        <tr>
+          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;font-family:monospace;">{{ arco.case_id }}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">{{ arco.get_arco_type_display }}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">{{ arco.get_state_display }}</td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">
+            {% if arco.legal_deadline %}{{ arco.legal_deadline|date:"d/m/Y" }}{% else %}—{% endif %}
+          </td>
+          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">
+            <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:#ad2b4e;">Ver caso</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  {% endwith %}
 
 </div>
 

@@ -6,13 +6,17 @@ Covers:
   - Signature verification (valid data)
   - Tamper detection (data modified after signing)
   - Role-based permissions (create, list, edit, delete)
+  - ARCO permissions, creation, execution with ECDSA signature, cancellation Admin-only
 """
 
+import io
+
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from iam.models import Area, Collaborator
-from .models import MigrantRegistration, MigrantRegistrationSignature
+from .models import ArcoRequest, MigrantRegistration, MigrantRegistrationSignature, Ticket
 from .services import sign_registration, verify_registration
 
 
@@ -266,3 +270,265 @@ class RolePermissionTest(TestCase):
         self.registration.is_deleted = False
         self.registration.save()
         self.assertFalse(self._delete_and_check(self.external))
+
+
+# ── ARCO tests ────────────────────────────────────────────────────────────────
+
+class ArcoPermissionTest(TestCase):
+    """Level 4 (Voluntario) cannot access ARCO views at all."""
+
+    def setUp(self):
+        self.area = Area.objects.create(slug='arco-perm', name='ARCO Perm')
+        self.admin     = _make_user('arco_admin',  1, area=self.area)
+        self.coord     = _make_user('arco_coord',  2, area=self.area)
+        self.operative = _make_user('arco_oper',   3, area=self.area)
+        self.external  = _make_user('arco_ext',    4, area=self.area)
+        self.registration = _make_registration(self.admin)
+
+    def _arco_list_status(self, user):
+        c = Client()
+        _login(c, user)
+        return c.get(reverse('registros:arco_list')).status_code
+
+    def _arco_create_get_status(self, user):
+        c = Client()
+        _login(c, user)
+        url = reverse('registros:arco_create', kwargs={'pk': self.registration.pk})
+        return c.get(url).status_code
+
+    def test_admin_can_list_arco(self):
+        self.assertEqual(self._arco_list_status(self.admin), 200)
+
+    def test_coord_can_list_arco(self):
+        self.assertEqual(self._arco_list_status(self.coord), 200)
+
+    def test_operative_can_list_arco(self):
+        self.assertEqual(self._arco_list_status(self.operative), 200)
+
+    def test_external_cannot_list_arco(self):
+        """Level 4 must be redirected (not 200)."""
+        self.assertNotEqual(self._arco_list_status(self.external), 200)
+
+    def test_external_cannot_create_arco(self):
+        self.assertNotEqual(self._arco_create_get_status(self.external), 200)
+
+    def test_operative_can_create_arco(self):
+        self.assertEqual(self._arco_create_get_status(self.operative), 200)
+
+
+class ArcoCreateTest(TestCase):
+    """Creating an ARCO case generates a case_id, a Ticket, and the correct initial state."""
+
+    def setUp(self):
+        self.area = Area.objects.create(slug='arco-create', name='ARCO Create')
+        self.operative = _make_user('arco_create_oper', 3, area=self.area)
+        self.coord     = _make_user('arco_create_coord', 2, area=self.area)
+        self.registration = _make_registration(self.coord)
+
+    def _post_arco(self, user, arco_type, description, pdf_file=None):
+        c = Client()
+        _login(c, user)
+        url = reverse('registros:arco_create', kwargs={'pk': self.registration.pk})
+        data = {'arco_type': arco_type, 'description': description}
+        files = {}
+        if pdf_file:
+            files['attached_document'] = pdf_file
+        return c.post(url, {**data, **files})
+
+    def test_create_access_request_generates_case_id(self):
+        self._post_arco(self.operative, 'access', 'Solicito conocer todos mis datos almacenados.')
+        arco = ArcoRequest.objects.filter(arco_type='access').first()
+        self.assertIsNotNone(arco)
+        self.assertTrue(arco.case_id.startswith('ARCO-'))
+        self.assertEqual(len(arco.case_id), 13)  # 'ARCO-' + 8 hex chars
+
+    def test_create_request_generates_ticket(self):
+        self._post_arco(self.operative, 'access', 'Solicito conocer todos mis datos almacenados.')
+        arco = ArcoRequest.objects.filter(arco_type='access').first()
+        self.assertIsNotNone(arco)
+        self.assertIsNotNone(arco.ticket)
+        ticket = Ticket.objects.get(pk=arco.ticket.pk)
+        self.assertIn(arco.case_id, ticket.summary)
+
+    def test_create_rectification_with_pdf(self):
+        pdf_bytes = b'%PDF-1.4 fake pdf content for testing purposes'
+        pdf = SimpleUploadedFile('evidencia.pdf', pdf_bytes, content_type='application/pdf')
+        self._post_arco(self.operative, 'rectification',
+                        'Solicito rectificar mi nombre completo, está mal escrito.', pdf_file=pdf)
+        arco = ArcoRequest.objects.filter(arco_type='rectification').first()
+        self.assertIsNotNone(arco)
+        self.assertTrue(bool(arco.attached_document))
+
+    def test_create_rectification_stores_pdf_only_for_rectification(self):
+        pdf_bytes = b'%PDF-1.4 fake pdf'
+        pdf = SimpleUploadedFile('doc.pdf', pdf_bytes, content_type='application/pdf')
+        self._post_arco(self.operative, 'access',
+                        'Solicito conocer mis datos con un archivo adjunto inesperado.', pdf_file=pdf)
+        arco = ArcoRequest.objects.filter(arco_type='access').first()
+        self.assertIsNotNone(arco)
+        # PDF should NOT be stored for non-rectification types
+        self.assertFalse(bool(arco.attached_document))
+
+    def test_coord_creates_arco_directly_in_review(self):
+        """Coordinador has direct authority → state goes to in_review, no workflow."""
+        self._post_arco(self.coord, 'access', 'Solicito acceder a todos los datos almacenados.')
+        arco = ArcoRequest.objects.filter(arco_type='access', requested_by=self.coord).first()
+        self.assertIsNotNone(arco)
+        self.assertEqual(arco.state, ArcoRequest.STATE_IN_REVIEW)
+        self.assertIsNone(arco.workflow_request)
+
+    def test_description_too_short_rejected(self):
+        resp = self._post_arco(self.operative, 'access', 'Corto')
+        self.assertEqual(resp.status_code, 200)  # form re-rendered
+        self.assertFalse(ArcoRequest.objects.filter(description='Corto').exists())
+
+
+class ArcoExecuteSignatureTest(TestCase):
+    """Executing an ARCO case must produce an ActionSignature in the hash chain."""
+
+    def setUp(self):
+        self.area = Area.objects.create(slug='arco-exec', name='ARCO Exec')
+        self.admin = _make_user('arco_exec_admin', 1, area=self.area)
+        self.coord = _make_user('arco_exec_coord', 2, area=self.area)
+        self.registration = _make_registration(self.admin)
+
+        # Create a UserCertificate for coord so validate_coordinator_cert_and_key works
+        from iam.certificates import issue_coordinator_key_cert, get_coordinator_key_bytes
+        cert_obj = issue_coordinator_key_cert(self.coord, self.admin)
+        cert_pem_bytes = cert_obj.certificate_data.encode('utf-8')
+        key_der_bytes = get_coordinator_key_bytes(cert_obj)
+        self._cert_pem = cert_pem_bytes
+        self._key_der = key_der_bytes
+
+        # Seed a UserCertificate for admin (encrypted)
+        from iam.certificates import issue_encrypted_certificate
+        issue_encrypted_certificate(self.admin, self.admin)
+
+    def _make_arco(self, user, arco_type='access'):
+        arco = ArcoRequest.objects.create(
+            arco_type=arco_type,
+            registration=self.registration,
+            requested_by=user,
+            state=ArcoRequest.STATE_SUBMITTED,
+            description='Solicito todos los datos almacenados para verificación.',
+        )
+        return arco
+
+    def test_execute_access_creates_action_signature(self):
+        arco = self._make_arco(self.coord)
+        c = Client()
+        _login(c, self.coord)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        resp = c.post(url, {
+            'password': 'Test1234!',
+            'notes': 'Ejecutado en test',
+            'cert_file': SimpleUploadedFile('test.cert', self._cert_pem, content_type='application/octet-stream'),
+            'key_file': SimpleUploadedFile('test.key', self._key_der, content_type='application/octet-stream'),
+        })
+        arco.refresh_from_db()
+        self.assertEqual(arco.state, ArcoRequest.STATE_EXECUTED)
+        self.assertIsNotNone(arco.action_signature)
+        self.assertEqual(arco.action_signature.subject_type, 'arco_request')
+        self.assertEqual(arco.action_signature.subject_id, arco.pk)
+
+    def test_execute_access_generates_pdf(self):
+        arco = self._make_arco(self.coord)
+        c = Client()
+        _login(c, self.coord)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        c.post(url, {
+            'password': 'Test1234!',
+            'notes': '',
+            'cert_file': SimpleUploadedFile('test.cert', self._cert_pem),
+            'key_file': SimpleUploadedFile('test.key', self._key_der),
+        })
+        arco.refresh_from_db()
+        self.assertTrue(bool(arco.generated_document))
+
+    def test_execute_wrong_password_fails(self):
+        arco = self._make_arco(self.coord)
+        c = Client()
+        _login(c, self.coord)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        c.post(url, {
+            'password': 'WrongPassword!',
+            'notes': '',
+            'cert_file': SimpleUploadedFile('test.cert', self._cert_pem),
+            'key_file': SimpleUploadedFile('test.key', self._key_der),
+        })
+        arco.refresh_from_db()
+        self.assertNotEqual(arco.state, ArcoRequest.STATE_EXECUTED)
+
+    def test_execute_missing_cert_fails(self):
+        arco = self._make_arco(self.coord)
+        c = Client()
+        _login(c, self.coord)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        c.post(url, {'password': 'Test1234!', 'notes': ''})
+        arco.refresh_from_db()
+        self.assertNotEqual(arco.state, ArcoRequest.STATE_EXECUTED)
+
+
+class ArcoCancellationAdminOnlyTest(TestCase):
+    """Only Admin (level 1) can execute a Cancelación ARCO."""
+
+    def setUp(self):
+        self.area = Area.objects.create(slug='arco-cancel', name='ARCO Cancel')
+        self.admin = _make_user('arco_cancel_admin', 1, area=self.area)
+        self.coord = _make_user('arco_cancel_coord', 2, area=self.area)
+        self.registration = _make_registration(self.admin)
+
+        from iam.certificates import issue_coordinator_key_cert, get_coordinator_key_bytes
+        cert_obj = issue_coordinator_key_cert(self.coord, self.admin)
+        self._cert_pem = cert_obj.certificate_data.encode('utf-8')
+        self._key_der = get_coordinator_key_bytes(cert_obj)
+
+        from iam.certificates import issue_encrypted_certificate
+        admin_cert = issue_encrypted_certificate(self.admin, self.admin)
+        from iam.certificates import encrypt_certificate, generate_certificate_payload
+        self._admin_cert_str = admin_cert.certificate_data
+
+    def _make_cancellation_arco(self):
+        return ArcoRequest.objects.create(
+            arco_type='cancellation',
+            registration=self.registration,
+            requested_by=self.admin,
+            state=ArcoRequest.STATE_SUBMITTED,
+            description='Solicitud formal de cancelación de todos los datos personales.',
+        )
+
+    def test_coord_cannot_execute_cancellation(self):
+        arco = self._make_cancellation_arco()
+        c = Client()
+        _login(c, self.coord)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        c.post(url, {
+            'password': 'Test1234!',
+            'notes': '',
+            'cert_file': SimpleUploadedFile('test.cert', self._cert_pem),
+            'key_file': SimpleUploadedFile('test.key', self._key_der),
+        })
+        arco.refresh_from_db()
+        self.assertNotEqual(arco.state, ArcoRequest.STATE_EXECUTED)
+        # Registration should NOT be deleted
+        self.registration.refresh_from_db()
+        self.assertFalse(self.registration.is_deleted)
+
+    def test_admin_can_execute_cancellation(self):
+        arco = self._make_cancellation_arco()
+        c = Client()
+        _login(c, self.admin)
+        url = reverse('registros:arco_execute', kwargs={'pk': arco.pk})
+        c.post(url, {
+            'password': 'Test1234!',
+            'notes': 'Eliminación solicitada por el titular.',
+            'cert_file': SimpleUploadedFile(
+                'admin.cert',
+                self._admin_cert_str.encode('utf-8'),
+                content_type='text/plain',
+            ),
+        })
+        arco.refresh_from_db()
+        self.assertEqual(arco.state, ArcoRequest.STATE_EXECUTED)
+        self.registration.refresh_from_db()
+        self.assertTrue(self.registration.is_deleted)

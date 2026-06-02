@@ -8,326 +8,57 @@
   <title>Casa Monarca — {{ title|default:'IAM' }}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
-    body {
-      font-family: system-ui, sans-serif;
-      background: #f5f5f5;
-      color: #111;
-    }
-
-    a {
-      color: inherit;
-      text-decoration: none;
-    }
-
-    .app-wrap {
-      display: flex;
-      min-height: 100vh;
-    }
-
-    .sidebar {
-      width: 220px;
-      background: #ad2b4e;
-      color: #fff;
-      padding: 20px 16px;
-      position: sticky;
-      top: 0;
-      height: 100vh;
-      overflow-y: auto;
-    }
-
-    .sidebar img {
-      max-height: 80px;
-      width: auto;
-      display: block;
-      margin-bottom: 12px;
-    }
-
-    .sidebar h1 {
-      font-size: 18px;
-      margin-bottom: 8px;
-    }
-
-    .sidebar p {
-      font-size: 13px;
-      color: white;
-      margin-bottom: 18px;
-    }
-
-    .nav-list {
-      list-style: none;
-      margin-bottom: 24px;
-    }
-
-    .nav-list li {
-      margin-bottom: 6px;
-    }
-
-    .nav-list a {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 10px;
-      color: #ddd;
-      border-radius: 6px;
-    }
-
-    .nav-list a.active,
-    .nav-list a:hover {
-      background: #fff;
-      color: #111;
-    }
-
-    .main-area {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .topbar {
-      background: #fff;
-      padding: 16px 24px;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .topbar .brand {
-      font-size: 18px;
-      font-weight: 700;
-    }
-
-    .topbar > div {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .profile-menu-wrap {
-      position: relative;
-    }
-
-    .topbar-profile {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #ad2b4e;
-      font-size: 22px;
-      line-height: 1;
-      padding: 0;
-      display: flex;
-      align-items: center;
-      transition: opacity 0.15s;
-    }
-
-    .topbar-profile:hover {
-      opacity: 0.75;
-    }
-
-    .profile-dropdown {
-      position: absolute;
-      top: calc(100% + 10px);
-      right: 0;
-      width: 272px;
-      background: #fff;
-      border: 1px solid #e2e2e2;
-      border-radius: 10px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.10);
-      z-index: 1000;
-      overflow: hidden;
-    }
-
-    .profile-dropdown-header {
-      padding: 14px 16px;
-      border-bottom: 1px solid #eee;
-    }
-
-    .profile-dropdown-header strong {
-      display: block;
-      font-size: 14px;
-      margin-bottom: 4px;
-      color: #111;
-    }
-
-    .profile-dropdown-header span {
-      display: block;
-      font-size: 12px;
-      color: #666;
-      line-height: 1.6;
-    }
-
-    .profile-dropdown-links a {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 16px;
-      font-size: 14px;
-      color: #333;
-      border-bottom: 1px solid #f5f5f5;
-    }
-
-    .profile-dropdown-links a:last-child {
-      border-bottom: none;
-    }
-
-    .profile-dropdown-links a:hover {
-      background: #f9f9f9;
-      color: #ad2b4e;
-    }
-
-    .page-content {
-      padding: 24px;
-    }
-
-    .card {
-      background: #fff;
-      border: 1px solid #e2e2e2;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 18px;
-    }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 14px;
-      border: 1px solid #333;
-      background: #111;
-      color: #fff;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    .btn-light {
-      background: #fff;
-      color: #111;
-      border-color: #ddd;
-    }
-
-    .btn-danger {
-      background: #900;
-      border-color: #900;
-    }
-
-    .btn-warning {
-      background: #f2b01f;
-      border-color: #cc8a00;
-    }
-
-    .field-group {
-      margin-bottom: 14px;
-    }
-
-    .field-group label {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: #333;
-    }
-
-    .field-group input,
-    .field-group select,
-    .field-group textarea {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      font-size: 14px;
-    }
-
-    .field-group .help-text {
-      margin-top: 6px;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    .table th,
-    .table td {
-      padding: 12px 10px;
-      border-bottom: 1px solid #eee;
-      text-align: left;
-    }
-
-    .table th {
-      background: #fafafa;
-      font-size: 13px;
-      color: #666;
-    }
-
-    .status-pill {
-      display: inline-flex;
-      padding: 4px 8px;
-      border-radius: 999px;
-      font-size: 12px;
-      border: 1px solid transparent;
-    }
-
-    .status-active {
-      background: #e2f4e4;
-      color: #1c6a2a;
-      border-color: #a9d6ad;
-    }
-
-    .status-revoked {
-      background: #fde9e9;
-      color: #8c1717;
-      border-color: #e3a7a7;
-    }
-
-    .status-inactive {
-      background: #f2f2f2;
-      color: #555;
-      border-color: #ccc;
-    }
-
-    .status-deleted {
-      background: #f8e4e4;
-      color: #7a2323;
-      border-color: #dbb1b1;
-    }
-
-    .messages {
-      margin-bottom: 18px;
-    }
-
-    .message {
-      padding: 12px 14px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-    }
-
-    .message-success {
-      background: #e7f7e7;
-      border: 1px solid #b6e0b6;
-      color: #225522;
-    }
-
-    .message-error {
-      background: #fdeaea;
-      border: 1px solid #f1bbbb;
-      color: #832727;
-    }
-
-    .inline-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #111; }
+    a { color: inherit; text-decoration: none; }
+    .app-wrap { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: #ad2b4e; color: #fff; padding: 20px 16px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+    .sidebar img { max-height: 80px; width: auto; display: block; margin-bottom: 12px; }
+    .sidebar h1 { font-size: 18px; margin-bottom: 8px; }
+    .sidebar p { font-size: 13px; color: white; margin-bottom: 18px; }
+    .nav-list { list-style: none; margin-bottom: 24px; }
+    .nav-list li { margin-bottom: 6px; }
+    .nav-list a { display: flex; align-items: center; gap: 8px; padding: 8px 10px; color: #ddd; border-radius: 6px; }
+    .nav-list a.active, .nav-list a:hover { background: #fff; color: #111; }
+    .nav-list .nav-child a { padding-left: 24px; }
+    .nav-list .nav-parent > a { border-bottom: 1px solid currentColor; border-radius: 6px 6px 0 0; }
+    .main-area { flex: 1; display: flex; flex-direction: column; }
+    .topbar { background: #fff; padding: 16px 24px; border-bottom: 1px solid #ddd; display: flex; justify-content: space-between; align-items: center; }
+    .topbar .brand { font-size: 18px; font-weight: 700; }
+    .topbar > div { display: flex; align-items: center; gap: 12px; }
+    .profile-menu-wrap { position: relative; }
+    .topbar-profile { background: none; border: none; cursor: pointer; color: #ad2b4e; font-size: 22px; line-height: 1; padding: 0; display: flex; align-items: center; transition: opacity 0.15s; }
+    .topbar-profile:hover { opacity: 0.75; }
+    .profile-dropdown { position: absolute; top: calc(100% + 10px); right: 0; width: 272px; background: #fff; border: 1px solid #e2e2e2; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.10); z-index: 1000; overflow: hidden; }
+    .profile-dropdown-header { padding: 14px 16px; border-bottom: 1px solid #eee; }
+    .profile-dropdown-header strong { display: block; font-size: 14px; margin-bottom: 4px; color: #111; }
+    .profile-dropdown-header span { display: block; font-size: 12px; color: #666; line-height: 1.6; }
+    .profile-dropdown-links a { display: flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 14px; color: #333; border-bottom: 1px solid #f5f5f5; }
+    .profile-dropdown-links a:last-child { border-bottom: none; }
+    .profile-dropdown-links a:hover { background: #f9f9f9; color: #ad2b4e; }
+    .page-content { padding: 24px; }
+    .card { background: #fff; border: 1px solid #e2e2e2; border-radius: 12px; padding: 20px; margin-bottom: 18px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 14px; border: 1px solid #333; background: #111; color: #fff; border-radius: 8px; cursor: pointer; }
+    .btn-light { background: #fff; color: #111; border-color: #ddd; }
+    .btn-danger { background: #900; border-color: #900; }
+    .btn-warning { background: #f2b01f; border-color: #cc8a00; }
+    .field-group { margin-bottom: 14px; }
+    .field-group label { display: block; margin-bottom: 6px; font-size: 13px; color: #333; }
+    .field-group input, .field-group select, .field-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+    .field-group .help-text { margin-top: 6px; font-size: 12px; color: #666; }
+    .table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .table th, .table td { padding: 12px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    .table th { background: #fafafa; font-size: 13px; color: #666; }
+    .status-pill { display: inline-flex; padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid transparent; }
+    .status-active { background: #e2f4e4; color: #1c6a2a; border-color: #a9d6ad; }
+    .status-revoked { background: #fde9e9; color: #8c1717; border-color: #e3a7a7; }
+    .status-inactive { background: #f2f2f2; color: #555; border-color: #ccc; }
+    .status-deleted { background: #f8e4e4; color: #7a2323; border-color: #dbb1b1; }
+    .messages { margin-bottom: 18px; }
+    .message { padding: 12px 14px; margin-bottom: 10px; border-radius: 8px; }
+    .message-success { background: #e7f7e7; border: 1px solid #b6e0b6; color: #225522; }
+    .message-error { background: #fdeaea; border: 1px solid #f1bbbb; color: #832727; }
+    .inline-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
   </style>
 </head>
 
@@ -336,64 +67,67 @@
     <nav class="sidebar">
       <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca">
       <p>Gestión de identidades y acceso</p>
-{# djlint:off #}
       <ul class="nav-list">
-        {% if request.user.is_authenticated %}
-        {% with lvl=request.user.access_level st=request.user.onboarding_status cd=request.user.certificate_delivered_at %}
-        {% if request.user.is_system_admin or st == 'approved' and cd and lvl != 2 or st == 'approved' and cd and request.session.cert_validated %}
-        <li>
+        {% if request.user.is_authenticated and nav_unlocked %}
+        {% with lvl=request.user.access_level %}
+        {% if lvl <= 2 %}<li class="nav-parent">{% else %}<li>{% endif %}
           <a href="{% url 'iam:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
             {% if lvl == 3 %}<i class="fa-solid fa-user"></i> Mi perfil{% else %}<i class="fa-solid fa-users"></i> Colaboradores{% endif %}
           </a>
         </li>
         {% if lvl <= 2 %}
-        <li>
-          <a href="{% url 'iam:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
-            <i class="fa-solid fa-clock-rotate-left"></i> Auditoría
-          </a>
-        </li>
-        <li>
+        <li class="nav-child">
           <a href="{% url 'iam:pending_onboarding' %}" class="{% if request.resolver_match.url_name == 'pending_onboarding' %}active{% endif %}">
-            <i class="fa-solid fa-user-clock"></i> Onboardings
+            Onboardings
           </a>
         </li>
         {% endif %}
         {% if lvl <= 3 %}
-        <li>
+        <li class="nav-parent" style="margin-top:10px;">
           <a href="{% url 'registros:registro_list' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_list' or request.resolver_match.url_name == 'registro_detail' %}active{% endif %}">
-            <i class="fa-solid fa-file-lines"></i> Registros
+            <i class="fa-solid fa-file-lines"></i> Migrantes
           </a>
         </li>
-        <li>
-          <a href="{% url 'registros:workflow_list' %}" class="{% if request.resolver_match.url_name == 'workflow_list' or request.resolver_match.url_name == 'workflow_detail' or request.resolver_match.url_name == 'workflow_decide' %}active{% endif %}"
-             style="justify-content:space-between;">
-            <span><i class="fa-solid fa-clipboard-list"></i> Solicitudes</span>
-            {% if pending_workflow_count %}
-              <span style="background:#fff;color:#ad2b4e;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;">{{ pending_workflow_count }}</span>
-            {% elif unread_notifications_count %}
-              <span style="background:#f2b01f;color:#111;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;">{{ unread_notifications_count }}</span>
-            {% endif %}
+        <li class="nav-child">
+          <a href="{% url 'registros:workflow_list' %}" class="{% if request.resolver_match.url_name == 'workflow_list' or request.resolver_match.url_name == 'workflow_detail' or request.resolver_match.url_name == 'workflow_decide' %}active{% endif %}" style="justify-content:space-between;">
+            <span>Solicitudes</span>
+            {% if pending_workflow_count %}<span style="background:#fff;color:#ad2b4e;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;">{{ pending_workflow_count }}</span>{% elif unread_notifications_count %}<span style="background:#f2b01f;color:#111;border-radius:999px;font-size:11px;font-weight:700;padding:1px 7px;min-width:20px;text-align:center;">{{ unread_notifications_count }}</span>{% endif %}
+          </a>
+        </li>
+        <li class="nav-child">
+          <a href="{% url 'registros:arco_list' %}" class="{% if request.resolver_match.url_name == 'arco_list' or request.resolver_match.url_name == 'arco_detail' or request.resolver_match.url_name == 'arco_create' %}active{% endif %}">
+            ARCO
+          </a>
+        </li>
+        <li class="nav-child">
+          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
+            {% if lvl >= 3 %}Nueva Solicitud{% else %}Nuevo Registro{% endif %}
+          </a>
+        </li>
+        {% else %}
+        <li style="margin-top:10px;">
+          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
+            <i class="fa-solid fa-plus"></i> Nueva Solicitud
           </a>
         </li>
         {% endif %}
         {% if lvl <= 4 %}
-        <li>
-          <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
-            <i class="fa-solid fa-ticket"></i> Tickets
+        {% if lvl <= 2 %}
+        <li class="nav-parent" style="margin-top:10px;">
+          <a href="{% url 'iam:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
+            <i class="fa-solid fa-clock-rotate-left"></i> Auditoría
           </a>
         </li>
         {% endif %}
-        <li>
-          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
-            <i class="fa-solid fa-plus"></i>
-            {% if request.user.access_level >= 3 %}Nueva Solicitud{% else %}Nuevo Registro{% endif %}
+        <li class="nav-parent" style="margin-top:10px;">
+          <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
+            <i class="fa-solid fa-ticket"></i> Tickets
           </a>
         </li>
         {% endif %}
         {% endwith %}
         {% endif %}
       </ul>
-{# djlint:on #}
       <p style="font-size:13px;color:#bbb;margin-top:24px;">
         Usuario: {{ request.user.get_full_name|default:request.user.username }}
       </p>
@@ -417,12 +151,8 @@
               <span>{{ request.user.get_onboarding_status_display }}</span>
             </div>
             <div class="profile-dropdown-links">
-              <a href="{% url 'iam:password_change' %}">
-                <i class="fa-solid fa-lock"></i> Cambiar contraseña
-              </a>
-              <a href="{% url 'iam:security_question_setup' %}">
-                <i class="fa-solid fa-shield-halved"></i> Cambiar pregunta de seguridad
-              </a>
+              <a href="{% url 'iam:password_change' %}"><i class="fa-solid fa-lock"></i> Cambiar contraseña</a>
+              <a href="{% url 'iam:security_question_setup' %}"><i class="fa-solid fa-shield-halved"></i> Cambiar pregunta de seguridad</a>
             </div>
           </div>
         </div>

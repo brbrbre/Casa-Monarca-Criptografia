@@ -23,7 +23,8 @@
 
 <div class="alert" style="background:#f0f4ff;border:1px solid #b0c4ff;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1a3a7a;">
   <strong>Derechos ARCO</strong> — Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).<br>
-  Acceso y Oposición: Operativo (Nivel 3). Rectificación: Coordinador (Nivel 2). Cancelación: Admin (Nivel 1).
+  Acceso / Oposición: Coordinador ejecuta (Nivel 2). Rectificación: Coordinador (Nivel 2). Cancelación: Admin (Nivel 1).
+  Solo Operativo o superior puede abrir casos.
 </div>
 
 {% if messages %}
@@ -33,23 +34,28 @@
 {% endif %}
 
 <div class="card" style="padding:0;overflow:hidden;">
-  {% if arco_requests %}
+  {% if requests %}
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
+          <th>ID de caso</th>
           <th>Tipo</th>
-          <th>Registro afectado</th>
+          <th>Migrante</th>
           <th>Solicitante</th>
+          <th>Fecha</th>
           <th>Estado</th>
           <th>Plazo legal</th>
           <th>Acciones</th>
         </tr>
       </thead>
       <tbody>
-        {% for arco in arco_requests %}
+        {% for arco in requests %}
           <tr>
-            <td>{{ arco.pk }}</td>
+            <td>
+              <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:#ad2b4e;font-weight:600;font-family:monospace;">
+                {{ arco.case_id }}
+              </a>
+            </td>
             <td>
               <span class="arco-badge arco-{{ arco.arco_type }}">
                 {{ arco.get_arco_type_display }}
@@ -57,10 +63,11 @@
             </td>
             <td>
               <a href="{% url 'registros:registro_detail' arco.registration.pk %}" style="color:#ad2b4e;">
-                #{{ arco.registration.pk }} — {{ arco.registration.full_name }}
+                {{ arco.registration.full_name }}
               </a>
             </td>
             <td>{{ arco.requested_by.get_full_name|default:arco.requested_by.username }}</td>
+            <td style="white-space:nowrap;">{{ arco.created_at|date:"d/m/Y" }}</td>
             <td>
               <span class="arco-badge state-{{ arco.state }}">{{ arco.get_state_display }}</span>
             </td>
@@ -71,14 +78,36 @@
             </td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="{% url 'registros:arco_detail' arco.pk %}"
+                   class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver</a>
+
                 {% if arco.workflow_request %}
                   <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}"
-                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver flujo</a>
+                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">Flujo</a>
                 {% endif %}
-                {% if arco.state == 'approved' and arco.can_execute request.user %}
-                  <a href="{% url 'registros:arco_execute' arco.pk %}"
-                     class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
-                    Ejecutar
+
+                {% if arco.state != 'executed' and arco.state != 'rejected' %}
+                  {% if request.user.access_level <= 2 %}
+                    {% if arco.arco_type == 'cancellation' %}
+                      {% if request.user.access_level == 1 %}
+                        <a href="{% url 'registros:arco_execute' arco.pk %}"
+                           class="btn" style="font-size:12px;padding:5px 10px;background:#dc3545;color:#fff;border-color:#dc3545;">
+                          Ejecutar
+                        </a>
+                      {% endif %}
+                    {% else %}
+                      <a href="{% url 'registros:arco_execute' arco.pk %}"
+                         class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
+                        Ejecutar
+                      </a>
+                    {% endif %}
+                  {% endif %}
+                {% endif %}
+
+                {% if arco.generated_document %}
+                  <a href="{% url 'registros:arco_download' arco.pk %}"
+                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">
+                    Descargar PDF
                   </a>
                 {% endif %}
               </div>

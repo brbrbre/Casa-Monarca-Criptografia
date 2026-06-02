@@ -1,10 +1,11 @@
+import io
 import json
 from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.messages import get_messages
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -831,14 +832,113 @@ def batch_sign_view(request):
 # ARCO VIEWS
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _generate_access_pdf(arco) -> bytes:
+    """Generate a printable PDF with the migrant's data for an Acceso ARCO request."""
+    from reportlab.lib.pagesizes import LETTER
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+    from reportlab.lib import colors
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=LETTER,
+        leftMargin=2 * cm,
+        rightMargin=2 * cm,
+        topMargin=2 * cm,
+        bottomMargin=2 * cm,
+    )
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('title', parent=styles['Heading1'], fontSize=14, spaceAfter=6)
+    label_style = ParagraphStyle('label', parent=styles['Normal'], fontSize=9, textColor=colors.grey)
+    value_style = ParagraphStyle('value', parent=styles['Normal'], fontSize=10, spaceAfter=4)
+
+    reg = arco.registration
+    elements = [
+        Paragraph('Casa Monarca — Respuesta a Solicitud ARCO (Acceso)', title_style),
+        Paragraph(f'ID de caso: {arco.case_id}', value_style),
+        Paragraph(f'Fecha de emisión: {timezone.now().strftime("%d/%m/%Y %H:%M")}', value_style),
+        Spacer(1, 0.4 * cm),
+    ]
+
+    sections = [
+        ('Identificación', [
+            ('Identificador interno', reg.internal_id or '—'),
+            ('Nombre completo', reg.full_name),
+            ('Fecha de nacimiento', str(reg.birth_date)),
+            ('Género', reg.get_gender_display()),
+            ('Nacionalidad', reg.nationality),
+            ('País de origen', reg.country_of_origin),
+            ('Tipo de documento', reg.get_document_type_display()),
+            ('Número de documento', reg.document_number or '—'),
+        ]),
+        ('Contacto', [
+            ('Teléfono', reg.phone or '—'),
+            ('Correo electrónico', reg.email or '—'),
+        ]),
+        ('Ingreso', [
+            ('Fecha de ingreso', str(reg.entry_date)),
+            ('Punto de ingreso', reg.entry_point),
+            ('Países de tránsito', reg.transit_countries or '—'),
+            ('Destino final', reg.intended_destination or '—'),
+        ]),
+        ('Grupo familiar', [
+            ('Estado civil', reg.get_marital_status_display()),
+            ('Viaja solo/a', 'Sí' if reg.travels_alone else 'No'),
+            ('Tamaño del grupo', str(reg.group_size)),
+            ('Menores en el grupo', str(reg.minors_in_group)),
+        ]),
+        ('Situación', [
+            ('Situación migratoria', reg.get_current_legal_status_display()),
+            ('Motivo de migración', reg.migration_reason),
+            ('Asistencia solicitada', reg.assistance_requested),
+            ('Nombre del albergue', reg.shelter_name or '—'),
+        ]),
+        ('Observaciones', [
+            ('Observaciones', reg.observations or '—'),
+        ]),
+    ]
+
+    for section_title, rows in sections:
+        elements.append(Paragraph(section_title, styles['Heading3']))
+        table_data = [[Paragraph(label, label_style), Paragraph(str(val), value_style)]
+                      for label, val in rows]
+        t = Table(table_data, colWidths=[5 * cm, 12 * cm])
+        t.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ROWBACKGROUNDS', (0, 0), (-1, -1), [colors.white, colors.Color(0.96, 0.96, 0.98)]),
+            ('GRID', (0, 0), (-1, -1), 0.3, colors.lightgrey),
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ]))
+        elements.append(t)
+        elements.append(Spacer(1, 0.3 * cm))
+
+    elements.append(Spacer(1, 0.6 * cm))
+    elements.append(Paragraph(
+        f'Ejecutado por: {arco.executed_by.get_full_name() or arco.executed_by.username} '
+        f'(Nivel {arco.executed_by.access_level})',
+        value_style,
+    ))
+    if arco.action_signature:
+        elements.append(Paragraph(
+            f'Firma digital (hash): {arco.action_signature.message_hash}',
+            label_style,
+        ))
+
+    doc.build(elements)
+    return buffer.getvalue()
+
+
 @login_required(login_url='iam:login')
 @onboarding_required
 @require_level(3)
 def arco_list(request):
     user = request.user
-    if user.access_level == 1:
-        qs = ArcoRequest.objects.all()
-    elif user.access_level == 2:
+    if user.access_level <= 2:
         qs = ArcoRequest.objects.all()
     else:
         qs = ArcoRequest.objects.filter(requested_by=user)
@@ -854,7 +954,7 @@ def arco_list(request):
 def arco_create(request, pk):
     """File an ARCO request for a specific migrant registration."""
     registration = get_object_or_404(MigrantRegistration, pk=pk, is_deleted=False)
-    form = ArcoRequestForm(request.POST or None)
+    form = ArcoRequestForm(request.POST or None, request.FILES or None)
 
     if request.method == 'POST' and form.is_valid():
         arco = form.save(commit=False)
@@ -862,11 +962,13 @@ def arco_create(request, pk):
         arco.requested_by = request.user
         arco.state = ArcoRequest.STATE_SUBMITTED
 
-        # Compute legal deadline (20 business days ≈ 28 calendar days — simplified)
         from datetime import timedelta
         arco.legal_deadline = (timezone.now() + timedelta(days=28)).date()
 
-        # Create matching WorkflowRequest
+        # Only store attached PDF for Rectificación; clear it for all other types
+        if arco.arco_type != ArcoRequest.ARCO_RECTIFICATION:
+            arco.attached_document = None
+
         action_map = {
             ArcoRequest.ARCO_ACCESS: WorkflowRequest.ACTION_ARCO_ACCESS,
             ArcoRequest.ARCO_RECTIFICATION: WorkflowRequest.ACTION_ARCO_RECTIFICATION,
@@ -890,12 +992,17 @@ def arco_create(request, pk):
 
         arco.save()
 
+        # Create linked Ticket
+        ticket = Ticket.create_for_arco(arco, request.user)
+        arco.ticket = ticket
+        arco.save(update_fields=['ticket'])
+
         _log(request.user, 'arco_request_created',
-             f'ARCO#{arco.pk} {arco.get_arco_type_display()} para Registro #{registration.pk}',
+             f'{arco.case_id} {arco.get_arco_type_display()} para Registro #{registration.pk}',
              request=request)
 
-        messages.success(request, f'Solicitud ARCO #{arco.pk} registrada.')
-        return redirect('registros:arco_list')
+        messages.success(request, f'Solicitud ARCO {arco.case_id} registrada.')
+        return redirect('registros:arco_detail', pk=arco.pk)
 
     return render(request, 'registros/arco_form.html', {
         'form': form,
@@ -906,32 +1013,205 @@ def arco_create(request, pk):
 
 @login_required(login_url='iam:login')
 @onboarding_required
-@require_level(2)
-@require_POST
-def arco_execute(request, pk):
-    """Coordinador/Admin executes (fulfils) an approved ARCO request."""
+@require_level(3)
+def arco_detail(request, pk):
+    """Detail view for a single ARCO case."""
     arco = get_object_or_404(ArcoRequest, pk=pk)
+    user = request.user
+
+    # Operativo can only see their own requests
+    if user.access_level == 3 and arco.requested_by != user:
+        messages.error(request, 'No tienes acceso a esta solicitud ARCO.')
+        return redirect('registros:arco_list')
+
+    can_execute = (
+        user.access_level <= 2
+        and arco.can_execute(user)
+        and arco.state not in (ArcoRequest.STATE_EXECUTED, ArcoRequest.STATE_REJECTED)
+    )
+    can_cancel_data = (user.access_level == 1)
+
+    return render(request, 'registros/arco_detail.html', {
+        'arco': arco,
+        'can_execute': can_execute,
+        'can_cancel_data': can_cancel_data,
+        'title': f'Caso ARCO {arco.case_id}',
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(2)
+def arco_execute(request, pk):
+    """Coordinador/Admin executes (fulfils) an ARCO request."""
+    arco = get_object_or_404(ArcoRequest, pk=pk)
+
+    if arco.state == ArcoRequest.STATE_EXECUTED:
+        messages.error(request, 'Esta solicitud ya fue ejecutada.')
+        return redirect('registros:arco_detail', pk=pk)
 
     if not arco.can_execute(request.user):
         messages.error(request, 'No tienes autorización para ejecutar esta solicitud ARCO.')
-        return redirect('registros:arco_list')
+        return redirect('registros:arco_detail', pk=pk)
 
+    if request.method == 'GET':
+        return render(request, 'registros/arco_detail.html', {
+            'arco': arco,
+            'can_execute': True,
+            'show_execute_modal': True,
+            'title': f'Ejecutar {arco.case_id}',
+        })
+
+    # ── POST: validate credentials ────────────────────────────────────────────
     if not request.user.check_password(request.POST.get('password', '')):
         messages.error(request, 'Contraseña incorrecta.')
-        return redirect('registros:arco_list')
+        return redirect('registros:arco_detail', pk=pk)
+
+    cert_file = request.FILES.get('cert_file')
+    key_file = request.FILES.get('key_file')
+
+    if not cert_file:
+        messages.error(request, 'Debes subir tu certificado digital (.cert) para ejecutar.')
+        return redirect('registros:arco_detail', pk=pk)
+
+    if request.user.access_level == 2:
+        if not key_file:
+            messages.error(request, 'Debes subir tu llave privada (.key) para ejecutar.')
+            return redirect('registros:arco_detail', pk=pk)
+        cert_bytes = cert_file.read()
+        key_bytes = key_file.read()
+        if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
+            messages.error(request, 'Certificado o llave inválidos. Usa los archivos .cert y .key originales.')
+            return redirect('registros:arco_detail', pk=pk)
+    else:
+        # Admin: encrypted certificate
+        cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
+        if not validate_encrypted_certificate(request.user, cert_content):
+            messages.error(request, 'Certificado inválido. Revisa tu archivo.')
+            return redirect('registros:arco_detail', pk=pk)
+
+    # ── Extra restriction: Cancelación → Admin only ───────────────────────────
+    if arco.arco_type == ArcoRequest.ARCO_CANCELLATION and request.user.access_level > 1:
+        messages.error(request, 'Solo el Administrador puede ejecutar una Cancelación ARCO.')
+        return redirect('registros:arco_detail', pk=pk)
 
     notes = request.POST.get('notes', '')
+
+    # ── Sign closure ─────────────────────────────────────────────────────────
+    from .services import sign_action as _sign_action
+    action_sig = _sign_action(
+        subject_type='arco_request',
+        subject_id=arco.pk,
+        extra={
+            'case_id': arco.case_id,
+            'arco_type': arco.arco_type,
+            'registration_id': arco.registration_id,
+            'actor_id': request.user.pk,
+            'actor_role': request.user.access_level,
+            'executed_at': timezone.now().isoformat(),
+        },
+        signer=request.user,
+    )
+
+    # ── Type-specific action ──────────────────────────────────────────────────
+    if arco.arco_type == ArcoRequest.ARCO_ACCESS:
+        arco.executed_by = request.user
+        arco.executed_at = timezone.now()
+        pdf_bytes = _generate_access_pdf(arco)
+        from django.core.files.base import ContentFile
+        arco.generated_document.save(
+            f'{arco.case_id}_acceso.pdf',
+            ContentFile(pdf_bytes),
+            save=False,
+        )
+
+    elif arco.arco_type == ArcoRequest.ARCO_RECTIFICATION:
+        # Apply field changes from workflow payload if present
+        if arco.workflow_request and arco.workflow_request.payload:
+            payload = arco.workflow_request.payload
+            reg = arco.registration
+            import datetime
+            from django.db.models import DateField
+            date_fields = {f.name for f in reg._meta.get_fields() if isinstance(f, DateField)}
+            skip = {'arco_type', 'description'}
+            for field, value in payload.items():
+                if field in skip or not hasattr(reg, field):
+                    continue
+                if field in date_fields and isinstance(value, str):
+                    try:
+                        value = datetime.date.fromisoformat(value)
+                    except (ValueError, TypeError):
+                        continue
+                setattr(reg, field, value)
+            reg.save()
+
+    elif arco.arco_type == ArcoRequest.ARCO_CANCELLATION:
+        arco.registration.soft_delete(request.user)
+
+    elif arco.arco_type == ArcoRequest.ARCO_OPPOSITION:
+        reg = arco.registration
+        note = f'[ARCO Oposición {arco.case_id}] {notes or arco.description}'
+        reg.observations = (reg.observations + '\n' + note).strip() if reg.observations else note
+        reg.save(update_fields=['observations'])
+
+    # ── Finalize ─────────────────────────────────────────────────────────────
     arco.state = ArcoRequest.STATE_EXECUTED
     arco.executed_by = request.user
     arco.executed_at = timezone.now()
     arco.execution_notes = notes
-    arco.save(update_fields=['state', 'executed_by', 'executed_at', 'execution_notes'])
+    arco.action_signature = action_sig
+    arco.save(update_fields=[
+        'state', 'executed_by', 'executed_at', 'execution_notes',
+        'action_signature', 'generated_document',
+    ])
+
+    # Close linked ticket
+    if arco.ticket:
+        arco.ticket.status = Ticket.STATUS_CERRADO
+        arco.ticket.save(update_fields=['status', 'updated_at'])
+
+    # Notify requester
+    from .models import Notification
+    Notification.objects.create(
+        recipient=arco.requested_by,
+        workflow_request=arco.workflow_request,
+        message=(
+            f'Tu solicitud ARCO {arco.case_id} '
+            f'({arco.get_arco_type_display()}) fue ejecutada.'
+            + (f' Notas: {notes}' if notes else '')
+        ),
+    )
 
     _log(request.user, 'arco_request_executed',
-         f'ARCO#{arco.pk} {arco.get_arco_type_display()} ejecutado.', request=request)
+         f'{arco.case_id} {arco.get_arco_type_display()} | '
+         f'firma: {action_sig.message_hash[:16]}…',
+         request=request)
 
-    messages.success(request, f'Solicitud ARCO #{arco.pk} marcada como ejecutada.')
-    return redirect('registros:arco_list')
+    messages.success(request, f'Solicitud ARCO {arco.case_id} ejecutada y firmada.')
+    return redirect('registros:arco_detail', pk=pk)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(3)
+def arco_download(request, pk):
+    """Download the generated PDF for an Acceso ARCO case."""
+    arco = get_object_or_404(ArcoRequest, pk=pk)
+    user = request.user
+
+    if user.access_level == 3 and arco.requested_by != user:
+        messages.error(request, 'No tienes acceso a este documento.')
+        return redirect('registros:arco_list')
+
+    if not arco.generated_document:
+        raise Http404('No hay documento generado para esta solicitud.')
+
+    return FileResponse(
+        arco.generated_document.open('rb'),
+        as_attachment=True,
+        filename=f'{arco.case_id}_acceso.pdf',
+        content_type='application/pdf',
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
