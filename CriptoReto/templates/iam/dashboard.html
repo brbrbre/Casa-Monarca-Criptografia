@@ -1,78 +1,162 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap; margin-bottom:20px;">
+
+<style>
+  .stat-card {
+    border-radius: 14px;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .stat-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .stat-number { font-size: 28px; font-weight: 700; line-height: 1; }
+  .stat-label  { font-size: 13px; color: var(--cm-text-muted); margin-top: 3px; }
+  .avatar-circle {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--cm-primary);
+    color: #fff;
+    font-size: 12px; font-weight: 700;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-right: 8px;
+    flex-shrink: 0;
+    vertical-align: middle;
+  }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:20px;">
+  <div>
+    <h2>Colaboradores</h2>
+    <p style="color:var(--cm-text-muted);">Administración de identidades y acceso de Casa Monarca.</p>
+  </div>
+  <div class="inline-actions">
+    {% if request.user.access_level <= 2 %}
+      <a class="btn btn-light" href="{% url 'iam:user_add' %}"><i class="fa-solid fa-user-plus"></i> Alta de colaborador</a>
+      <a class="btn btn-light" href="{% url 'iam:audit_log' %}"><i class="fa-solid fa-clock-rotate-left"></i> Ver auditoría</a>
+      {% if pending_onboarding_count > 0 %}
+        <a class="btn btn-warning" href="{% url 'iam:pending_onboarding' %}">
+          <i class="fa-solid fa-bell"></i> Onboardings pendientes ({{ pending_onboarding_count }})
+        </a>
+      {% else %}
+        <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+
+<!-- Stat cards -->
+<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px;margin-bottom:20px;">
+  <div class="card stat-card" style="margin-bottom:0;">
+    <div class="stat-icon" style="background:var(--cm-info-bg);color:var(--cm-info);">
+      <i class="fa-solid fa-users"></i>
+    </div>
     <div>
-      <h2>Colaboradores</h2>
-      <p style="color:#555;">Administración de identidades y acceso de Casa Monarca.</p>
-    </div>
-    <div class="inline-actions">
-      {% if request.user.access_level <= 2 %}
-        <a class="btn btn-light" href="{% url 'iam:user_add' %}">+ Alta de colaborador</a>
-        <a class="btn" href="{% url 'iam:audit_log' %}">Ver auditoría</a>
-        {% if pending_onboarding_count > 0 %}
-          <a class="btn btn-warning" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes ({{ pending_onboarding_count }})</a>
-        {% else %}
-          <a class="btn btn-light" href="{% url 'iam:pending_onboarding' %}">Onboardings pendientes</a>
-        {% endif %}
-      {% endif %}
+      <div class="stat-number" style="color:var(--cm-info);">{{ stats.total }}</div>
+      <div class="stat-label">Total</div>
     </div>
   </div>
-
-  <div class="card" style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:14px; margin-bottom:20px;">
-    <div style="padding:14px;background:#f6f9ff;border-radius:12px;"><div style="color:#666;font-size:13px;">Total</div><div style="font-size:24px;font-weight:700;">{{ stats.total }}</div></div>
-    <div style="padding:14px;background:#f6fff6;border-radius:12px;"><div style="color:#666;font-size:13px;">Activos</div><div style="font-size:24px;font-weight:700;">{{ stats.active }}</div></div>
-    <div style="padding:14px;background:#fff7e8;border-radius:12px;"><div style="color:#666;font-size:13px;">Revocados</div><div style="font-size:24px;font-weight:700;">{{ stats.revoked }}</div></div>
-    <div style="padding:14px;background:#fbeaea;border-radius:12px;"><div style="color:#666;font-size:13px;">Eliminados</div><div style="font-size:24px;font-weight:700;">{{ stats.deleted }}</div></div>
+  <div class="card stat-card" style="margin-bottom:0;">
+    <div class="stat-icon" style="background:var(--cm-success-bg);color:var(--cm-success);">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <div>
+      <div class="stat-number" style="color:var(--cm-success);">{{ stats.active }}</div>
+      <div class="stat-label">Activos</div>
+    </div>
   </div>
-
-  {% if request.user.access_level <= 2 %}
-  <div class="card" style="margin-bottom:20px;">
-    <form method="get" style="display:grid;grid-template-columns:1fr 180px 140px 140px;gap:12px;align-items:end;">
-      <div class="field-group"><label>Buscar</label>{{ form.query }}</div>
-      {% if request.user.access_level == 1 %}
-      <div class="field-group"><label>Área</label>{{ form.area }}</div>
-      {% endif %}
-      <div class="field-group"><label>Nivel</label>{{ form.access_level }}</div>
-      <div class="field-group"><label>Estado</label>{{ form.status }}</div>
-      <div style="grid-column: span 4; text-align:right;"><button class="btn btn-light" type="submit">Filtrar</button></div>
-    </form>
+  <div class="card stat-card" style="margin-bottom:0;">
+    <div class="stat-icon" style="background:var(--cm-warning-bg);color:var(--cm-warning);">
+      <i class="fa-solid fa-ban"></i>
+    </div>
+    <div>
+      <div class="stat-number" style="color:var(--cm-warning);">{{ stats.revoked }}</div>
+      <div class="stat-label">Revocados</div>
+    </div>
   </div>
-  {% endif %}
+  <div class="card stat-card" style="margin-bottom:0;">
+    <div class="stat-icon" style="background:var(--cm-danger-bg);color:var(--cm-danger);">
+      <i class="fa-solid fa-user-slash"></i>
+    </div>
+    <div>
+      <div class="stat-number" style="color:var(--cm-danger);">{{ stats.deleted }}</div>
+      <div class="stat-label">Eliminados</div>
+    </div>
+  </div>
+</div>
 
-  <div class="card">
-    <table class="table">
-      <thead>
+{% if pending_onboarding_count > 0 %}
+<div style="background:#FFFBEA;border:1px solid var(--cm-accent);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:14px;color:var(--cm-warning);display:flex;align-items:center;gap:10px;">
+  <i class="fa-solid fa-bell"></i>
+  <span>Hay <strong>{{ pending_onboarding_count }}</strong> onboarding{{ pending_onboarding_count|pluralize:",s" }} pendiente{{ pending_onboarding_count|pluralize:",s" }} de revisión.</span>
+  <a href="{% url 'iam:pending_onboarding' %}" style="margin-left:auto;color:var(--cm-warning);font-weight:600;text-decoration:underline;">Revisar</a>
+</div>
+{% endif %}
+
+{% if request.user.access_level <= 2 %}
+<div class="card" style="margin-bottom:20px;">
+  <form method="get" style="display:grid;grid-template-columns:1fr 180px 140px 140px;gap:12px;align-items:end;">
+    <div class="field-group"><label>Buscar</label>{{ form.query }}</div>
+    {% if request.user.access_level == 1 %}
+    <div class="field-group"><label>Área</label>{{ form.area }}</div>
+    {% endif %}
+    <div class="field-group"><label>Nivel</label>{{ form.access_level }}</div>
+    <div class="field-group"><label>Estado</label>{{ form.status }}</div>
+    <div style="grid-column:span 4;text-align:right;">
+      <button class="btn btn-light btn-sm" type="submit"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Rol</th>
+        <th>Área</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for collaborator in collaborators %}
         <tr>
-          <th>Nombre</th>
-          <th>Rol</th>
-          <th>Área</th>
-          <th>Estado</th>
-          <th>Acciones</th>
+          <td>
+            <div style="display:flex;align-items:center;">
+              <span class="avatar-circle">{{ collaborator.get_full_name|default:collaborator.username|slice:":2"|upper }}</span>
+              <div>
+                <div>{{ collaborator.get_full_name|default:collaborator.username }}
+                  {% if collaborator.admin_type %}
+                    <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;vertical-align:middle;{% if collaborator.admin_type == 'production' %}background:var(--cm-success-bg);color:var(--cm-success);{% else %}background:var(--cm-warning-bg);color:var(--cm-warning);{% endif %}">
+                      {{ collaborator.get_admin_type_display }}
+                    </span>
+                  {% endif %}
+                </div>
+                <small style="color:var(--cm-text-muted);font-size:12px;">{{ collaborator.email }}</small>
+              </div>
+            </div>
+          </td>
+          <td>{{ collaborator.role }}</td>
+          <td>{{ collaborator.area }}</td>
+          <td>
+            <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">
+              {{ collaborator.status_label }}
+            </span>
+          </td>
+          <td><a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light btn-sm">Ver</a></td>
         </tr>
-      </thead>
-      <tbody>
-        {% for collaborator in collaborators %}
-          <tr>
-            <td>
-              {{ collaborator.get_full_name|default:collaborator.username }}
-              {% if collaborator.admin_type %}
-                <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;vertical-align:middle;{% if collaborator.admin_type == 'production' %}background:#e8f5e9;color:#1b5e20;{% else %}background:#fff3e0;color:#e65100;{% endif %}">
-                  {{ collaborator.get_admin_type_display }}
-                </span>
-              {% endif %}
-              <br><small>{{ collaborator.email }}</small>
-            </td>
-            <td>{{ collaborator.role }}</td>
-            <td>{{ collaborator.area }}</td>
-            <td>
-              <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">{{ collaborator.status_label }}</span>
-            </td>
-            <td><a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Ver</a></td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5">No hay colaboradores registrados.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+      {% empty %}
+        <tr><td colspan="5" style="text-align:center;color:var(--cm-text-muted);padding:32px;">No hay colaboradores registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
 {% endblock %}

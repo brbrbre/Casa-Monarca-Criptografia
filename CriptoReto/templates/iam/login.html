@@ -6,34 +6,45 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Casa Monarca — Iniciar sesión</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
-    *,
-    *::before,
-    *::after {
-      box-sizing: border-box;
+    :root {
+      --cm-primary:    #C0392B;
+      --cm-secondary:  #E8603C;
+      --cm-accent:     #F4A460;
+      --cm-bg:         #FFF8F5;
+      --cm-surface:    #FFFFFF;
+      --cm-border:     #EDD5CC;
+      --cm-text:       #1A1A1A;
+      --cm-text-muted: #6B5E58;
+      --cm-info:       #1565C0;
+      --cm-info-bg:    #E3F2FD;
+      --cm-danger:     #B71C1C;
+      --cm-danger-bg:  #FFEBEE;
+      --cm-success:    #2E7D32;
+      --cm-success-bg: #E8F5E9;
+      --cm-warning-bg: #FFF3E0;
     }
-
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      background: #fff0e9;
+      background: linear-gradient(135deg, var(--cm-bg) 0%, #FFE8E0 100%);
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 24px;
     }
-
     .login-card {
       width: 100%;
-      max-width: 440px;
-      background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.09);
+      max-width: 420px;
+      background: var(--cm-surface);
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(192, 57, 43, 0.12);
       overflow: hidden;
     }
-
     .login-header {
-      background: #ad2b4e;
+      background: var(--cm-primary);
       padding: 28px 32px 22px;
       color: #fff;
       display: flex;
@@ -41,75 +52,34 @@
       align-items: center;
       text-align: center;
     }
+    .login-header img { max-height: 72px; width: auto; display: block; margin-bottom: 10px; }
+    .login-header p { margin: 0; font-size: 13px; color: rgba(255,255,255,0.8); }
 
-    .login-header h1 {
-      margin: 0 0 4px;
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-
-    .login-header img {
-      max-height: 100px;
-      width: auto;
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .login-header p {
-      margin: 0;
-      font-size: 13px;
-      color: #fff0e9;
-    }
-
-    .login-body {
-      padding: 26px 32px 30px;
-    }
+    .login-body { padding: 26px 32px 30px; }
 
     .message {
       padding: 11px 14px;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-bottom: 14px;
       font-size: 13.5px;
       line-height: 1.45;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
+    .message-error  { background: var(--cm-danger-bg);  border: 1px solid #FFCDD2; color: var(--cm-danger); }
+    .message-info   { background: var(--cm-info-bg);    border: 1px solid #90CAF9; color: var(--cm-info); }
+    .message-success{ background: var(--cm-success-bg); border: 1px solid #A5D6A7; color: var(--cm-success); }
+    .message-warning{ background: var(--cm-warning-bg); border: 1px solid #FFCC80; color: #E65100; }
 
-    .message-error {
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-      color: #991b1b;
-    }
-
-    .message-info {
-      background: #eff6ff;
-      border: 1px solid #93c5fd;
-      color: #1e40af;
-    }
-
-    .message-success {
-      background: #f0fdf4;
-      border: 1px solid #86efac;
-      color: #166534;
-    }
-
-    .message-warning {
-      background: #fffbeb;
-      border: 1px solid #fcd34d;
-      color: #92400e;
-    }
-
-    .field-group {
-      margin-bottom: 14px;
-    }
-
+    .field-group { margin-bottom: 14px; position: relative; }
     label {
       display: block;
       font-size: 13px;
       font-weight: 600;
-      color: #374151;
+      color: var(--cm-text-muted);
       margin-bottom: 5px;
     }
-
     .badge {
       display: inline-block;
       font-size: 10px;
@@ -121,70 +91,37 @@
       text-transform: uppercase;
       letter-spacing: 0.3px;
     }
-
-    .badge-required {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .badge-optional {
-      background: #ecfdf5;
-      color: #065f46;
-    }
+    .badge-required { background: var(--cm-danger-bg); color: var(--cm-danger); }
+    .badge-optional { background: var(--cm-success-bg); color: var(--cm-success); }
 
     input[type="text"],
     input[type="password"],
     input[type="file"] {
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
+      border: 1px solid var(--cm-border);
+      border-radius: 10px;
       font-size: 14px;
-      color: #111827;
-      background: #fff;
+      color: var(--cm-text);
+      background: var(--cm-surface);
       transition: border-color .15s, box-shadow .15s;
     }
-
-    input[type="file"] {
-      padding: 8px 10px;
-      cursor: pointer;
-    }
-
+    input[type="file"] { padding: 8px 10px; cursor: pointer; }
     input:focus {
       outline: none;
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
+      border-color: var(--cm-secondary);
+      box-shadow: 0 0 0 3px rgba(232, 96, 60, 0.12);
     }
+    .field-hint { font-size: 12px; color: var(--cm-text-muted); margin-top: 4px; line-height: 1.4; }
 
-    .field-hint {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
-      line-height: 1.4;
-    }
+    .divider { border: none; border-top: 1px solid var(--cm-border); margin: 18px 0; }
 
-    .divider {
-      border: none;
-      border-top: 1px solid #e5e7eb;
-      margin: 18px 0;
-    }
-
-    .cert-section {
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
+    .cert-section { border-radius: 12px; padding: 16px; margin-bottom: 16px; }
     .cert-section-coordinator {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
+      background: var(--cm-info-bg);
+      border: 1px solid rgba(21, 101, 192, 0.25);
     }
-
-    .cert-section-admin {
-      background: #fafafa;
-      border: 1px solid #e5e7eb;
-    }
-
+    .cert-section-admin { background: var(--cm-bg); border: 1px solid var(--cm-border); }
     .cert-section-title {
       font-size: 13px;
       font-weight: 700;
@@ -193,23 +130,14 @@
       align-items: center;
       gap: 7px;
     }
-
-    .cert-section-title.coord-title {
-      color: #1d4ed8;
-    }
-
-    .cert-section-title.admin-title {
-      color: #374151;
-    }
-
-    .cert-section .field-group:last-child {
-      margin-bottom: 0;
-    }
+    .cert-section-title.coord-title { color: var(--cm-info); }
+    .cert-section-title.admin-title { color: var(--cm-text-muted); }
+    .cert-section .field-group:last-child { margin-bottom: 0; }
 
     .btn-submit {
       width: 100%;
       padding: 12px 16px;
-      background: #ad2b4e;
+      background: var(--cm-primary);
       color: #fff;
       border: none;
       border-radius: 10px;
@@ -219,47 +147,18 @@
       transition: background .15s;
       margin-top: 2px;
     }
+    .btn-submit:hover { background: var(--cm-secondary); }
+    .btn-submit:disabled { background: #9ca3af; cursor: not-allowed; }
 
-    .btn-submit:hover {
-      background: #243460;
-    }
-
-    .btn-submit:disabled {
-      background: #9ca3af;
-      cursor: not-allowed;
-    }
-
-    .recovery-link {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 13px;
-    }
-
-    .recovery-link a {
-      color: #6b7280;
-      text-decoration: none;
-    }
-
-    .recovery-link a:hover {
-      color: #374151;
-      text-decoration: underline;
-    }
+    .recovery-link { text-align: center; margin-top: 16px; font-size: 13px; }
+    .recovery-link a { color: var(--cm-text-muted); text-decoration: none; }
+    .recovery-link a:hover { color: var(--cm-text); text-decoration: underline; }
 
     @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-6px);
-      }
-
-      to {
-        opacity: 1;
-        transform: none;
-      }
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: none; }
     }
-
-    .fade-in {
-      animation: fadeIn .22s ease;
-    }
+    .fade-in { animation: fadeIn .22s ease; }
   </style>
 </head>
 
@@ -273,6 +172,7 @@
 
       {% if blocked %}
       <div class="message message-error">
+        <i class="fa-solid fa-ban"></i>
         Se ha superado el límite de intentos fallidos. Intenta de nuevo después de 15 minutos.
       </div>
       {% endif %}
@@ -301,7 +201,7 @@
 
         <hr class="divider">
 
-        <!-- Sección niveles 1 y 2: .cert + .key obligatorios (mismo formato RSA) -->
+        <!-- Sección niveles 1 y 2: .cert + .key obligatorios -->
         <div id="coordCertSection" class="cert-section cert-section-coordinator fade-in" style="display:none;">
           <p class="cert-section-title coord-title">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">

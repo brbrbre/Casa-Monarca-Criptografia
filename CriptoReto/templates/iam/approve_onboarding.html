@@ -1,40 +1,42 @@
 {% extends 'base.html' %}
 {% block content %}
-<div style="max-width: 760px; margin: 0 auto;">
+<div style="max-width:760px;margin:0 auto;">
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <div>
         <h2>Revisar onboarding</h2>
-        <p style="color:#555;">Revisa la información del colaborador antes de aprobar su acceso al sistema.</p>
+        <p style="color:var(--cm-text-muted);">Revisa la información del colaborador antes de aprobar su acceso al sistema.</p>
       </div>
       <div class="inline-actions">
-        <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">Volver</a>
+        <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">← Volver</a>
       </div>
     </div>
 
     {# ── Completeness guard ── #}
     {% if not can_approve %}
-    <div style="background:#fdeaea; border:1px solid #f5c6cb; border-radius:8px; padding:14px 18px; margin-bottom:20px;">
-      <strong style="color:#b71c1c;">No se puede aprobar aún.</strong>
-      <p style="margin:6px 0 0; color:#7f1d1d; font-size:14px;">
+    <div style="background:var(--cm-danger-bg);border:1px solid #FFCDD2;border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+      <strong style="color:var(--cm-danger);"><i class="fa-solid fa-circle-xmark"></i> No se puede aprobar aún.</strong>
+      <p style="margin:6px 0 0;color:var(--cm-danger);font-size:14px;">
         El colaborador debe completar su onboarding antes de poder ser aprobado. Campos pendientes:
       </p>
-      <ul style="margin:8px 0 0 18px; color:#7f1d1d; font-size:14px; padding:0;">
-        {% for field in missing_fields %}<li>{{ field }}</li>{% endfor %}
+      <ul style="margin:8px 0 0 18px;color:var(--cm-danger);font-size:14px;padding:0;">
+        {% for field in missing_fields %}
+        <li><i class="fa-solid fa-xmark" style="font-size:11px;margin-right:4px;"></i>{{ field }}</li>
+        {% endfor %}
       </ul>
     </div>
     {% endif %}
 
     {# ── Identity info ── #}
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;">
       <div>
-        <h3 style="margin-bottom:12px; font-size:15px; color:#333;">Datos del colaborador</h3>
+        <h3 style="margin-bottom:12px;font-size:15px;color:var(--cm-text);">Datos del colaborador</h3>
         <p><strong>Usuario:</strong> {{ collaborator.username }}</p>
         <p><strong>Nombre:</strong>
           {% if collaborator.first_name or collaborator.last_name %}
             {{ collaborator.get_full_name }}
           {% else %}
-            <span style="color:#999;">— sin completar —</span>
+            <span style="color:var(--cm-text-muted);">— sin completar —</span>
           {% endif %}
         </p>
         <p><strong>Email:</strong> {{ collaborator.email }}</p>
@@ -44,7 +46,7 @@
         <p><strong>Rol:</strong> {{ collaborator.role|default:'—' }}</p>
       </div>
       <div>
-        <h3 style="margin-bottom:12px; font-size:15px; color:#333;">Estado de onboarding</h3>
+        <h3 style="margin-bottom:12px;font-size:15px;color:var(--cm-text);">Estado de onboarding</h3>
         <p><strong>Estado:</strong>
           <span class="status-pill {% if collaborator.onboarding_status == 'submitted' %}status-active{% elif collaborator.onboarding_status == 'pending' %}status-inactive{% else %}status-revoked{% endif %}">
             {{ collaborator.get_onboarding_status_display }}
@@ -54,20 +56,20 @@
         {% if collaborator.onboarding_submitted_at %}
           <p><strong>Formulario enviado el:</strong> {{ collaborator.onboarding_submitted_at|date:'d/m/Y H:i' }}</p>
         {% else %}
-          <p><strong>Formulario enviado:</strong> <span style="color:#999;">No enviado aún</span></p>
+          <p><strong>Formulario enviado:</strong> <span style="color:var(--cm-text-muted);">No enviado aún</span></p>
         {% endif %}
         <p><strong>INE cargada:</strong>
           {% if collaborator.official_id_document %}
-            <a href="{{ collaborator.official_id_document.url }}" target="_blank" style="color:#1565c0;">Ver documento</a>
+            <a href="{{ collaborator.official_id_document.url }}" target="_blank" style="color:var(--cm-info);">Ver documento</a>
           {% else %}
-            <span style="color:#b71c1c;">No cargada</span>
+            <span style="color:var(--cm-danger);"><i class="fa-solid fa-xmark"></i> No cargada</span>
           {% endif %}
         </p>
         <p><strong>Pregunta de seguridad:</strong>
           {% if collaborator.security_question %}
-            <span style="color:#2e7d32;"><i class="fa-solid fa-check"></i> Configurada</span>
+            <span style="color:var(--cm-success);"><i class="fa-solid fa-check"></i> Configurada</span>
           {% else %}
-            <span style="color:#b71c1c;">No configurada</span>
+            <span style="color:var(--cm-danger);"><i class="fa-solid fa-xmark"></i> No configurada</span>
           {% endif %}
         </p>
         {# NEVER show security_question text, security_answer, or security_answer_hash #}
@@ -76,53 +78,48 @@
 
     {# ── Approval form ── #}
     {% if can_approve %}
-    <div style="background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:14px; color:#1b5e20;">
-      <strong>El onboarding está completo.</strong>
-      {% if collaborator.access_level <= 2 %}
-        Al aprobar, se emitirá el certificado (.cert) y la llave privada (.key) automáticamente.
-        El usuario deberá descargar ambos archivos al iniciar sesión.
-      {% else %}
-        Al aprobar, el usuario podrá acceder al sistema de inmediato.
-      {% endif %}
+    <div style="background:var(--cm-success-bg);border:1px solid var(--cm-success);border-radius:10px;padding:14px 18px;margin-bottom:20px;font-size:14px;color:var(--cm-success);display:flex;align-items:flex-start;gap:10px;">
+      <i class="fa-solid fa-circle-check" style="margin-top:2px;"></i>
+      <div>
+        <strong>El onboarding está completo.</strong>
+        {% if collaborator.access_level <= 2 %}
+          Al aprobar, se emitirá el certificado (.cert) y la llave privada (.key) automáticamente.
+          El usuario deberá descargar ambos archivos al iniciar sesión.
+        {% else %}
+          Al aprobar, el usuario podrá acceder al sistema de inmediato.
+        {% endif %}
+      </div>
     </div>
 
-    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404;">
+    <div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:10px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:var(--cm-warning);display:flex;align-items:center;gap:8px;">
+      <i class="fa-solid fa-lock"></i>
       <strong>Firma requerida:</strong> Para aprobar este onboarding debes firmar con tu certificado institucional.
     </div>
 
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
-      <div style="display:grid; gap:14px; margin-bottom:20px;">
-        <div>
-          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_password">
-            Tu contraseña <span style="color:#b71c1c;">*</span>
-          </label>
-          <input type="password" name="password" id="id_approve_password" required
-                 style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+      <div style="display:grid;gap:14px;margin-bottom:20px;">
+        <div class="field-group">
+          <label for="id_approve_password">Tu contraseña <span style="color:var(--cm-danger);">*</span></label>
+          <input type="password" name="password" id="id_approve_password" required>
         </div>
-        <div>
-          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_cert">
-            Tu certificado (.cert) <span style="color:#b71c1c;">*</span>
-          </label>
-          <input type="file" name="cert_file" id="id_approve_cert" accept=".cert,.pem" required
-                 style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        <div class="field-group">
+          <label for="id_approve_cert">Tu certificado (.cert) <span style="color:var(--cm-danger);">*</span></label>
+          <input type="file" name="cert_file" id="id_approve_cert" accept=".cert,.pem" required>
         </div>
-        <div>
-          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_key">
-            Tu llave privada (.key) <span style="color:#b71c1c;">*</span>
-          </label>
-          <input type="file" name="key_file" id="id_approve_key" accept=".key" required
-                 style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        <div class="field-group">
+          <label for="id_approve_key">Tu llave privada (.key) <span style="color:var(--cm-danger);">*</span></label>
+          <input type="file" name="key_file" id="id_approve_key" accept=".key" required>
         </div>
       </div>
       <div class="inline-actions">
-        <button type="submit" class="btn">Aprobar onboarding</button>
+        <button type="submit" class="btn"><i class="fa-solid fa-clipboard-check"></i> Aprobar onboarding</button>
         <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">Cancelar</a>
       </div>
     </form>
     {% else %}
     <div class="inline-actions">
-      <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">Volver a la lista</a>
+      <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">← Volver a la lista</a>
     </div>
     {% endif %}
   </div>

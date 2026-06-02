@@ -4,22 +4,99 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Casa Monarca — Pregunta de seguridad</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
   <style>
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; display: flex; min-height: 100vh; align-items: center; justify-content: center; }
-    .card { width: 420px; background: #fff; padding: 28px; border: 1px solid #ddd; border-radius: 16px; box-shadow: 0 12px 40px rgba(0,0,0,0.05); }
-    h1 { font-size: 22px; margin-bottom: 6px; }
-    p { color: #555; margin-bottom: 18px; font-size: 14px; }
-    label { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 500; }
-    input, select { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 10px; margin-bottom: 14px; font-size: 14px; box-sizing: border-box; }
-    .btn { display: block; width: 100%; padding: 12px 14px; border: none; background: #111; color: #fff; border-radius: 10px; cursor: pointer; font-size: 15px; }
-    .btn:hover { background: #333; }
-    .notice { background: #fff8e1; border: 1px solid #ffe082; color: #7a5c00; padding: 12px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
-    .message { padding: 12px; border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
-    .message-success { background: #e8f5e9; border: 1px solid #c8e6c9; color: #1b5e20; }
-    .message-error { background: #fdeaea; border: 1px solid #f5c7c7; color: #8e1f1f; }
-    .back { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: #555; text-decoration: none; }
-    .back:hover { color: #111; }
-    .errorlist { list-style: none; padding: 0; margin: 0 0 10px; color: #8e1f1f; font-size: 13px; }
+    :root {
+      --cm-primary:    #C0392B;
+      --cm-secondary:  #E8603C;
+      --cm-bg:         #FFF8F5;
+      --cm-surface:    #FFFFFF;
+      --cm-border:     #EDD5CC;
+      --cm-text:       #1A1A1A;
+      --cm-text-muted: #6B5E58;
+      --cm-danger:     #B71C1C;
+      --cm-danger-bg:  #FFEBEE;
+      --cm-success:    #2E7D32;
+      --cm-success-bg: #E8F5E9;
+      --cm-warning-bg: #FFF3E0;
+      --cm-accent:     #F4A460;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, var(--cm-bg) 0%, #FFE8E0 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--cm-surface);
+      padding: 32px;
+      border: 1px solid var(--cm-border);
+      border-radius: 20px;
+      box-shadow: 0 8px 40px rgba(192,57,43,0.10);
+    }
+    h1 { font-size: 22px; margin-bottom: 6px; color: var(--cm-text); }
+    p  { color: var(--cm-text-muted); margin-bottom: 18px; font-size: 14px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--cm-text-muted);
+      margin-bottom: 5px;
+    }
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--cm-border);
+      border-radius: 10px;
+      margin-bottom: 14px;
+      font-size: 14px;
+      background: var(--cm-surface);
+      color: var(--cm-text);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--cm-secondary);
+      box-shadow: 0 0 0 3px rgba(232,96,60,0.12);
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 12px 14px;
+      border: none;
+      background: var(--cm-primary);
+      color: #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    .btn:hover { background: var(--cm-secondary); }
+    .notice {
+      background: var(--cm-warning-bg);
+      border: 1px solid var(--cm-accent);
+      color: var(--cm-text-muted);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .message { padding: 12px 16px; border-radius: 10px; margin-bottom: 12px; font-size: 14px; }
+    .message-success { background: var(--cm-success-bg); border: 1px solid #A5D6A7; color: var(--cm-success); }
+    .message-error   { background: var(--cm-danger-bg);  border: 1px solid #FFCDD2; color: var(--cm-danger); }
+    .back { display: block; text-align: center; margin-top: 16px; font-size: 13px; color: var(--cm-text-muted); text-decoration: none; }
+    .back:hover { color: var(--cm-text); }
+    .errorlist { list-style: none; padding: 0; margin: 0 0 10px; color: var(--cm-danger); font-size: 13px; }
   </style>
 </head>
 <body>
@@ -34,7 +111,10 @@
     {% endif %}
 
     {% if already_set %}
-      <div class="notice">Ya tienes una pregunta de seguridad configurada. Puedes cambiarla aquí.</div>
+      <div class="notice">
+        <i class="fa-solid fa-circle-info"></i>
+        Ya tienes una pregunta de seguridad configurada. Puedes cambiarla aquí.
+      </div>
     {% endif %}
 
     <form method="post">
@@ -56,7 +136,7 @@
         <ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>
       {% endif %}
 
-      <button class="btn" type="submit">Guardar pregunta</button>
+      <button class="btn" type="submit"><i class="fa-solid fa-shield-halved"></i> Guardar pregunta</button>
     </form>
 
     <a class="back" href="{% url 'iam:dashboard' %}">← Volver al panel</a>

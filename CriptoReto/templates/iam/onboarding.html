@@ -1,49 +1,64 @@
 {% extends 'base.html' %}
 {% block content %}
-<div style="max-width: 760px; margin: 0 auto;">
+<div style="max-width:760px;margin:0 auto;">
 
 {% if onboarding_state == 'relogin_needed' %}
-<div class="card" style="text-align:center; padding: 40px 32px;">
-  <div style="font-size:48px; margin-bottom:16px; color:#ad2b4e;"><i class="fa-solid fa-shield-halved"></i></div>
+<div class="card" style="text-align:center;padding:40px 32px;">
+  <div style="width:72px;height:72px;border-radius:50%;background:var(--cm-primary);color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <i class="fa-solid fa-shield-halved"></i>
+  </div>
   <h2 style="margin-bottom:12px;">Credenciales descargadas correctamente</h2>
-  <p style="color:#555; margin-bottom:24px; max-width:520px; margin-left:auto; margin-right:auto;">
+  <p style="color:var(--cm-text-muted);margin-bottom:24px;max-width:520px;margin-left:auto;margin-right:auto;">
     Has descargado tu <strong>certificado digital (.cert)</strong> y tu <strong>llave privada (.key)</strong>.
     Por seguridad, debes cerrar tu sesión e iniciar sesión nuevamente con estos archivos para acceder a la plataforma.
   </p>
-  <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; color:#856404; text-align:left;">
-    <strong>Importante:</strong> Guarda ambos archivos en un lugar seguro. Los necesitarás en cada inicio de sesión como coordinador. No los compartas con nadie.
+  <div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:10px;padding:14px 18px;margin-bottom:28px;font-size:14px;color:var(--cm-warning);text-align:left;display:flex;align-items:flex-start;gap:10px;">
+    <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;"></i>
+    <span><strong>Importante:</strong> Guarda ambos archivos en un lugar seguro. Los necesitarás en cada inicio de sesión como coordinador. No los compartas con nadie.</span>
   </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:24px;">
+    <div style="width:28px;height:28px;border-radius:50%;background:var(--cm-primary);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;">1</div>
+    <span style="font-size:13px;">Descarga ambos archivos</span>
+    <span style="color:var(--cm-border);">→</span>
+    <div style="width:28px;height:28px;border-radius:50%;background:var(--cm-primary);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;">2</div>
+    <span style="font-size:13px;">Cierra sesión e inicia con ellos</span>
+  </div>
+
   <a href="{% url 'iam:logout' %}" class="btn" style="min-width:200px;">Cerrar sesión e ir al inicio</a>
 </div>
 
 {% elif onboarding_state == 'submitted' %}
-<div class="card" style="text-align:center; padding: 40px 32px;">
-  <div style="font-size:48px; margin-bottom:16px; color:#ad2b4e;"><i class="fa-solid fa-hourglass-half"></i></div>
+<div class="card" style="text-align:center;padding:40px 32px;">
+  <div style="width:72px;height:72px;border-radius:50%;background:var(--cm-warning-bg);color:var(--cm-warning);font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <i class="fa-solid fa-hourglass-half"></i>
+  </div>
   <h2 style="margin-bottom:12px;">Onboarding enviado</h2>
-  <p style="color:#555; margin-bottom:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+  <p style="color:var(--cm-text-muted);margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto;">
     Tu información fue recibida correctamente.
   </p>
   {% if submitted_at %}
-  <p style="color:#555; margin-bottom:16px; max-width:520px; margin-left:auto; margin-right:auto;">
+  <p style="color:var(--cm-text-muted);margin-bottom:16px;max-width:520px;margin-left:auto;margin-right:auto;">
     El formulario se envió el <strong>{{ submitted_at|date:'d/m/Y \a \l\a\s H:i' }}</strong>.
   </p>
   {% endif %}
-  <p style="color:#555; margin-bottom:28px; max-width:520px; margin-left:auto; margin-right:auto;">
+  <p style="color:var(--cm-text-muted);margin-bottom:28px;max-width:520px;margin-left:auto;margin-right:auto;">
     El administrador revisará tu información y te notificará cuando tu cuenta haya sido aprobada.
     {% if is_coordinator %}
     Una vez aprobado, podrás descargar tus archivos de firma digital (.cert y .key).
     {% endif %}
   </p>
-  <div style="background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:14px 18px; margin-bottom:28px; font-size:14px; color:#2e7d32; text-align:left;">
-    <strong>¿Qué sigue?</strong> No es necesario que hagas nada más. Espera la revisión del administrador. Puedes cerrar sesión y volver más tarde.
+  <div style="background:var(--cm-success-bg);border:1px solid #A5D6A7;border-radius:10px;padding:14px 18px;margin-bottom:28px;font-size:14px;color:var(--cm-success);text-align:left;display:flex;align-items:flex-start;gap:10px;">
+    <i class="fa-solid fa-circle-check" style="margin-top:2px;"></i>
+    <span><strong>¿Qué sigue?</strong> No es necesario que hagas nada más. Espera la revisión del administrador. Puedes cerrar sesión y volver más tarde.</span>
   </div>
   <a href="{% url 'iam:logout' %}" class="btn btn-light" style="min-width:200px;">Cerrar sesión</a>
 </div>
 
 {% elif onboarding_state == 'download' %}
-<div class="card" style="padding: 32px;">
+<div class="card" style="padding:32px;">
   <h2 style="margin-bottom:8px;">Tu cuenta ha sido aprobada</h2>
-  <p style="color:#555; margin-bottom:24px;">
+  <p style="color:var(--cm-text-muted);margin-bottom:24px;">
     {% if is_coordinator %}
     Debes descargar <strong>ambos archivos</strong> de firma digital antes de poder acceder al sistema. Guárdalos en un lugar seguro; los necesitarás en cada inicio de sesión.
     {% else %}
@@ -52,53 +67,51 @@
   </p>
 
   {% if is_coordinator %}
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px;">
+  <style>
+    .dl-card { padding:24px; border-radius:16px; border:2px solid var(--cm-border); background:var(--cm-bg); text-align:center; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+    .dl-card-done { border-color:#A5D6A7; background:var(--cm-success-bg); }
+  </style>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
 
-    {% if cert_file_downloaded %}
-    <div style="padding:20px; border-radius:10px; border:2px solid #a5d6a7; background:#e8f5e9; text-align:center;">
-    {% else %}
-    <div style="padding:20px; border-radius:10px; border:2px solid #dce9ff; background:#f6f9ff; text-align:center;">
-    {% endif %}
-      <div style="font-size:32px; margin-bottom:8px; color:#1565c0;"><i class="fa-solid fa-file-lines"></i></div>
-      <p style="font-weight:600; margin-bottom:4px;">Certificado digital</p>
-      <p style="font-size:12px; color:#666; margin-bottom:12px;">{{ certificate_filename }}</p>
+    <div class="dl-card {% if cert_file_downloaded %}dl-card-done{% endif %}">
+      <div style="font-size:36px;margin-bottom:12px;color:var(--cm-info);"><i class="fa-solid fa-file-lines"></i></div>
+      <p style="font-weight:600;margin-bottom:4px;">Certificado digital</p>
+      <p style="font-size:12px;color:var(--cm-text-muted);margin-bottom:12px;">{{ certificate_filename }}</p>
       {% if cert_file_downloaded %}
-      <span style="display:inline-block; padding:4px 10px; border-radius:20px; background:#c8e6c9; color:#1b5e20; font-size:12px; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Descargado</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:#C8E6C9;color:var(--cm-success);font-size:12px;font-weight:600;"><i class="fa-solid fa-circle-check"></i> Descargado</span>
       {% else %}
-      <a href="{% url 'iam:onboarding_download' %}" class="btn" style="width:100%; display:block;">Descargar .cert</a>
+      <a href="{% url 'iam:onboarding_download' %}" class="btn" style="width:100%;display:block;">Descargar .cert</a>
       {% endif %}
     </div>
 
-    {% if key_file_downloaded %}
-    <div style="padding:20px; border-radius:10px; border:2px solid #a5d6a7; background:#e8f5e9; text-align:center;">
-    {% else %}
-    <div style="padding:20px; border-radius:10px; border:2px solid #dce9ff; background:#f6f9ff; text-align:center;">
-    {% endif %}
-      <div style="font-size:32px; margin-bottom:8px; color:#555;"><i class="fa-solid fa-key"></i></div>
-      <p style="font-weight:600; margin-bottom:4px;">Llave privada</p>
-      <p style="font-size:12px; color:#666; margin-bottom:12px;">{{ request.user.username }}.key</p>
+    <div class="dl-card {% if key_file_downloaded %}dl-card-done{% endif %}">
+      <div style="font-size:36px;margin-bottom:12px;color:var(--cm-text-muted);"><i class="fa-solid fa-key"></i></div>
+      <p style="font-weight:600;margin-bottom:4px;">Llave privada</p>
+      <p style="font-size:12px;color:var(--cm-text-muted);margin-bottom:12px;">{{ request.user.username }}.key</p>
       {% if key_file_downloaded %}
-      <span style="display:inline-block; padding:4px 10px; border-radius:20px; background:#c8e6c9; color:#1b5e20; font-size:12px; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Descargada</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:#C8E6C9;color:var(--cm-success);font-size:12px;font-weight:600;"><i class="fa-solid fa-circle-check"></i> Descargada</span>
       {% else %}
-      <a href="{% url 'iam:onboarding_key_download' %}" class="btn btn-light" style="width:100%; display:block;">Descargar .key</a>
+      <a href="{% url 'iam:onboarding_key_download' %}" class="btn btn-light" style="width:100%;display:block;">Descargar .key</a>
       {% endif %}
     </div>
 
   </div>
 
   {% if not cert_file_downloaded or not key_file_downloaded %}
-  <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; font-size:13px; color:#856404; margin-bottom:16px;">
-    Debes descargar <strong>ambos archivos</strong> para completar el proceso. Una vez descargados, se te pedirá cerrar sesión e iniciar sesión nuevamente.
+  <div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--cm-warning);margin-bottom:16px;display:flex;align-items:flex-start;gap:8px;">
+    <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;"></i>
+    <span>Debes descargar <strong>ambos archivos</strong> para completar el proceso. Una vez descargados, se te pedirá cerrar sesión e iniciar sesión nuevamente.</span>
   </div>
   {% endif %}
 
   {% else %}
   {% if cert_available %}
-  <div style="text-align:center; padding:24px;">
+  <div style="text-align:center;padding:24px;">
     <a href="{% url 'iam:onboarding_download' %}" class="btn" style="min-width:220px;">Descargar {{ certificate_filename }}</a>
   </div>
   {% else %}
-  <div style="background:#fdeaea; border:1px solid #f5c6cb; border-radius:8px; padding:14px; color:#b71c1c;">
+  <div style="background:var(--cm-danger-bg);border:1px solid #FFCDD2;border-radius:10px;padding:14px;color:var(--cm-danger);display:flex;align-items:center;gap:8px;">
+    <i class="fa-solid fa-circle-xmark"></i>
     Tu certificado aún no ha sido emitido. Contacta al administrador.
   </div>
   {% endif %}
@@ -110,10 +123,12 @@
 </div>
 
 {% elif onboarding_state == 'rejected' %}
-<div class="card" style="text-align:center; padding: 40px 32px;">
-  <div style="font-size:48px; margin-bottom:16px; color:#b71c1c;"><i class="fa-solid fa-triangle-exclamation"></i></div>
-  <h2 style="margin-bottom:12px; color:#b71c1c;">Onboarding rechazado</h2>
-  <p style="color:#555; margin-bottom:28px; max-width:520px; margin-left:auto; margin-right:auto;">
+<div class="card" style="text-align:center;padding:40px 32px;">
+  <div style="width:72px;height:72px;border-radius:50%;background:var(--cm-danger-bg);color:var(--cm-danger);font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+  </div>
+  <h2 style="margin-bottom:12px;color:var(--cm-danger);">Onboarding rechazado</h2>
+  <p style="color:var(--cm-text-muted);margin-bottom:28px;max-width:520px;margin-left:auto;margin-right:auto;">
     Tu solicitud de acceso no fue aprobada. Contacta al administrador del sistema para obtener más información o solicitar una revisión.
   </p>
   <a href="{% url 'iam:logout' %}" class="btn btn-light" style="min-width:200px;">Cerrar sesión</a>
@@ -123,96 +138,64 @@
 <div class="card">
   <h2 style="margin-bottom:8px;">Onboarding de usuario</h2>
   {% if is_coordinator %}
-  <p style="color:#555; margin-bottom:18px;">Completa tus datos. Cuando los envíes, el administrador los revisará y aprobará tu acceso. Una vez aprobado podrás descargar tus archivos de firma digital.</p>
+  <p style="color:var(--cm-text-muted);margin-bottom:18px;">Completa tus datos. Cuando los envíes, el administrador los revisará y aprobará tu acceso. Una vez aprobado podrás descargar tus archivos de firma digital.</p>
   {% else %}
-  <p style="color:#555; margin-bottom:18px;">Completa tus datos para que el administrador revise tu registro y apruebe tu acceso al sistema.</p>
+  <p style="color:var(--cm-text-muted);margin-bottom:18px;">Completa tus datos para que el administrador revise tu registro y apruebe tu acceso al sistema.</p>
   {% endif %}
 
   {% if messages %}
   {% for message in messages %}
   {% if message.tags == 'error' %}
-  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#fdeaea; color:#b71c1c; border:1px solid #f5c6cb;">{{ message }}</div>
+  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;">{{ message }}</div>
   {% elif message.tags == 'success' %}
-  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#e8f5e9; color:#2e7d32; border:1px solid #c8e6c9;">{{ message }}</div>
+  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-success-bg);color:var(--cm-success);border:1px solid #A5D6A7;">{{ message }}</div>
   {% else %}
-  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; font-size:14px; background:#e3f2fd; color:#1565c0; border:1px solid #bbdefb;">{{ message }}</div>
+  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-info-bg);color:var(--cm-info);border:1px solid #90CAF9;">{{ message }}</div>
   {% endif %}
   {% endfor %}
   {% endif %}
 
   {% if form.errors %}
-  <div style="padding:12px 16px; margin-bottom:14px; border-radius:8px; background:#fdeaea; color:#b71c1c; border:1px solid #f5c6cb; font-size:14px;">
+  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;font-size:14px;">
     <strong>Corrige los siguientes errores:</strong>
-    <ul style="margin:8px 0 0 16px; padding:0;">
-      {% for field in form %}
-      {% for error in field.errors %}
-      <li><strong>{{ field.label }}:</strong> {{ error }}</li>
-      {% endfor %}
-      {% endfor %}
-      {% for error in form.non_field_errors %}
-      <li>{{ error }}</li>
-      {% endfor %}
+    <ul style="margin:8px 0 0 16px;padding:0;">
+      {% for field in form %}{% for error in field.errors %}<li><strong>{{ field.label }}:</strong> {{ error }}</li>{% endfor %}{% endfor %}
+      {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
     </ul>
   </div>
   {% endif %}
 
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
+    <div class="field-group"><label for="id_first_name">Nombre</label>{{ form.first_name }}</div>
+    <div class="field-group"><label for="id_last_name">Apellidos</label>{{ form.last_name }}</div>
+    <div class="field-group"><label for="id_phone">Teléfono (solo números)</label>{{ form.phone }}</div>
     <div class="field-group">
-      <label for="id_first_name">Nombre</label>
-      {{ form.first_name }}
-    </div>
-    <div class="field-group">
-      <label for="id_last_name">Apellidos</label>
-      {{ form.last_name }}
-    </div>
-    <div class="field-group">
-      <label for="id_phone">Teléfono (solo números)</label>
-      {{ form.phone }}
-    </div>
-    <div class="field-group">
-      <label for="id_official_id_document">Identificación oficial (PDF) <span style="color:#b71c1c">*</span></label>
+      <label for="id_official_id_document">Identificación oficial (PDF) <span style="color:var(--cm-danger)">*</span></label>
       {{ form.official_id_document }}
       <span class="help-text">Requerida para aprobar tu acceso.</span>
     </div>
-    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
-    <div class="field-group">
-      <label for="id_new_password1">Nueva contraseña</label>
-      {{ form.new_password1 }}
-    </div>
-    <div class="field-group">
-      <label for="id_new_password2">Confirmar contraseña</label>
-      {{ form.new_password2 }}
-    </div>
-    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
-    <p style="color:#555; font-size:13px; margin-bottom:14px;">Configura una pregunta de seguridad para recuperar tu contraseña si la olvidas. <strong>No olvides tu respuesta.</strong></p>
-    <div class="field-group">
-      <label for="id_security_question">Pregunta de seguridad</label>
-      {{ form.security_question }}
-    </div>
-    <div class="field-group">
-      <label for="id_security_answer">Respuesta</label>
-      {{ form.security_answer }}
-    </div>
-    <div class="field-group">
-      <label for="id_security_answer_confirm">Confirma tu respuesta</label>
-      {{ form.security_answer_confirm }}
-    </div>
-    <hr style="margin:20px 0; border:none; border-top:1px solid #eee;">
-    <div style="margin-bottom:16px; display:flex; align-items:flex-start; gap:10px; padding:12px 16px; background:#f9f9f9; border:1px solid #eee; border-radius:8px;">
-      <input type="checkbox" id="privacy_accept" name="privacy_accept"
-             style="margin-top:3px; min-width:16px; cursor:pointer;">
-      <span style="font-size:14px; color:#333;">
+    <hr style="margin:20px 0;border:none;border-top:1px solid var(--cm-border);">
+    <div class="field-group"><label for="id_new_password1">Nueva contraseña</label>{{ form.new_password1 }}</div>
+    <div class="field-group"><label for="id_new_password2">Confirmar contraseña</label>{{ form.new_password2 }}</div>
+    <hr style="margin:20px 0;border:none;border-top:1px solid var(--cm-border);">
+    <p style="color:var(--cm-text-muted);font-size:13px;margin-bottom:14px;">Configura una pregunta de seguridad para recuperar tu contraseña si la olvidas. <strong>No olvides tu respuesta.</strong></p>
+    <div class="field-group"><label for="id_security_question">Pregunta de seguridad</label>{{ form.security_question }}</div>
+    <div class="field-group"><label for="id_security_answer">Respuesta</label>{{ form.security_answer }}</div>
+    <div class="field-group"><label for="id_security_answer_confirm">Confirma tu respuesta</label>{{ form.security_answer_confirm }}</div>
+    <hr style="margin:20px 0;border:none;border-top:1px solid var(--cm-border);">
+    <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;padding:12px 16px;background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:10px;">
+      <input type="checkbox" id="privacy_accept" name="privacy_accept" style="margin-top:3px;min-width:16px;cursor:pointer;">
+      <span style="font-size:14px;color:var(--cm-text);">
         He leído y acepto el
-        <a href="#" id="link-aviso" onclick="document.getElementById('modal-privacidad').style.display='flex'; return false;"
-           style="color:#b71c1c; text-decoration:underline;">
+        <a href="#" id="link-aviso" onclick="document.getElementById('modal-privacidad').style.display='flex'; return false;" style="color:var(--cm-primary);text-decoration:underline;">
           Aviso de Privacidad Integral y Acuerdo de Tratamiento de Datos Personales
         </a>
         de Casa Monarca.
       </span>
     </div>
 
-    <div id="aviso-alerta" style="display:none; padding:10px 14px; margin-bottom:12px; background:#fdeaea; border:1px solid #f5c6cb; border-radius:8px; font-size:13px; color:#b71c1c;">
+    <div id="aviso-alerta" style="display:none;padding:10px 14px;margin-bottom:12px;background:var(--cm-danger-bg);border:1px solid #FFCDD2;border-radius:10px;font-size:13px;color:var(--cm-danger);">
       <i class="fa-solid fa-triangle-exclamation"></i> Debes leer y aceptar el Aviso de Privacidad antes de enviar el formulario.
     </div>
 
