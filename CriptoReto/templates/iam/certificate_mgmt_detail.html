@@ -2,46 +2,50 @@
 {% block content %}
 <style>
   .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  .detail-row { display:flex; flex-direction:column; }
-  .detail-label { font-size:12px; color:#888; margin-bottom:3px; }
-  .detail-value { font-size:14px; color:#111; font-weight:500; }
+  .detail-row  { display:flex; flex-direction:column; }
+  .detail-label { font-size:12px; color:var(--cm-text-muted); margin-bottom:3px; }
+  .detail-value { font-size:14px; color:var(--cm-text); font-weight:500; }
+
   .status-pill { display:inline-flex; align-items:center; gap:5px; padding:4px 12px; border-radius:999px; font-size:13px; border:1px solid transparent; font-weight:500; }
-  .pill-active { background:#e2f4e4; color:#1c6a2a; border-color:#a9d6ad; }
-  .pill-suspended { background:#fff8e1; color:#a06000; border-color:#ffe082; }
-  .pill-revoked { background:#fde9e9; color:#8c1717; border-color:#e3a7a7; }
-  .pill-expired { background:#fff3e0; color:#b05a00; border-color:#ffcc80; }
-  .pill-inactive { background:#f2f2f2; color:#555; border-color:#ccc; }
+  .pill-active    { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .pill-suspended { background:var(--cm-warning-bg); color:var(--cm-warning); border-color:#FFCC80; }
+  .pill-revoked   { background:var(--cm-danger-bg);  color:var(--cm-danger);  border-color:#FFCDD2; }
+  .pill-expired   { background:var(--cm-warning-bg); color:var(--cm-warning); border-color:#FFCC80; }
+  .pill-inactive  { background:#F5F5F5; color:#555; border-color:#E0E0E0; }
+
   .timeline { position:relative; padding-left:28px; }
-  .timeline::before { content:''; position:absolute; left:9px; top:0; bottom:0; width:2px; background:#e2e2e2; }
+  .timeline::before { content:''; position:absolute; left:9px; top:0; bottom:0; width:2px; background:var(--cm-border); }
   .timeline-item { position:relative; margin-bottom:20px; }
-  .timeline-dot { position:absolute; left:-24px; top:3px; width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 2px #ccc; background:#fff; }
-  .dot-issued { box-shadow:0 0 0 2px #1c6a2a; background:#1c6a2a; }
-  .dot-revoked { box-shadow:0 0 0 2px #8c1717; background:#8c1717; }
-  .dot-suspended { box-shadow:0 0 0 2px #a06000; background:#f2b01f; }
-  .dot-reactivated { box-shadow:0 0 0 2px #1c6a2a; background:#e2f4e4; }
-  .dot-deactivated { box-shadow:0 0 0 2px #555; background:#ccc; }
-  .timeline-meta { font-size:12px; color:#888; margin-bottom:4px; }
-  .timeline-action { font-size:14px; font-weight:600; color:#111; margin-bottom:4px; }
-  .timeline-reason { font-size:13px; color:#555; background:#f7f7f7; border-radius:6px; padding:7px 10px; margin-top:5px; }
-  .section-heading { font-size:15px; font-weight:600; color:#111; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:9000; }
+  .timeline-dot { position:absolute; left:-24px; top:3px; width:16px; height:16px; border-radius:50%; border:2px solid #fff; box-shadow:0 0 0 2px var(--cm-text-muted); background:#fff; }
+  .dot-issued      { box-shadow:0 0 0 2px var(--cm-success); background:var(--cm-success); }
+  .dot-revoked     { box-shadow:0 0 0 2px var(--cm-danger);  background:var(--cm-danger); }
+  .dot-suspended   { box-shadow:0 0 0 2px var(--cm-warning); background:var(--cm-warning); }
+  .dot-reactivated { box-shadow:0 0 0 2px var(--cm-success); background:var(--cm-success-bg); }
+  .dot-deactivated { box-shadow:0 0 0 2px var(--cm-text-muted); background:var(--cm-border); }
+  .timeline-meta   { font-size:12px; color:var(--cm-text-muted); margin-bottom:4px; }
+  .timeline-action { font-size:14px; font-weight:600; color:var(--cm-text); margin-bottom:4px; }
+  .timeline-reason { font-size:13px; color:var(--cm-text-muted); background:var(--cm-bg); border-radius:8px; padding:7px 10px; margin-top:5px; }
+
+  .section-heading { font-size:15px; font-weight:600; color:var(--cm-text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; z-index:9000; }
   .modal-overlay.is-open { display:flex; }
-  .modal-box { background:#fff; border-radius:14px; padding:28px 28px 22px; max-width:480px; width:92%; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
+  .modal-box { background:var(--cm-surface); border-radius:16px; padding:28px 28px 22px; max-width:480px; width:92%; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
   .modal-box h3 { margin-bottom:10px; font-size:17px; }
-  .modal-box .cert-info { background:#f7f7f7; border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.7; }
-  .modal-box .warning { background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:10px 14px; font-size:13px; color:#664d03; margin-bottom:16px; }
+  .modal-box .cert-info { background:var(--cm-bg); border:1px solid var(--cm-border); border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.7; }
+  .modal-box .warning { background:var(--cm-warning-bg); border:1px solid var(--cm-accent); border-radius:10px; padding:10px 14px; font-size:13px; color:var(--cm-warning); margin-bottom:16px; }
   .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:18px; }
-  .btn-sm { padding:8px 14px; font-size:13px; }
+  .btn-archive { background:var(--cm-text-muted); color:#fff; }
 </style>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
   <div>
     <h2>Detalle de certificado</h2>
-    <p style="color:#555; font-size:14px;">
-      <a href="{% url 'iam:certificate_mgmt_list' %}" style="color:#ad2b4e;">← Gestión de certificados</a>
+    <p style="font-size:14px;margin-top:4px;">
+      <a href="{% url 'iam:certificate_mgmt_list' %}" style="color:var(--cm-primary);">← Gestión de certificados</a>
     </p>
   </div>
-  <div style="display:flex; gap:8px;">
+  <div style="display:flex;gap:8px;">
     {% with es=cert.effective_status %}
     {% if es == 'ACTIVE' %}
       <button class="btn btn-warning btn-sm" onclick="openDetailModal('modal-suspender')">
@@ -54,7 +58,7 @@
         <i class="fa-solid fa-archive"></i> Dar de baja
       </button>
     {% elif es == 'SUSPENDED' %}
-      <button class="btn btn-sm" style="background:#1c6a2a; border-color:#1c6a2a;" onclick="openDetailModal('modal-reactivar')">
+      <button class="btn btn-success btn-sm" onclick="openDetailModal('modal-reactivar')">
         <i class="fa-solid fa-circle-check"></i> Reactivar
       </button>
       <button class="btn btn-danger btn-sm" onclick="openDetailModal('modal-revocar')">
@@ -67,10 +71,8 @@
 
 <!-- Certificate metadata card -->
 <div class="card" style="margin-bottom:18px;">
-  <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
-    <div>
-      <div class="section-heading"><i class="fa-solid fa-certificate"></i> Información del certificado</div>
-    </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:18px;">
+    <div class="section-heading"><i class="fa-solid fa-certificate"></i> Información del certificado</div>
     <div>
       {% with es=cert.effective_status %}
       {% if es == 'ACTIVE' %}
@@ -92,90 +94,48 @@
     <div class="detail-row">
       <span class="detail-label">Titular</span>
       <span class="detail-value">
-        <a href="{% url 'iam:detail' pk=cert.collaborator.pk %}" style="color:#ad2b4e;">
+        <a href="{% url 'iam:detail' pk=cert.collaborator.pk %}" style="color:var(--cm-primary);">
           {{ cert.collaborator.get_full_name|default:cert.collaborator.username }}
         </a>
       </span>
     </div>
-    <div class="detail-row">
-      <span class="detail-label">Área</span>
-      <span class="detail-value">{{ cert.collaborator.area|default:'—' }}</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Área</span><span class="detail-value">{{ cert.collaborator.area|default:'—' }}</span></div>
     <div class="detail-row">
       <span class="detail-label">Número de serie</span>
-      <span class="detail-value" style="font-family:monospace; font-size:13px; word-break:break-all;">
-        {{ cert.serial_number|default:'N/A (cert. cifrado)' }}
-      </span>
+      <span class="detail-value" style="font-family:monospace;font-size:13px;word-break:break-all;">{{ cert.serial_number|default:'N/A (cert. cifrado)' }}</span>
     </div>
     <div class="detail-row">
       <span class="detail-label">Huella digital (SHA-256)</span>
-      <span class="detail-value" style="font-family:monospace; font-size:12px; word-break:break-all;">{{ cert.fingerprint }}</span>
+      <span class="detail-value" style="font-family:monospace;font-size:12px;word-break:break-all;">{{ cert.fingerprint }}</span>
     </div>
-    <div class="detail-row">
-      <span class="detail-label">Emitido el</span>
-      <span class="detail-value">{{ cert.issued_at|date:'d/m/Y H:i' }} UTC</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Emitido el</span><span class="detail-value">{{ cert.issued_at|date:'d/m/Y H:i' }} UTC</span></div>
     <div class="detail-row">
       <span class="detail-label">Vence el</span>
-      <span class="detail-value {% if cert.expires_at <= now %}style="color:#b05a00;"{% endif %}">
-        {{ cert.expires_at|date:'d/m/Y H:i' }} UTC
-        {% if cert.expires_at <= now %}<span style="color:#b05a00; font-size:12px;"> (expirado)</span>{% endif %}
+      <span class="detail-value">{{ cert.expires_at|date:'d/m/Y H:i' }} UTC
+        {% if cert.expires_at <= now %}<span style="color:var(--cm-warning);font-size:12px;"> (expirado)</span>{% endif %}
       </span>
     </div>
-    <div class="detail-row">
-      <span class="detail-label">Emitido por</span>
-      <span class="detail-value">{{ cert.issued_by|default:'Sistema' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Nivel de acceso del titular</span>
-      <span class="detail-value">{{ cert.collaborator.get_access_level_display }}</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Emitido por</span><span class="detail-value">{{ cert.issued_by|default:'Sistema' }}</span></div>
+    <div class="detail-row"><span class="detail-label">Nivel de acceso del titular</span><span class="detail-value">{{ cert.collaborator.get_access_level_display }}</span></div>
     {% if cert.is_revoked %}
-    <div class="detail-row">
-      <span class="detail-label">Revocado el</span>
-      <span class="detail-value" style="color:#8c1717;">{{ cert.revoked_at|date:'d/m/Y H:i' }} UTC</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Revocado por</span>
-      <span class="detail-value">{{ cert.revoked_by|default:'—' }}</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Revocado el</span><span class="detail-value" style="color:var(--cm-danger);">{{ cert.revoked_at|date:'d/m/Y H:i' }} UTC</span></div>
+    <div class="detail-row"><span class="detail-label">Revocado por</span><span class="detail-value">{{ cert.revoked_by|default:'—' }}</span></div>
     {% if cert.revocation_reason %}
-    <div class="detail-row" style="grid-column:span 2;">
-      <span class="detail-label">Motivo de revocación</span>
-      <span class="detail-value">{{ cert.revocation_reason }}</span>
-    </div>
+    <div class="detail-row" style="grid-column:span 2;"><span class="detail-label">Motivo de revocación</span><span class="detail-value">{{ cert.revocation_reason }}</span></div>
     {% endif %}
     {% endif %}
     {% if cert.suspended_at %}
-    <div class="detail-row">
-      <span class="detail-label">Suspendido el</span>
-      <span class="detail-value" style="color:#a06000;">{{ cert.suspended_at|date:'d/m/Y H:i' }} UTC</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Suspendido por</span>
-      <span class="detail-value">{{ cert.suspended_by|default:'—' }}</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Suspendido el</span><span class="detail-value" style="color:var(--cm-warning);">{{ cert.suspended_at|date:'d/m/Y H:i' }} UTC</span></div>
+    <div class="detail-row"><span class="detail-label">Suspendido por</span><span class="detail-value">{{ cert.suspended_by|default:'—' }}</span></div>
     {% if cert.suspension_reason %}
-    <div class="detail-row" style="grid-column:span 2;">
-      <span class="detail-label">Motivo de suspensión</span>
-      <span class="detail-value">{{ cert.suspension_reason }}</span>
-    </div>
+    <div class="detail-row" style="grid-column:span 2;"><span class="detail-label">Motivo de suspensión</span><span class="detail-value">{{ cert.suspension_reason }}</span></div>
     {% endif %}
     {% endif %}
     {% if cert.deactivated_at %}
-    <div class="detail-row">
-      <span class="detail-label">Dado de baja el</span>
-      <span class="detail-value" style="color:#555;">{{ cert.deactivated_at|date:'d/m/Y H:i' }} UTC</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Dado de baja por</span>
-      <span class="detail-value">{{ cert.deactivated_by|default:'—' }}</span>
-    </div>
+    <div class="detail-row"><span class="detail-label">Dado de baja el</span><span class="detail-value" style="color:var(--cm-text-muted);">{{ cert.deactivated_at|date:'d/m/Y H:i' }} UTC</span></div>
+    <div class="detail-row"><span class="detail-label">Dado de baja por</span><span class="detail-value">{{ cert.deactivated_by|default:'—' }}</span></div>
     {% if cert.deactivation_reason %}
-    <div class="detail-row" style="grid-column:span 2;">
-      <span class="detail-label">Motivo de baja</span>
-      <span class="detail-value">{{ cert.deactivation_reason }}</span>
-    </div>
+    <div class="detail-row" style="grid-column:span 2;"><span class="detail-label">Motivo de baja</span><span class="detail-value">{{ cert.deactivation_reason }}</span></div>
     {% endif %}
     {% endif %}
   </div>
@@ -205,25 +165,21 @@
           Sistema
         {% endif %}
         {% if log.previous_status and log.new_status %}
-          <span style="color:#bbb; margin: 0 4px;">·</span>
-          <span style="font-family:monospace; font-size:11px;">
-            {{ log.previous_status }} → {{ log.new_status }}
-          </span>
+          <span style="color:var(--cm-border);margin:0 4px;">·</span>
+          <span style="font-family:monospace;font-size:11px;">{{ log.previous_status }} → {{ log.new_status }}</span>
         {% endif %}
       </div>
       <div class="timeline-action">
-        {% if log.action == 'ISSUED' %}<i class="fa-solid fa-plus-circle" style="color:#1c6a2a;"></i> Certificado vinculado al sistema
-        {% elif log.action == 'REVOKED' %}<i class="fa-solid fa-ban" style="color:#8c1717;"></i> Certificado revocado
-        {% elif log.action == 'SUSPENDED' %}<i class="fa-solid fa-pause" style="color:#a06000;"></i> Certificado suspendido
-        {% elif log.action == 'REACTIVATED' %}<i class="fa-solid fa-circle-check" style="color:#1c6a2a;"></i> Certificado reactivado
-        {% elif log.action == 'DEACTIVATED' %}<i class="fa-solid fa-archive" style="color:#555;"></i> Certificado dado de baja
+        {% if log.action == 'ISSUED' %}<i class="fa-solid fa-plus-circle" style="color:var(--cm-success);"></i> Certificado vinculado al sistema
+        {% elif log.action == 'REVOKED' %}<i class="fa-solid fa-ban" style="color:var(--cm-danger);"></i> Certificado revocado
+        {% elif log.action == 'SUSPENDED' %}<i class="fa-solid fa-pause" style="color:var(--cm-warning);"></i> Certificado suspendido
+        {% elif log.action == 'REACTIVATED' %}<i class="fa-solid fa-circle-check" style="color:var(--cm-success);"></i> Certificado reactivado
+        {% elif log.action == 'DEACTIVATED' %}<i class="fa-solid fa-archive" style="color:var(--cm-text-muted);"></i> Certificado dado de baja
         {% else %}{{ log.action }}{% endif %}
       </div>
-      {% if log.metadata.reason %}
-      <div class="timeline-reason">{{ log.metadata.reason }}</div>
-      {% endif %}
+      {% if log.metadata.reason %}<div class="timeline-reason">{{ log.metadata.reason }}</div>{% endif %}
       {% if log.metadata.serial_number %}
-      <div style="font-size:12px; color:#888; margin-top:4px;">
+      <div style="font-size:12px;color:var(--cm-text-muted);margin-top:4px;">
         Serie: <span style="font-family:monospace;">{{ log.metadata.serial_number }}</span>
       </div>
       {% endif %}
@@ -231,9 +187,9 @@
     {% endfor %}
   </div>
   {% else %}
-  <p style="color:#888; font-size:14px; text-align:center; padding:20px 0;">
+  <p style="color:var(--cm-text-muted);font-size:14px;text-align:center;padding:20px 0;">
     No hay entradas de auditoría para este certificado todavía.<br>
-    <a href="{% url 'iam:certificate_mgmt_issue' user_id=cert.collaborator.pk %}" style="color:#ad2b4e;">
+    <a href="{% url 'iam:certificate_mgmt_issue' user_id=cert.collaborator.pk %}" style="color:var(--cm-primary);">
       → Vincular este certificado al sistema de gestión
     </a>
   </p>
@@ -245,19 +201,19 @@
 <!-- Modal: Suspender -->
 <div id="modal-suspender" class="modal-overlay">
   <div class="modal-box">
-    <h3><i class="fa-solid fa-pause-circle" style="color:#a06000;"></i> Suspender certificado</h3>
+    <h3><i class="fa-solid fa-pause-circle" style="color:var(--cm-warning);"></i> Suspender certificado</h3>
     <div class="cert-info">
       <strong>Titular:</strong> {{ cert.collaborator.get_full_name|default:cert.collaborator.username }}<br>
       <strong>N° Serie:</strong> <span style="font-family:monospace;">{{ cert.serial_number|default:cert.fingerprint|truncatechars:20 }}</span>
     </div>
-    <p style="font-size:13px; color:#555; margin-bottom:14px;">
+    <p style="font-size:13px;color:var(--cm-text-muted);margin-bottom:14px;">
       La suspensión es temporal y reversible. El certificado no podrá usarse hasta ser reactivado.
     </p>
     <form method="post" action="{% url 'iam:certificate_mgmt_suspend' cert_id=cert.pk %}">
       {% csrf_token %}
       <div class="field-group">
-        <label>Motivo de suspensión <span style="color:#900;">*</span></label>
-        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:14px; resize:vertical;"></textarea>
+        <label>Motivo de suspensión <span style="color:var(--cm-danger);">*</span></label>
+        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="resize:vertical;"></textarea>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light btn-sm" onclick="closeDetailModal('modal-suspender')">Cancelar</button>
@@ -270,20 +226,20 @@
 <!-- Modal: Revocar -->
 <div id="modal-revocar" class="modal-overlay">
   <div class="modal-box">
-    <h3><i class="fa-solid fa-ban" style="color:#8c1717;"></i> Revocar certificado</h3>
+    <h3><i class="fa-solid fa-ban" style="color:var(--cm-danger);"></i> Revocar certificado</h3>
     <div class="cert-info">
       <strong>Titular:</strong> {{ cert.collaborator.get_full_name|default:cert.collaborator.username }}<br>
       <strong>N° Serie:</strong> <span style="font-family:monospace;">{{ cert.serial_number|default:cert.fingerprint|truncatechars:20 }}</span>
     </div>
     <div class="warning">
       <i class="fa-solid fa-triangle-exclamation"></i>
-      <strong>Acción irreversible.</strong> Un certificado revocado nunca puede reactivarse. Las sesiones activas del usuario serán cerradas inmediatamente.
+      <strong> Acción irreversible.</strong> Un certificado revocado nunca puede reactivarse. Las sesiones activas del usuario serán cerradas inmediatamente.
     </div>
     <form method="post" action="{% url 'iam:certificate_mgmt_revoke' cert_id=cert.pk %}">
       {% csrf_token %}
       <div class="field-group">
-        <label>Motivo de revocación <span style="color:#900;">*</span></label>
-        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:14px; resize:vertical;"></textarea>
+        <label>Motivo de revocación <span style="color:var(--cm-danger);">*</span></label>
+        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="resize:vertical;"></textarea>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light btn-sm" onclick="closeDetailModal('modal-revocar')">Cancelar</button>
@@ -296,24 +252,24 @@
 <!-- Modal: Dar de baja -->
 <div id="modal-baja" class="modal-overlay">
   <div class="modal-box">
-    <h3><i class="fa-solid fa-archive" style="color:#555;"></i> Dar de baja</h3>
+    <h3><i class="fa-solid fa-archive" style="color:var(--cm-text-muted);"></i> Dar de baja</h3>
     <div class="cert-info">
       <strong>Titular:</strong> {{ cert.collaborator.get_full_name|default:cert.collaborator.username }}<br>
       <strong>N° Serie:</strong> <span style="font-family:monospace;">{{ cert.serial_number|default:cert.fingerprint|truncatechars:20 }}</span>
     </div>
     <div class="warning">
       <i class="fa-solid fa-triangle-exclamation"></i>
-      <strong>Fin de vida administrativa.</strong> El certificado quedará inactivo de forma permanente.
+      <strong> Fin de vida administrativa.</strong> El certificado quedará inactivo de forma permanente.
     </div>
     <form method="post" action="{% url 'iam:certificate_mgmt_deactivate' cert_id=cert.pk %}">
       {% csrf_token %}
       <div class="field-group">
-        <label>Motivo de baja <span style="color:#900;">*</span></label>
-        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-size:14px; resize:vertical;"></textarea>
+        <label>Motivo de baja <span style="color:var(--cm-danger);">*</span></label>
+        <textarea name="reason" rows="3" placeholder="Describe el motivo..." required style="resize:vertical;"></textarea>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light btn-sm" onclick="closeDetailModal('modal-baja')">Cancelar</button>
-        <button type="submit" class="btn btn-sm" style="background:#555; border-color:#555;"><i class="fa-solid fa-archive"></i> Dar de baja</button>
+        <button type="submit" class="btn btn-archive btn-sm"><i class="fa-solid fa-archive"></i> Dar de baja</button>
       </div>
     </form>
   </div>
@@ -322,19 +278,19 @@
 <!-- Modal: Reactivar -->
 <div id="modal-reactivar" class="modal-overlay">
   <div class="modal-box">
-    <h3><i class="fa-solid fa-circle-check" style="color:#1c6a2a;"></i> Reactivar certificado</h3>
+    <h3><i class="fa-solid fa-circle-check" style="color:var(--cm-success);"></i> Reactivar certificado</h3>
     <div class="cert-info">
       <strong>Titular:</strong> {{ cert.collaborator.get_full_name|default:cert.collaborator.username }}<br>
       <strong>N° Serie:</strong> <span style="font-family:monospace;">{{ cert.serial_number|default:cert.fingerprint|truncatechars:20 }}</span>
     </div>
-    <p style="font-size:13px; color:#555; margin-bottom:14px;">
+    <p style="font-size:13px;color:var(--cm-text-muted);margin-bottom:14px;">
       El certificado volverá al estado <strong>Activo</strong>.
     </p>
     <form method="post" action="{% url 'iam:certificate_mgmt_reactivate' cert_id=cert.pk %}">
       {% csrf_token %}
       <div class="modal-footer">
         <button type="button" class="btn btn-light btn-sm" onclick="closeDetailModal('modal-reactivar')">Cancelar</button>
-        <button type="submit" class="btn btn-sm" style="background:#1c6a2a; border-color:#1c6a2a;"><i class="fa-solid fa-circle-check"></i> Reactivar</button>
+        <button type="submit" class="btn btn-success btn-sm"><i class="fa-solid fa-circle-check"></i> Reactivar</button>
       </div>
     </form>
   </div>

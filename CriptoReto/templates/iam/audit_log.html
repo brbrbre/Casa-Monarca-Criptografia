@@ -1,60 +1,76 @@
 {% extends 'base.html' %}
 {% block content %}
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-    <div>
-      <h2>Auditoría</h2>
-      <p style="color:#555;">Registro de acciones del sistema y de los administradores.</p>
+
+<style>
+  .tl-audit { position:relative; padding-left:28px; }
+  .tl-audit::before { content:''; position:absolute; left:9px; top:0; bottom:0; width:2px; background:var(--cm-border); }
+  .tl-audit-item { position:relative; margin-bottom:18px; }
+  .tl-audit-dot {
+    position:absolute; left:-24px; top:3px;
+    width:16px; height:16px; border-radius:50%;
+    border:2px solid #fff; background:var(--cm-text-muted);
+    box-shadow:0 0 0 2px var(--cm-text-muted);
+  }
+  .dot-login     { background:var(--cm-success); box-shadow:0 0 0 2px var(--cm-success); }
+  .dot-error     { background:var(--cm-danger);  box-shadow:0 0 0 2px var(--cm-danger); }
+  .dot-revoke    { background:var(--cm-danger);  box-shadow:0 0 0 2px var(--cm-danger); }
+  .dot-edit      { background:var(--cm-info);    box-shadow:0 0 0 2px var(--cm-info); }
+  .dot-create    { background:var(--cm-primary); box-shadow:0 0 0 2px var(--cm-primary); }
+  .dot-cert      { background:var(--cm-purple);  box-shadow:0 0 0 2px var(--cm-purple); }
+  .tl-audit-meta { font-size:12px; color:var(--cm-text-muted); margin-bottom:3px; }
+  .tl-audit-action { font-size:14px; font-weight:600; color:var(--cm-text); }
+  .tl-audit-detail { font-size:12px; color:var(--cm-text-muted); margin-top:2px; }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+  <div>
+    <h2>Auditoría</h2>
+    <p style="color:var(--cm-text-muted);">Registro de acciones del sistema y de los administradores.</p>
+  </div>
+  <div><a class="btn btn-light" href="{% url 'iam:dashboard' %}">← Volver al listado</a></div>
+</div>
+
+<div class="card" style="margin-bottom:18px;">
+  <form method="get" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end;">
+    <div class="field-group" style="margin-bottom:0;"><label>Fecha desde</label><input type="date" name="date_from" value="{{ filters.date_from }}"></div>
+    <div class="field-group" style="margin-bottom:0;"><label>Fecha hasta</label><input type="date" name="date_to" value="{{ filters.date_to }}"></div>
+    <div class="field-group" style="margin-bottom:0;"><label>Acción</label><input type="text" name="action" value="{{ filters.action }}" placeholder="Ej: Creación de usuario"></div>
+    <div class="field-group" style="margin-bottom:0;"><label>Actor</label><input type="text" name="actor" value="{{ filters.actor }}" placeholder="Nombre o correo"></div>
+    <div class="field-group" style="margin-bottom:0;"><label>Objetivo</label><input type="text" name="target" value="{{ filters.target }}" placeholder="Nombre o correo"></div>
+    <div style="grid-column:span 3;display:flex;gap:8px;align-items:flex-end;">
+      <button type="submit" class="btn btn-light btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
+      <a href="{% url 'iam:audit_log' %}" class="btn btn-light btn-sm"><i class="fa-solid fa-xmark"></i> Limpiar</a>
     </div>
-    <div><a class="btn btn-light" href="{% url 'iam:dashboard' %}">Volver al listado</a></div>
-  </div>
+  </form>
+</div>
 
-  <div class="card" style="margin-bottom:18px;">
-    <form method="get" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end;">
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Fecha desde</label>
-        <input type="date" name="date_from" value="{{ filters.date_from }}">
+<div class="card">
+  {% if logs %}
+  <div class="tl-audit">
+    {% for log in logs %}
+    <div class="tl-audit-item">
+      <div class="tl-audit-dot
+        {% with a=log.action|lower %}
+        {% if 'login' in a %}dot-login
+        {% elif 'error' in a or 'revoc' in a or 'revocar' in a or 'deniega' in a %}dot-error
+        {% elif 'edit' in a or 'actualiz' in a or 'modific' in a %}dot-edit
+        {% elif 'crea' in a or 'alta' in a or 'nuevo' in a %}dot-create
+        {% elif 'certif' in a %}dot-cert
+        {% endif %}
+        {% endwith %}
+      "></div>
+      <div class="tl-audit-meta">
+        {{ log.created_at|date:'Y-m-d H:i' }}
+        {% if log.actor %}&nbsp;·&nbsp;<strong>{{ log.actor|default:'Sistema' }}</strong>{% endif %}
+        {% if log.target %}&nbsp;→&nbsp;{{ log.target }}{% endif %}
       </div>
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Fecha hasta</label>
-        <input type="date" name="date_to" value="{{ filters.date_to }}">
-      </div>
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Acción</label>
-        <input type="text" name="action" value="{{ filters.action }}" placeholder="Ej: Creación de usuario">
-      </div>
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Actor</label>
-        <input type="text" name="actor" value="{{ filters.actor }}" placeholder="Nombre o correo">
-      </div>
-      <div class="field-group" style="margin-bottom:0;">
-        <label>Objetivo</label>
-        <input type="text" name="target" value="{{ filters.target }}" placeholder="Nombre o correo">
-      </div>
-      <div style="grid-column:span 3;display:flex;gap:10px;align-items:flex-end;">
-        <button type="submit" class="btn btn-light"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
-        <a href="{% url 'iam:audit_log' %}" class="btn btn-light"><i class="fa-solid fa-xmark"></i> Limpiar</a>
-      </div>
-    </form>
+      <div class="tl-audit-action">{{ log.action }}</div>
+      {% if log.details %}<div class="tl-audit-detail">{{ log.details }}</div>{% endif %}
+    </div>
+    {% endfor %}
   </div>
-
-  <div class="card">
-    <table class="table">
-      <thead>
-        <tr><th>Fecha</th><th>Actor</th><th>Objetivo</th><th>Acción</th><th>Detalles</th></tr>
-      </thead>
-      <tbody>
-        {% for log in logs %}
-          <tr>
-            <td>{{ log.created_at|date:'Y-m-d H:i' }}</td>
-            <td>{{ log.actor|default:'Sistema' }}</td>
-            <td>{{ log.target|default:'N/A' }}</td>
-            <td>{{ log.action }}</td>
-            <td>{{ log.details }}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="5" style="text-align:center;color:#888;padding:28px;">No hay eventos de auditoría para los filtros aplicados.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {% else %}
+  <div style="text-align:center;color:var(--cm-text-muted);padding:28px;">No hay eventos de auditoría para los filtros aplicados.</div>
+  {% endif %}
+</div>
 {% endblock %}

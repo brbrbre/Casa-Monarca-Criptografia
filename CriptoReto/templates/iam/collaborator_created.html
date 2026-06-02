@@ -1,40 +1,40 @@
 {% extends 'base.html' %}
 {% block content %}
-<div style="max-width: 640px; margin: 0 auto;">
+<div style="max-width:640px;margin:0 auto;">
   <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
       <div>
         <h2>Colaborador creado</h2>
-        <p style="color:#555;">El colaborador fue registrado correctamente. Entrega la contraseña temporal de forma segura.</p>
+        <p style="color:var(--cm-text-muted);">El colaborador fue registrado correctamente. Entrega la contraseña temporal de forma segura.</p>
       </div>
     </div>
 
-    <div style="background:#fff3cd; border:2px solid #ffc107; border-radius:10px; padding:18px 22px; margin-bottom:24px;">
-      <p style="margin:0 0 6px; font-size:14px; color:#856404; font-weight:700;">
-        ⚠ Esta es la única vez que se muestra esta contraseña.
-        Entregasela al colaborador de forma segura y no la guardes.
+    <div style="background:var(--cm-warning-bg);border:2px solid var(--cm-accent);border-radius:10px;padding:18px 22px;margin-bottom:24px;">
+      <p style="margin:0;font-size:14px;color:var(--cm-warning);font-weight:700;display:flex;align-items:center;gap:8px;">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        Esta es la única vez que se muestra esta contraseña. Entrégasela al colaborador de forma segura y no la guardes.
       </p>
     </div>
 
-    <table style="width:100%; font-size:14px; border-collapse:collapse; margin-bottom:24px;">
+    <table style="width:100%;font-size:14px;border-collapse:collapse;margin-bottom:24px;">
       <tr>
-        <td style="color:#666; padding:8px 0; width:35%;">Usuario</td>
+        <td style="color:var(--cm-text-muted);padding:8px 0;width:35%;">Usuario</td>
         <td><strong>{{ collaborator.username }}</strong></td>
       </tr>
       <tr>
-        <td style="color:#666; padding:8px 0;">Nombre</td>
+        <td style="color:var(--cm-text-muted);padding:8px 0;">Nombre</td>
         <td>{{ collaborator.get_full_name|default:"—" }}</td>
       </tr>
       <tr>
-        <td style="color:#666; padding:8px 0;">Nivel</td>
+        <td style="color:var(--cm-text-muted);padding:8px 0;">Nivel</td>
         <td>{{ collaborator.get_access_level_display }}</td>
       </tr>
       <tr>
-        <td style="color:#666; padding:8px 0;">Área</td>
+        <td style="color:var(--cm-text-muted);padding:8px 0;">Área</td>
         <td>{{ collaborator.area|default:"—" }}</td>
       </tr>
       <tr>
-        <td style="color:#666; padding:8px 0; vertical-align:top;">Contraseña temporal</td>
+        <td style="color:var(--cm-text-muted);padding:8px 0;vertical-align:top;">Contraseña temporal</td>
         <td>
           <code style="
             display:inline-block;
@@ -50,12 +50,13 @@
       </tr>
     </table>
 
-    <div style="background:#fdeaea; border:1px solid #f5c6cb; border-radius:8px; padding:12px 16px; margin-bottom:24px; font-size:13px; color:#b71c1c;">
+    <div style="background:var(--cm-danger-bg);border:1px solid #FFCDD2;border-radius:10px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:var(--cm-danger);display:flex;align-items:center;gap:8px;">
+      <i class="fa-solid fa-circle-exclamation"></i>
       El colaborador deberá cambiar esta contraseña en su primer inicio de sesión. Recuérdaselo.
     </div>
 
     <div class="inline-actions">
-      <a href="{% url 'iam:detail' collaborator.pk %}" class="btn">Continuar al perfil</a>
+      <a href="{% url 'iam:detail' collaborator.pk %}" class="btn"><i class="fa-solid fa-arrow-right"></i> Continuar al perfil</a>
     </div>
   </div>
 </div>
