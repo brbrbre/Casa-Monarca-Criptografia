@@ -46,8 +46,9 @@
 
     {% if sig %}
       <div class="info-grid">
+        <!-- 
         <span class="info-label">Algoritmo</span>
-        <span>ECDSA / {{ sig.curve_name }}</span>
+        <span>ECDSA / {{ sig.curve_name }}</span>-->
         <span class="info-label">Firmado por</span>
         <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }}
               (Nivel {{ sig.signed_by_role }})</span>

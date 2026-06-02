@@ -118,9 +118,9 @@
   <!-- ── Signature ─────────────────────────────────────────────────── -->
   {% if sig %}
     <div class="card">
-      <strong style="font-size:15px;display:block;margin-bottom:12px;">Firma digital ECDSA</strong>
+      <strong style="font-size:15px;display:block;margin-bottom:12px;">Firma digital</strong>
       <div class="detail-grid">
-        <span class="detail-label">Curva</span><span>{{ sig.curve_name }}</span>
+      <!--  <span class="detail-label">Curva</span><span>{{ sig.curve_name }}</span> -->
         <span class="detail-label">Firmado por</span>
         <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }} (Nivel {{ sig.signed_by_role }})</span>
         <span class="detail-label">Fecha de firma</span><span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
