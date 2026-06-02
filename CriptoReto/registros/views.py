@@ -12,7 +12,7 @@ from django.views.decorators.http import require_POST
 
 from iam.models import AuditLog
 from iam.views import onboarding_required
-from iam.certificates import validate_coordinator_cert_and_key, validate_encrypted_certificate, validate_cert_and_key
+from iam.certificates import validate_coordinator_cert_and_key, validate_cert_and_key
 from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
     ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
