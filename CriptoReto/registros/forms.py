@@ -17,6 +17,17 @@ class MigrantRegistrationForm(forms.ModelForm):
         label='He leído y acepto el Aviso de Privacidad Integral',
         error_messages={'required': 'Debes aceptar el Aviso de Privacidad para continuar.'},
     )
+    consent_method = forms.ChoiceField(
+        choices=MigrantRegistration.CONSENT_METHOD_CHOICES,
+        initial=MigrantRegistration.CONSENT_DIGITAL,
+        label='Método de captura del consentimiento',
+        help_text='Indica cómo se obtuvo el consentimiento del beneficiario.',
+    )
+    consent_by_proxy = forms.BooleanField(
+        required=False,
+        label='El personal capturó el consentimiento en nombre del beneficiario',
+        help_text='Marcar cuando el beneficiario NO puede operar el sistema (sin dispositivo, analfabetismo funcional, etc.) y el personal actúa como intermediario.',
+    )
 
     class Meta:
         model = MigrantRegistration

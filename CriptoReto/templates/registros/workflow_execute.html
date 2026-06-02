@@ -63,10 +63,10 @@
              style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>
     </div>
 
-    {% if request.user.access_level == 2 %}
+    {% if request.user.access_level <= 2 %}
       <div style="margin-bottom:20px;">
         <label for="id_key_file" style="font-weight:600;display:block;margin-bottom:6px;">
-          Llave privada (.key)
+          Llave privada (.key) <span style="color:#b71c1c;font-size:12px;">Obligatorio</span>
         </label>
         <input type="file" name="key_file" id="id_key_file" accept=".key"
                style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>

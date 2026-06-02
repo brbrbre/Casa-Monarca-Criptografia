@@ -12,11 +12,11 @@ from django.views.decorators.http import require_POST
 
 from iam.models import AuditLog
 from iam.views import onboarding_required
-from iam.certificates import validate_coordinator_cert_and_key, validate_encrypted_certificate
+from iam.certificates import validate_coordinator_cert_and_key, validate_encrypted_certificate, validate_cert_and_key
 from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
     ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
-    Notification, Ticket, WorkflowRequest, PRIVACY_NOTICE_VERSION,
+    Notification, RegistrationEvent, Ticket, WorkflowRequest, PRIVACY_NOTICE_VERSION,
 )
 from .services import (
     batch_sign_actions, get_public_key_pem,
@@ -42,6 +42,18 @@ def _log(actor, action, details='', request=None):
     if ip:
         full = f'{full} | IP: {ip}'
     AuditLog.objects.create(actor=actor, action=action, details=full.strip())
+
+
+def _reg_event(registration, event_type, actor, details='', request=None):
+    """Create a RegistrationEvent entry for the per-expediente audit trail."""
+    RegistrationEvent.objects.create(
+        registration=registration,
+        event_type=event_type,
+        actor=actor,
+        actor_role=getattr(actor, 'access_level', None),
+        details=details,
+        ip_address=_get_ip(request) if request else None,
+    )
 
 
 def _remove_permission_messages(request):
@@ -228,6 +240,11 @@ def registro_review(request):
              f'hash: {sig_data["message_hash"][:16]}… | '
              f'Consentimiento v{PRIVACY_NOTICE_VERSION} aceptado',
              request=request)
+        _reg_event(registration, RegistrationEvent.EVENT_CREATE, request.user,
+                   details=f'Creado y firmado. Hash: {sig_data["message_hash"][:16]}…', request=request)
+        _reg_event(registration, RegistrationEvent.EVENT_CONSENT, request.user,
+                   details=f'Consentimiento v{PRIVACY_NOTICE_VERSION} | método: {registration.consent_method} | proxy: {registration.consent_by_proxy}',
+                   request=request)
 
         request.session.pop('registro_draft', None)
         return redirect('registros:registro_exito', pk=registration.pk)
@@ -295,6 +312,9 @@ def registro_detail(request, pk):
     except MigrantRegistrationSignature.DoesNotExist:
         sig = None
         verify_result = None
+
+    _reg_event(registration, RegistrationEvent.EVENT_VIEW, request.user,
+               details=f'Consultado desde {request.path}', request=request)
 
     return render(request, 'registros/detail.html', {
         'registration': registration,
@@ -581,33 +601,19 @@ def workflow_decide(request, pk):
 
     if decision == 'approved' and request.user.access_level <= 2:
         cert_file = request.FILES.get('cert_file')
-        if not cert_file:
-            messages.error(request, 'Debes subir tu certificado digital para aprobar esta solicitud.')
+        key_file = request.FILES.get('key_file')
+        if not cert_file or not key_file:
+            messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para aprobar esta solicitud.')
             return render(request, 'registros/workflow_decide.html', {
                 'wf': wf, 'form': form, 'diff_data': diff_data,
             })
-
-        if request.user.access_level == 2:
-            key_file = request.FILES.get('key_file')
-            if not key_file:
-                messages.error(request, 'Debes subir tu llave privada para aprobar esta solicitud.')
-                return render(request, 'registros/workflow_decide.html', {
-                    'wf': wf, 'form': form, 'diff_data': diff_data,
-                })
-            cert_bytes = cert_file.read()
-            key_bytes = key_file.read()
-            if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
-                messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
-                return render(request, 'registros/workflow_decide.html', {
-                    'wf': wf, 'form': form, 'diff_data': diff_data,
-                })
-        else:
-            cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
-            if not validate_encrypted_certificate(request.user, cert_content):
-                messages.error(request, 'Certificado inválido. Revisa tu archivo e intenta de nuevo.')
-                return render(request, 'registros/workflow_decide.html', {
-                    'wf': wf, 'form': form, 'diff_data': diff_data,
-                })
+        cert_bytes = cert_file.read()
+        key_bytes = key_file.read()
+        if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
+            messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
+            return render(request, 'registros/workflow_decide.html', {
+                'wf': wf, 'form': form, 'diff_data': diff_data,
+            })
 
     if decision == 'approved':
         ok = approve_request(wf, request.user, notes=notes)
@@ -645,25 +651,18 @@ def workflow_execute(request, pk):
 
     if request.user.access_level <= 2:
         cert_file = request.FILES.get('cert_file')
-        if not cert_file:
-            messages.error(request, 'Debes subir tu certificado digital para ejecutar esta solicitud.')
+        key_file = request.FILES.get('key_file')
+        if not cert_file or not key_file:
+            messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para ejecutar esta solicitud.')
             return render(request, 'registros/workflow_execute.html', {'wf': wf})
-
-        if request.user.access_level == 2:
-            key_file = request.FILES.get('key_file')
-            if not key_file:
-                messages.error(request, 'Debes subir tu llave privada para ejecutar esta solicitud.')
-                return render(request, 'registros/workflow_execute.html', {'wf': wf})
+        try:
             cert_bytes = cert_file.read()
             key_bytes = key_file.read()
-            if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
-                messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
-                return render(request, 'registros/workflow_execute.html', {'wf': wf})
-        else:
-            cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
-            if not validate_encrypted_certificate(request.user, cert_content):
-                messages.error(request, 'Certificado inválido. Revisa tu archivo e intenta de nuevo.')
-                return render(request, 'registros/workflow_execute.html', {'wf': wf})
+        except Exception:
+            cert_bytes, key_bytes = b'', b''
+        if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
+            messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
+            return render(request, 'registros/workflow_execute.html', {'wf': wf})
 
     ok = execute_request(wf, request.user, password_verified=True,
                          notes=request.POST.get('notes', ''))
@@ -1070,25 +1069,18 @@ def arco_execute(request, pk):
     cert_file = request.FILES.get('cert_file')
     key_file = request.FILES.get('key_file')
 
-    if not cert_file:
-        messages.error(request, 'Debes subir tu certificado digital (.cert) para ejecutar.')
+    if not cert_file or not key_file:
+        messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para ejecutar.')
         return redirect('registros:arco_detail', pk=pk)
 
-    if request.user.access_level == 2:
-        if not key_file:
-            messages.error(request, 'Debes subir tu llave privada (.key) para ejecutar.')
-            return redirect('registros:arco_detail', pk=pk)
+    try:
         cert_bytes = cert_file.read()
         key_bytes = key_file.read()
-        if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
-            messages.error(request, 'Certificado o llave inválidos. Usa los archivos .cert y .key originales.')
-            return redirect('registros:arco_detail', pk=pk)
-    else:
-        # Admin: encrypted certificate
-        cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
-        if not validate_encrypted_certificate(request.user, cert_content):
-            messages.error(request, 'Certificado inválido. Revisa tu archivo.')
-            return redirect('registros:arco_detail', pk=pk)
+    except Exception:
+        cert_bytes, key_bytes = b'', b''
+    if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
+        messages.error(request, 'Certificado o llave inválidos. Usa los archivos .cert y .key originales.')
+        return redirect('registros:arco_detail', pk=pk)
 
     # ── Extra restriction: Cancelación → Admin only ───────────────────────────
     if arco.arco_type == ArcoRequest.ARCO_CANCELLATION and request.user.access_level > 1:

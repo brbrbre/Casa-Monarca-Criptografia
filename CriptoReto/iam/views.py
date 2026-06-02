@@ -1,3 +1,4 @@
+import secrets
 from functools import wraps
 
 from django.contrib import messages
@@ -21,6 +22,8 @@ from .certificates import (
     issue_coordinator_key_cert,
     validate_coordinator_cert_and_key,
     get_coordinator_key_bytes,
+    issue_cert_and_key,
+    validate_cert_and_key,
 )
 
 
@@ -50,23 +53,27 @@ def _log(actor, action, details='', target=None, request=None):
 # ONBOARDING GATE — state machine
 # ─────────────────────────────────────────────
 
-def _coordinator_needs_relogin(user, request):
+def _needs_cert_relogin(user, request):
     """
-    A coordinator who downloaded both files in this session must re-login.
-    We detect this by checking that certificate_delivered_at is set
-    but the current session was NOT authenticated with a cert (cert_validated=False).
+    A level-1 or level-2 user who downloaded both credential files must re-login
+    with cert+key.  Detected by: certificate_delivered_at is set but the current
+    session was NOT authenticated with a cert (cert_validated=False).
     """
     return (
-        user.access_level == 2
+        user.access_level <= 2
         and user.onboarding_approved
         and user.certificate_delivered_at
         and not request.session.get('cert_validated', False)
     )
 
 
+# Keep old name as alias so any external references don't break immediately.
+_coordinator_needs_relogin = _needs_cert_relogin
+
+
 def _is_onboarding_user(user, request=None):
     """Return True when the user must be kept behind the onboarding gate."""
-    if not hasattr(user, 'onboarding_status') or user.is_system_admin():
+    if not hasattr(user, 'onboarding_status'):
         return False
     # Not yet submitted the form
     if user.onboarding_status == Collaborator.ONBOARDING_STATUS_PENDING:
@@ -77,11 +84,11 @@ def _is_onboarding_user(user, request=None):
     # Rejected — keep blocked until admin reactivates
     if user.onboarding_status == Collaborator.ONBOARDING_STATUS_REJECTED:
         return True
-    # Approved but coordinator hasn't downloaded both credential files yet
+    # Approved but level-1/2 user hasn't downloaded both credential files yet
     if user.onboarding_approved and not user.certificate_delivered_at:
         return True
-    # Coordinator downloaded files in current session without a fresh cert-authenticated login
-    if request and _coordinator_needs_relogin(user, request):
+    # Level-1/2 user downloaded files but hasn't re-logged in with cert+key
+    if request and _needs_cert_relogin(user, request):
         return True
     return False
 
@@ -121,20 +128,18 @@ def onboarding_view(request):
     """
     user = request.user
 
-    if user.is_system_admin():
-        return redirect('iam:dashboard')
-
     # Fully onboarded and authenticated with cert → go to dashboard
-    if user.onboarding_approved and user.certificate_delivered_at and not _coordinator_needs_relogin(user, request):
+    if user.onboarding_approved and user.certificate_delivered_at and not _needs_cert_relogin(user, request):
         return redirect('iam:dashboard')
 
-    is_coordinator = (user.access_level == 2)
+    # True for both admin (1) and coordinator (2): they both need cert+key files
+    is_coordinator = (user.access_level <= 2)
 
-    # ── State: re-login needed (coordinator downloaded credentials this session) ──
-    if is_coordinator and _coordinator_needs_relogin(user, request):
+    # ── State: re-login needed (downloaded credentials but not yet cert-authenticated) ──
+    if is_coordinator and _needs_cert_relogin(user, request):
         return render(request, 'iam/onboarding.html', {
             'onboarding_state': 'relogin_needed',
-            'is_coordinator': True,
+            'is_coordinator': is_coordinator,
         })
 
     # ── State: approved + downloads pending ──
@@ -222,8 +227,8 @@ def onboarding_certificate_download_view(request):
 def onboarding_key_download_view(request):
     """Download the .key file. Coordinators only."""
     user = request.user
-    if user.access_level != 2:
-        messages.error(request, 'Este archivo solo está disponible para coordinadores.')
+    if user.access_level > 2:
+        messages.error(request, 'Este archivo solo está disponible para usuarios con firma digital (nivel 1 o 2).')
         return redirect('iam:onboarding')
 
     certificate = getattr(user, 'certificate', None)
@@ -310,7 +315,7 @@ def approve_onboarding_view(request, pk):
             return redirect('iam:pending_onboarding')
 
     if request.method == 'POST':
-        # ── BLOCK: collaborator must have completed onboarding first ──
+        # ── BLOCK 1: collaborator must have completed onboarding first (before crypto) ──
         if not collaborator.onboarding_complete:
             missing = []
             if collaborator.onboarding_status != Collaborator.ONBOARDING_STATUS_SUBMITTED:
@@ -330,15 +335,44 @@ def approve_onboarding_view(request, pk):
             messages.error(request, f'No se puede aprobar: {detail}.')
             return redirect('iam:approve_onboarding', pk=pk)
 
+        # ── BLOCK 2: approving a level-1 account requires the approver to have a cert session ──
+        if collaborator.access_level == 1 and not request.session.get('cert_validated'):
+            messages.error(
+                request,
+                'Para aprobar una cuenta de Administrador debes haber iniciado sesión con tu certificado digital (.cert y .key).',
+            )
+            return redirect('iam:approve_onboarding', pk=pk)
+
+        # ── BLOCK 3: validate approver password ──
+        if not user.check_password(request.POST.get('password', '')):
+            messages.error(request, 'Contraseña incorrecta. No se pudo firmar la aprobación.')
+            return redirect('iam:approve_onboarding', pk=pk)
+
+        # ── BLOCK 4: validate approver cert + key ──
+        cert_file = request.FILES.get('cert_file')
+        key_file = request.FILES.get('key_file')
+        if not cert_file or not key_file:
+            messages.error(request, 'Debes proporcionar tu certificado (.cert) y tu llave privada (.key) para firmar la aprobación.')
+            return redirect('iam:approve_onboarding', pk=pk)
+        try:
+            cert_bytes = cert_file.read()
+            key_bytes = key_file.read()
+        except Exception:
+            cert_bytes, key_bytes = b'', b''
+        if not validate_cert_and_key(user, cert_bytes, key_bytes):
+            messages.error(request, 'El certificado o la llave privada del aprobador son inválidos.')
+            return redirect('iam:approve_onboarding', pk=pk)
+
+        # ── Approval ──
         collaborator.onboarding_status = Collaborator.ONBOARDING_STATUS_APPROVED
         collaborator.onboarding_approved_at = timezone.now()
         collaborator.onboarding_approved_by = user
         collaborator.save(update_fields=['onboarding_status', 'onboarding_approved_at', 'onboarding_approved_by'])
 
-        if collaborator.access_level == 2:
+        if collaborator.access_level <= 2:
             try:
-                issue_coordinator_key_cert(collaborator, issued_by=user)
-                msg = 'Onboarding aprobado. El coordinador recibirá el aviso para descargar sus archivos .cert y .key.'
+                issue_cert_and_key(collaborator, issued_by=user)
+                msg = 'Onboarding aprobado. El usuario recibirá el aviso para descargar sus archivos .cert y .key.'
             except PermissionError:
                 msg = 'Onboarding aprobado (los archivos de firma ya habían sido emitidos).'
         else:
@@ -346,6 +380,13 @@ def approve_onboarding_view(request, pk):
             collaborator.save(update_fields=['certificate_delivered_at'])
             msg = 'Onboarding aprobado. El usuario ya puede acceder al sistema.'
 
+        approver_fingerprint = getattr(getattr(user, 'certificate', None), 'fingerprint', 'unknown')
+        AuditLog.objects.create(
+            actor=user,
+            target=collaborator,
+            action='ONBOARDING_APPROVED_SIGNED',
+            details=f'Aprobador fingerprint: {approver_fingerprint}',
+        )
         _log(user, 'Aprobación de onboarding', f'Onboarding aprobado para {collaborator.username}.', target=collaborator, request=request)
         messages.success(request, msg)
         return redirect('iam:pending_onboarding')
@@ -448,9 +489,9 @@ def login_view(request):
                     messages.error(request, 'Usuario no encontrado.')
                 return render(request, 'iam/login.html', {'form': form, 'blocked': blocked, 'credentials_ready': credentials_ready})
 
-            # ── Coordinator still in onboarding (pending / submitted / approved but no cert) ──
+            # ── Level 1/2 still in onboarding (pending / submitted / approved but no cert) ──
             # Skip the cert+key check and redirect to the onboarding hub.
-            if user.access_level == 2 and not user.is_system_admin():
+            if user.access_level <= 2:
                 still_onboarding = (
                     user.onboarding_status in (
                         Collaborator.ONBOARDING_STATUS_PENDING,
@@ -465,8 +506,8 @@ def login_view(request):
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=True)
                     return redirect('iam:onboarding')
 
-            # Non-coordinator onboarding redirect (level 3/4)
-            if not user.is_system_admin() and user.access_level != 2:
+            # Level 3/4: no cert files needed; just check basic onboarding state
+            if user.access_level > 2:
                 if user.onboarding_pending or user.onboarding_submitted:
                     login(request, user)
                     request.session['cert_validated'] = False
@@ -485,15 +526,15 @@ def login_view(request):
 
             cert_validated = False
 
-            # ── Coordinator: require both .cert and .key (fully-onboarded sessions only) ──
-            if user.access_level == 2:
+            # ── Level 1 and 2: require both .cert and .key (RSA + X.509, fully-onboarded sessions only) ──
+            if user.access_level <= 2:
                 cert_file = form.cleaned_data.get('certificate')
                 key_file = form.cleaned_data.get('key_file')
                 if not cert_file or not key_file:
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(
                         request,
-                        'Los coordinadores deben proporcionar el certificado digital (.cert) y la llave privada (.key).',
+                        'Los administradores y coordinadores deben proporcionar el certificado digital (.cert) y la llave privada (.key).',
                     )
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked, 'credentials_ready': credentials_ready})
                 try:
@@ -501,26 +542,11 @@ def login_view(request):
                     key_bytes = key_file.read()
                 except Exception:
                     cert_bytes, key_bytes = b'', b''
-                if not validate_coordinator_cert_and_key(user, cert_bytes, key_bytes):
+                if not validate_cert_and_key(user, cert_bytes, key_bytes):
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(request, 'El certificado digital o la llave privada son inválidos.')
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked, 'credentials_ready': credentials_ready})
                 cert_validated = True
-
-            # ── Admin: optional legacy .cert ──
-            elif user.is_system_admin():
-                certificate_file = form.cleaned_data.get('certificate')
-                if certificate_file:
-                    try:
-                        certificate_str = certificate_file.read().decode('utf-8').strip()
-                    except Exception:
-                        certificate_str = ''
-                    if certificate_str:
-                        if not validate_encrypted_certificate(user, certificate_str):
-                            LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
-                            messages.error(request, 'Certificado inválido.')
-                            return render(request, 'iam/login.html', {'form': form, 'blocked': blocked, 'credentials_ready': credentials_ready})
-                        cert_validated = True
 
             login(request, user)
             request.session['cert_validated'] = cert_validated
@@ -683,18 +709,35 @@ def collaborator_create_view(request):
     if request.method == 'POST' and form.is_valid():
         collaborator = form.save(commit=False)
         collaborator.created_by = user
-        if not collaborator.password:
-            collaborator.set_password('Temp2026!')
+        temp_pw = secrets.token_urlsafe(12)
+        collaborator.set_password(temp_pw)
         if user.access_level == 2:
             if collaborator.access_level < 3:
                 collaborator.access_level = 3
             collaborator.area = user.area
         collaborator.save()
         _log(user, 'Creación de colaborador', f'Nuevo colaborador {collaborator.username} creado.', target=collaborator, request=request)
-        messages.success(request, 'Colaborador creado correctamente.')
-        return redirect('iam:detail', pk=collaborator.pk)
+        # Store the temp password in session for one-time display only.
+        request.session[f'just_created_{collaborator.pk}'] = temp_pw
+        return redirect('iam:collaborator_created', pk=collaborator.pk)
 
     return render(request, 'iam/collaborator_form.html', {'form': form, 'title': 'Alta de colaborador'})
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_admin
+def collaborator_created_view(request, pk):
+    """One-time view showing the generated temp password for a newly created collaborator."""
+    collaborator = get_object_or_404(Collaborator, pk=pk)
+    session_key = f'just_created_{pk}'
+    temp_pw = request.session.pop(session_key, None)
+    if temp_pw is None:
+        return redirect('iam:detail', pk=pk)
+    return render(request, 'iam/collaborator_created.html', {
+        'collaborator': collaborator,
+        'temp_pw': temp_pw,
+    })
 
 
 @login_required(login_url='iam:login')
@@ -812,11 +855,11 @@ def issue_certificate_view(request, pk):
 
     issued_certificate = None
     certificate_filename = None
-    is_coordinator = collaborator.access_level == 2
+    is_coordinator = collaborator.access_level <= 2
     if request.method == 'POST':
         try:
             if is_coordinator:
-                certificate = issue_coordinator_key_cert(collaborator, issued_by=request.user)
+                certificate = issue_cert_and_key(collaborator, issued_by=request.user)
             else:
                 certificate = issue_encrypted_certificate(collaborator, issued_by=request.user)
             issued_certificate = certificate.certificate_data
