@@ -30,4 +30,13 @@ urlpatterns = [
     path('password/change/', views.password_change_view, name='password_change'),
     path('security-question/', views.security_question_setup_view, name='security_question_setup'),
     path('api/user-role/', views.user_role_type_view, name='user_role_type'),
+    # Certificate Management (admin-only)
+    path('admin/certificates/', views.certificate_mgmt_list_view, name='certificate_mgmt_list'),
+    path('admin/certificates/user/<int:user_id>/issue/', views.certificate_mgmt_issue_view, name='certificate_mgmt_issue'),
+    path('admin/certificates/<int:cert_id>/', views.certificate_mgmt_detail_view, name='certificate_mgmt_detail'),
+    path('admin/certificates/<int:cert_id>/audit-log/', views.certificate_mgmt_audit_view, name='certificate_mgmt_audit'),
+    path('admin/certificates/<int:cert_id>/revoke/', views.certificate_mgmt_revoke_view, name='certificate_mgmt_revoke'),
+    path('admin/certificates/<int:cert_id>/suspend/', views.certificate_mgmt_suspend_view, name='certificate_mgmt_suspend'),
+    path('admin/certificates/<int:cert_id>/reactivate/', views.certificate_mgmt_reactivate_view, name='certificate_mgmt_reactivate'),
+    path('admin/certificates/<int:cert_id>/deactivate/', views.certificate_mgmt_deactivate_view, name='certificate_mgmt_deactivate'),
 ]

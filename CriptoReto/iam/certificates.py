@@ -386,3 +386,14 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
 # use the same RSA cert PEM + PKCS#8 DER key format.
 issue_cert_and_key = issue_coordinator_key_cert
 validate_cert_and_key = validate_coordinator_cert_and_key
+
+
+def extract_cert_serial_number(certificate_data: str) -> str:
+    """Return the X.509 serial number (hex) from a PEM certificate, or '' if not X.509."""
+    if not certificate_data or not certificate_data.strip().startswith('-----BEGIN CERTIFICATE-----'):
+        return ''
+    try:
+        cert = load_pem_x509_certificate(certificate_data.encode())
+        return format(cert.serial_number, 'x').upper()
+    except Exception:
+        return ''
