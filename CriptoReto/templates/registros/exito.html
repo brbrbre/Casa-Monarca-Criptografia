@@ -1,63 +1,31 @@
 {% extends "base.html" %}
 {% block content %}
-
 <style>
-  .sig-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 600;
-    border: 1px solid;
-  }
-  .sig-valid   { background:#e2f4e4; color:#1c6a2a; border-color:#a9d6ad; }
-  .sig-invalid { background:#fde9e9; color:#8c1717; border-color:#e3a7a7; }
-  .mono { font-family: 'Courier New', monospace; font-size: 12px; word-break: break-all; color: #333; }
-  .info-grid { display: grid; grid-template-columns: 180px 1fr; gap: 8px 16px; font-size: 14px; }
-  .info-label { color: #666; }
-  .btn-primary { background:#ad2b4e; border-color:#ad2b4e; color:#fff; }
+  .sig-badge { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid; }
+  .sig-valid { background:var(--cm-success-bg);color:var(--cm-success);border-color:#A5D6A7; }
+  .sig-invalid { background:var(--cm-danger-bg);color:var(--cm-danger);border-color:#FFCDD2; }
+  .info-grid { display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:14px; }
+  .info-label { color:var(--cm-text-muted); }
 </style>
-
 <div style="max-width:760px;">
-  <div style="text-align:center;padding:24px 0 16px;">
-    <div style="font-size:48px;margin-bottom:8px;">&#10003;</div>
-    <h2 style="color:#1c6a2a;margin-bottom:4px;">Registro creado exitosamente</h2>
-    <p style="color:#555;font-size:15px;">
-      El registro <strong>#{{ registration.pk }}</strong> ha sido guardado y firmado digitalmente.
-    </p>
+  <div style="text-align:center;padding:28px 0 20px;">
+    <div style="width:72px;height:72px;border-radius:50%;background:var(--cm-success-bg);color:var(--cm-success);font-size:32px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i class="fa-solid fa-check"></i></div>
+    <h2 style="color:var(--cm-success);margin-bottom:4px;">Registro creado exitosamente</h2>
+    <p style="color:var(--cm-text-muted);font-size:15px;">El registro <strong>#{{ registration.pk }}</strong> ha sido guardado y firmado digitalmente.</p>
   </div>
-
-  <!-- ── Signature status ─────────────────────────────────────────── -->
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;">
       <strong style="font-size:15px;">Estado de la firma digital</strong>
-      {% if verify_result %}
-        {% if verify_result.is_valid %}
-          <span class="sig-badge sig-valid">&#10003; Firma válida</span>
-        {% else %}
-          <span class="sig-badge sig-invalid">&#10007; Firma inválida</span>
-        {% endif %}
-      {% else %}
-        <span class="sig-badge" style="background:#f2f2f2;color:#555;border-color:#ccc;">Sin firma</span>
-      {% endif %}
+      {% if verify_result %}{% if verify_result.is_valid %}<span class="sig-badge sig-valid"><i class="fa-solid fa-check"></i> Firma válida</span>{% else %}<span class="sig-badge sig-invalid"><i class="fa-solid fa-xmark"></i> Firma inválida</span>{% endif %}{% else %}<span class="sig-badge" style="background:#F5F5F5;color:#555;border-color:#E0E0E0;">Sin firma</span>{% endif %}
     </div>
-
     {% if sig %}
-      <div class="info-grid">
-        <span class="info-label">Algoritmo</span>
-        <span>ECDSA / {{ sig.curve_name }}</span>
-        <span class="info-label">Firmado por</span>
-        <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }}
-              (Nivel {{ sig.signed_by_role }})</span>
-        <span class="info-label">Fecha de firma</span>
-        <span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
-      </div>
+    <div class="info-grid">
+      <span class="info-label">Algoritmo</span><span>ECDSA / {{ sig.curve_name }}</span>
+      <span class="info-label">Firmado por</span><span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }} (Nivel {{ sig.signed_by_role }})</span>
+      <span class="info-label">Fecha de firma</span><span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
+    </div>
     {% endif %}
   </div>
-
-  <!-- ── Summary ──────────────────────────────────────────────────── -->
   <div class="card">
     <strong style="font-size:15px;display:block;margin-bottom:12px;">Resumen del registro</strong>
     <div class="info-grid">
@@ -67,22 +35,17 @@
       <span class="info-label">País de origen</span><span>{{ registration.country_of_origin }}</span>
       <span class="info-label">Fecha de ingreso</span><span>{{ registration.entry_date|date:"d/m/Y" }}</span>
       <span class="info-label">Punto de ingreso</span><span>{{ registration.entry_point }}</span>
-      <span class="info-label">Asistencia solicitada</span>
-      <span>{% for a in registration.get_assistance_list %}{{ a }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
-      <span class="info-label">Registrado por</span>
-      <span>{{ registration.created_by.get_full_name|default:registration.created_by.username }}</span>
+      <span class="info-label">Asistencia solicitada</span><span>{% for a in registration.get_assistance_list %}{{ a }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+      <span class="info-label">Registrado por</span><span>{{ registration.created_by.get_full_name|default:registration.created_by.username }}</span>
       <span class="info-label">Fecha de creación</span><span>{{ registration.created_at|date:"d/m/Y H:i" }}</span>
     </div>
   </div>
-
-  <!-- ── Actions ──────────────────────────────────────────────────── -->
   <div style="display:flex;gap:12px;flex-wrap:wrap;">
     {% if request.user.access_level <= 3 %}
-      <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn btn-primary">Ver detalle completo</a>
-      <a href="{% url 'registros:registro_list' %}" class="btn btn-light">Ver todos los registros</a>
+    <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn"><i class="fa-solid fa-eye"></i> Ver detalle completo</a>
+    <a href="{% url 'registros:registro_list' %}" class="btn btn-light">Ver todos los registros</a>
     {% endif %}
-    <a href="{% url 'registros:registro_new' %}" class="btn btn-light">Nuevo registro</a>
+    <a href="{% url 'registros:registro_new' %}" class="btn btn-light"><i class="fa-solid fa-plus"></i> Nuevo registro</a>
   </div>
 </div>
-
 {% endblock %}

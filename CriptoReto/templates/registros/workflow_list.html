@@ -2,17 +2,15 @@
 {% block content %}
 
 <style>
-  .state-badge {
-    display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid;
-  }
-  .state-submitted    { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .state-pending      { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .state-escalated    { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
-  .state-approved     { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
-  .state-rejected     { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .state-executed     { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
-  .state-signed       { background:#d0f0fd;color:#055160;border-color:#6edff6; }
-  .notif-card { background:#fffbea;border:1px solid #fce8b2;border-radius:10px;padding:14px 18px;margin-bottom:10px; }
+  .state-badge { display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid; }
+  .state-submitted { background:var(--cm-warning-bg); color:var(--cm-warning); border-color:#FFCC80; }
+  .state-pending   { background:var(--cm-info-bg);    color:var(--cm-info);    border-color:#90CAF9; }
+  .state-escalated { background:var(--cm-purple-bg);  color:var(--cm-purple);  border-color:#CE93D8; }
+  .state-approved  { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .state-rejected  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border-color:#FFCDD2; }
+  .state-executed  { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .state-signed    { background:var(--cm-info-bg);    color:var(--cm-info);    border-color:#90CAF9; }
+  .notif-card { background:#FFFBEA;border:1px solid var(--cm-accent);border-left:4px solid var(--cm-accent);border-radius:10px;padding:14px 18px;margin-bottom:10px; }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
@@ -20,7 +18,8 @@
 </div>
 
 {% if pending_count %}
-  <div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:12px 16px;margin-bottom:16px;">
+  <div style="background:var(--cm-warning-bg);color:var(--cm-warning);border:1px solid #FFCC80;border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:8px;">
+    <i class="fa-solid fa-bell"></i>
     Tienes <strong>{{ pending_count }}</strong> solicitud{{ pending_count|pluralize:",es" }} pendiente{{ pending_count|pluralize:",s" }} de revisión.
   </div>
 {% endif %}
@@ -28,24 +27,22 @@
 {% if unread_notifications %}
   <div class="card" style="margin-bottom:20px;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-      <h4 style="margin:0;font-size:15px;"><i class="fa-solid fa-bell" style="color:#f2b01f;"></i> Notificaciones sin leer</h4>
+      <h4 style="margin:0;font-size:15px;"><i class="fa-solid fa-bell" style="color:var(--cm-accent);"></i> Notificaciones sin leer</h4>
       <form method="post" action="{% url 'registros:notifications_mark_read' %}" style="margin:0;">
         {% csrf_token %}
         <input type="hidden" name="next" value="{% url 'registros:workflow_list' %}">
-        <button type="submit" class="btn btn-light" style="font-size:12px;padding:5px 10px;">
-          Marcar todas como leídas
-        </button>
+        <button type="submit" class="btn btn-light btn-sm">Marcar todas como leídas</button>
       </form>
     </div>
     {% for notif in unread_notifications %}
       <div class="notif-card">
         <div style="font-size:14px;">{{ notif.message }}</div>
         {% if notif.workflow_request %}
-          <a href="{% url 'registros:workflow_detail' notif.workflow_request.pk %}" style="font-size:12px;color:#ad2b4e;">
+          <a href="{% url 'registros:workflow_detail' notif.workflow_request.pk %}" style="font-size:12px;color:var(--cm-primary);">
             Ver solicitud #{{ notif.workflow_request.pk }} →
           </a>
         {% endif %}
-        <div style="font-size:11px;color:#aaa;margin-top:4px;">{{ notif.created_at|date:"d/m/Y H:i" }}</div>
+        <div style="font-size:11px;color:var(--cm-text-muted);margin-top:4px;">{{ notif.created_at|date:"d/m/Y H:i" }}</div>
       </div>
     {% endfor %}
   </div>
@@ -56,14 +53,8 @@
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Tipo</th>
-          <th>Solicitado por</th>
-          <th>Registro</th>
-          <th>Estado</th>
-          <th>Nivel actual</th>
-          <th>Fecha</th>
-          <th>Acciones</th>
+          <th>#</th><th>Tipo</th><th>Solicitado por</th><th>Registro</th>
+          <th>Estado</th><th>Nivel actual</th><th>Fecha</th><th>Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -74,14 +65,12 @@
             <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td>
             <td>
               {% if wf.registration %}
-                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:var(--cm-primary);">
                   #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
                 </a>
               {% else %}—{% endif %}
             </td>
-            <td>
-              <span class="state-badge state-{{ wf.state }}">{{ wf.get_state_display }}</span>
-            </td>
+            <td><span class="state-badge state-{{ wf.state }}">{{ wf.get_state_display }}</span></td>
             <td>
               {% if wf.current_approver_level == 1 %}Admin
               {% elif wf.current_approver_level == 2 %}Coordinador
@@ -92,16 +81,12 @@
             <td>{{ wf.created_at|date:"d/m/Y H:i" }}</td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver</a>
+                <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light btn-sm">Ver</a>
                 {% if wf.pk in pending_pks %}
-                  <a href="{% url 'registros:workflow_decide' wf.pk %}" class="btn" style="font-size:12px;padding:5px 10px;background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
-                    Decidir
-                  </a>
+                  <a href="{% url 'registros:workflow_decide' wf.pk %}" class="btn btn-sm">Decidir</a>
                 {% endif %}
                 {% if wf.pk in executable_pks %}
-                  <a href="{% url 'registros:workflow_execute' wf.pk %}" class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
-                    Ejecutar
-                  </a>
+                  <a href="{% url 'registros:workflow_execute' wf.pk %}" class="btn btn-success btn-sm">Ejecutar</a>
                 {% endif %}
               </div>
             </td>
@@ -110,7 +95,7 @@
       </tbody>
     </table>
   {% else %}
-    <div style="padding:40px;text-align:center;color:#888;">
+    <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       No hay solicitudes de flujo registradas.
     </div>
   {% endif %}

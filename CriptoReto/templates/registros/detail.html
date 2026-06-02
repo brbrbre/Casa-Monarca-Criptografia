@@ -2,31 +2,28 @@
 {% block content %}
 
 <style>
-  .sig-badge {
-    display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;
-    font-size:13px;font-weight:600;border:1px solid;
-  }
-  .sig-valid   { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
-  .sig-invalid { background:#fde9e9;color:#8c1717;border-color:#e3a7a7; }
-  .sig-none    { background:#f2f2f2;color:#555;border-color:#ccc; }
+  .sig-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:13px; font-weight:600; border:1px solid; }
+  .sig-valid   { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .sig-invalid { background:var(--cm-danger-bg);  color:var(--cm-danger);  border-color:#FFCDD2; }
+  .sig-none    { background:#F5F5F5; color:#555; border-color:#E0E0E0; }
   .section-title {
-    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-    color:#ad2b4e;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0d0d8;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--cm-primary); margin:18px 0 8px; padding-bottom:4px;
+    border-bottom:1px solid var(--cm-border);
   }
-  .detail-grid { display:grid;grid-template-columns:200px 1fr;gap:8px 16px;font-size:14px; }
-  .detail-label { color:#666; }
-  .mono { font-family:'Courier New',monospace;font-size:11px;word-break:break-all;color:#333; }
-  .btn-primary { background:#ad2b4e;border-color:#ad2b4e;color:#fff; }
+  .detail-grid { display:grid; grid-template-columns:200px 1fr; gap:8px 16px; font-size:14px; }
+  .detail-label { color:var(--cm-text-muted); }
+  .mono { font-family:'Courier New',monospace; font-size:11px; word-break:break-all; color:var(--cm-text); }
 </style>
 
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-  <a href="{% url 'registros:registro_list' %}" class="btn btn-light" style="font-size:13px;">&#8592; Regresar</a>
+<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+  <a href="{% url 'registros:registro_list' %}" class="btn btn-light btn-sm">← Regresar</a>
   <h2 style="margin:0;">{{ title }}</h2>
   {% if verify_result %}
     {% if verify_result.is_valid %}
-      <span class="sig-badge sig-valid">&#10003; Firma válida</span>
+      <span class="sig-badge sig-valid"><i class="fa-solid fa-check"></i> Firma válida</span>
     {% else %}
-      <span class="sig-badge sig-invalid">&#10007; Firma inválida</span>
+      <span class="sig-badge sig-invalid"><i class="fa-solid fa-xmark"></i> Firma inválida</span>
     {% endif %}
   {% else %}
     <span class="sig-badge sig-none">Sin firma</span>
@@ -35,20 +32,17 @@
 
 <div style="max-width:820px;">
 
-  <!-- ── Personal ─────────────────────────────────────────────────── -->
   <div class="card">
     <div class="section-title">Datos personales</div>
     <div class="detail-grid">
-      <span class="detail-label">ID interno</span>
-      <span>{{ registration.internal_id|default:registration.pk }}</span>
+      <span class="detail-label">ID interno</span><span>{{ registration.internal_id|default:registration.pk }}</span>
       <span class="detail-label">Nombre completo</span><span>{{ registration.full_name }}</span>
       <span class="detail-label">Fecha de nacimiento</span><span>{{ registration.birth_date|date:"d/m/Y" }}</span>
       <span class="detail-label">Género</span><span>{{ registration.get_gender_display }}</span>
       <span class="detail-label">Nacionalidad</span><span>{{ registration.nationality }}</span>
       <span class="detail-label">País de origen</span><span>{{ registration.country_of_origin }}</span>
       <span class="detail-label">Tipo de documento</span><span>{{ registration.get_document_type_display }}</span>
-      <span class="detail-label">Número de documento</span>
-      <span>{{ registration.document_number|default:"—" }}</span>
+      <span class="detail-label">Número de documento</span><span>{{ registration.document_number|default:"—" }}</span>
     </div>
 
     <div class="section-title">Contacto</div>
@@ -97,8 +91,7 @@
     <div class="section-title">Metadatos</div>
     <div class="detail-grid">
       <span class="detail-label">Creado por</span>
-      <span>{{ registration.created_by.get_full_name|default:registration.created_by.username }}
-            (Nivel {{ registration.created_by_role }})</span>
+      <span>{{ registration.created_by.get_full_name|default:registration.created_by.username }} (Nivel {{ registration.created_by_role }})</span>
       <span class="detail-label">Fecha de creación</span><span>{{ registration.created_at|date:"d/m/Y H:i:s" }}</span>
       <span class="detail-label">Última actualización</span><span>{{ registration.updated_at|date:"d/m/Y H:i:s" }}</span>
       {% if registration.privacy_accepted_at %}
@@ -108,117 +101,81 @@
         v{{ registration.privacy_notice_version }} —
         {{ registration.get_consent_method_display }}
         {% if registration.consent_by_proxy %}
-          <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:4px;">Por personal</span>
+          <span style="background:var(--cm-warning-bg);color:var(--cm-warning);border:1px solid var(--cm-accent);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:4px;">Por personal</span>
         {% endif %}
       </span>
       {% endif %}
     </div>
   </div>
 
-  <!-- ── Signature ─────────────────────────────────────────────────── -->
   {% if sig %}
-    <div class="card">
-      <strong style="font-size:15px;display:block;margin-bottom:12px;">Firma digital ECDSA</strong>
-      <div class="detail-grid">
-        <span class="detail-label">Curva</span><span>{{ sig.curve_name }}</span>
-        <span class="detail-label">Firmado por</span>
-        <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }} (Nivel {{ sig.signed_by_role }})</span>
-        <span class="detail-label">Fecha de firma</span><span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
-      </div>
-      {% if verify_result %}
-        {% if not verify_result.is_valid %}
-          <div class="message message-error" style="margin-top:12px;">
-            Advertencia: la verificación de la firma ha fallado. Es posible que los datos hayan sido
-            modificados después de la firma. (Error: {{ verify_result.error }})
-          </div>
-        {% endif %}
-      {% endif %}
+  <div class="card">
+    <strong style="font-size:15px;display:block;margin-bottom:12px;">Firma digital ECDSA</strong>
+    <div class="detail-grid">
+      <span class="detail-label">Curva</span><span>{{ sig.curve_name }}</span>
+      <span class="detail-label">Firmado por</span>
+      <span>{{ sig.signed_by.get_full_name|default:sig.signed_by.username }} (Nivel {{ sig.signed_by_role }})</span>
+      <span class="detail-label">Fecha de firma</span><span>{{ sig.signed_at|date:"d/m/Y H:i:s" }}</span>
     </div>
+    {% if verify_result %}{% if not verify_result.is_valid %}
+      <div class="message message-error" style="margin-top:12px;">
+        Advertencia: la verificación de la firma ha fallado. Posible modificación posterior. (Error: {{ verify_result.error }})
+      </div>
+    {% endif %}{% endif %}
+  </div>
   {% endif %}
 
-  <!-- ── Actions ──────────────────────────────────────────────────── -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;">
     {% if request.user.access_level <= 2 %}
-      <a href="{% url 'registros:registro_expediente' registration.pk %}"
-         class="btn btn-light" style="font-size:13px;">
+      <a href="{% url 'registros:registro_expediente' registration.pk %}" class="btn btn-light btn-sm">
         <i class="fa-solid fa-clock-rotate-left"></i> Expediente / Historial
       </a>
-    {% endif %}
-
-    {% if request.user.access_level <= 2 %}
-      {# Coordinadores y Admin editan directamente #}
-      <a href="{% url 'registros:registro_edit' registration.pk %}" class="btn btn-primary">
+      <a href="{% url 'registros:registro_edit' registration.pk %}" class="btn btn-sm">
         <i class="fa-solid fa-pen"></i> Editar
       </a>
     {% elif request.user.access_level == 3 %}
-      {# Operativos solicitan actualización #}
-      <a href="{% url 'registros:workflow_request_create' registration.pk 'update_registration' %}"
-         class="btn btn-primary">
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'update_registration' %}" class="btn btn-sm">
         <i class="fa-solid fa-pen-to-square"></i> Solicitar actualización
       </a>
     {% endif %}
-
-    {# Operativo o superior puede abrir un caso ARCO #}
     {% if request.user.access_level <= 3 %}
-      <a href="{% url 'registros:arco_create' registration.pk %}"
-         class="btn" style="background:#5a2d82;border-color:#5a2d82;color:#fff;">
+      <a href="{% url 'registros:arco_create' registration.pk %}" class="btn" style="background:var(--cm-purple);color:#fff;">
         <i class="fa-solid fa-shield-halved"></i> Nueva solicitud ARCO
       </a>
     {% endif %}
-
     {% if request.user.access_level == 1 %}
-      {# Admin elimina directamente #}
       <form method="post" action="{% url 'registros:registro_delete' registration.pk %}"
             onsubmit="return confirm('¿Eliminar este registro permanentemente?')" style="margin:0;">
         {% csrf_token %}
-        <button type="submit" class="btn btn-danger">
-          <i class="fa-solid fa-trash"></i> Eliminar
-        </button>
+        <button type="submit" class="btn btn-danger btn-sm"><i class="fa-solid fa-trash"></i> Eliminar</button>
       </form>
     {% elif request.user.access_level == 2 %}
-      {# Coordinadores solicitan eliminación al Admin #}
-      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}"
-         class="btn btn-danger">
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}" class="btn btn-danger btn-sm">
         <i class="fa-solid fa-trash-arrow-up"></i> Solicitar eliminación
       </a>
     {% elif request.user.access_level == 3 %}
-      {# Operativos solicitan eliminación #}
-      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}"
-         class="btn btn-danger">
+      <a href="{% url 'registros:workflow_request_create' registration.pk 'delete_registration' %}" class="btn btn-danger btn-sm">
         <i class="fa-solid fa-trash-arrow-up"></i> Solicitar eliminación
       </a>
     {% endif %}
-
   </div>
 
-  {# Casos ARCO relacionados a este registro #}
   {% with arcos=registration.arco_requests.all %}
   {% if arcos %}
-  <div class="card" style="margin-top:8px;">
+  <div class="card">
     <div class="section-title">Solicitudes ARCO vinculadas</div>
-    <table style="width:100%;font-size:13px;border-collapse:collapse;">
+    <table class="table" style="font-size:13px;">
       <thead>
-        <tr style="background:#f8f9fa;">
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">ID de caso</th>
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Tipo</th>
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Estado</th>
-          <th style="padding:7px 10px;text-align:left;border-bottom:1px solid #eee;">Plazo</th>
-          <th style="padding:7px 10px;border-bottom:1px solid #eee;"></th>
-        </tr>
+        <tr><th>ID de caso</th><th>Tipo</th><th>Estado</th><th>Plazo</th><th></th></tr>
       </thead>
       <tbody>
         {% for arco in arcos %}
         <tr>
-          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;font-family:monospace;">{{ arco.case_id }}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">{{ arco.get_arco_type_display }}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">{{ arco.get_state_display }}</td>
-          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">
-            {% if arco.legal_deadline %}{{ arco.legal_deadline|date:"d/m/Y" }}{% else %}—{% endif %}
-          </td>
-          <td style="padding:7px 10px;border-bottom:1px solid #f5f5f5;">
-            <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:#ad2b4e;">Ver caso</a>
-          </td>
+          <td style="font-family:monospace;">{{ arco.case_id }}</td>
+          <td>{{ arco.get_arco_type_display }}</td>
+          <td>{{ arco.get_state_display }}</td>
+          <td>{% if arco.legal_deadline %}{{ arco.legal_deadline|date:"d/m/Y" }}{% else %}—{% endif %}</td>
+          <td><a href="{% url 'registros:arco_detail' arco.pk %}" style="color:var(--cm-primary);">Ver caso</a></td>
         </tr>
         {% endfor %}
       </tbody>

@@ -2,89 +2,70 @@
 {% block content %}
 
 <div style="margin-bottom:20px;">
-  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver al detalle</a>
+  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:var(--cm-primary);text-decoration:none;">← Volver al detalle</a>
 </div>
 
-<h2>Ejecutar solicitud aprobada #{{ wf.pk }}</h2>
+<h2 style="margin-bottom:16px;">Ejecutar solicitud aprobada #{{ wf.pk }}</h2>
 
-<div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-  <strong>Atención:</strong> Esta acción ejecutará <em>{{ wf.get_action_type_display }}</em>
-  {% if wf.registration %}
-    sobre el registro #{{ wf.registration.pk }} ({{ wf.registration.full_name }}).
-  {% else %}
-    sobre un nuevo registro migrante.
-  {% endif %}
-  La operación quedará firmada criptográficamente y es irreversible.
+<div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+  <i class="fa-solid fa-triangle-exclamation" style="color:var(--cm-warning);margin-top:2px;"></i>
+  <span style="font-size:14px;color:var(--cm-warning);">
+    <strong>Atención:</strong> Esta acción ejecutará <em>{{ wf.get_action_type_display }}</em>
+    {% if wf.registration %}
+      sobre el registro #{{ wf.registration.pk }} ({{ wf.registration.full_name }}).
+    {% else %}
+      sobre un nuevo registro migrante.
+    {% endif %}
+    La operación quedará firmada criptográficamente y es irreversible.
+  </span>
 </div>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
 
 <div class="card" style="max-width:560px;">
-  <h4 style="margin:0 0 16px;">Resumen de la solicitud</h4>
-  <table style="width:100%;font-size:14px;border-collapse:collapse;margin-bottom:20px;">
-    <tr><td style="color:#888;padding:5px 0;width:40%;">Tipo de acción</td>
-        <td>{{ wf.get_action_type_display }}</td></tr>
-    <tr><td style="color:#888;padding:5px 0;">Solicitante</td>
-        <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td></tr>
-    {% if wf.registration %}
-      <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
-          <td>
-            <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
-              #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
-            </a>
-          </td></tr>
-    {% else %}
-      <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
-          <td>Nuevo registro migrante</td></tr>
-    {% endif %}
-    <tr><td style="color:#888;padding:5px 0;">Notas</td>
-        <td>{{ wf.notes|default:"—" }}</td></tr>
-  </table>
+  <h4 style="margin:0 0 16px;"><i class="fa-solid fa-lock" style="color:var(--cm-text-muted);"></i> Resumen e identidad</h4>
+  <div style="background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:10px;padding:16px;margin-bottom:20px;">
+    <table style="width:100%;font-size:14px;border-collapse:collapse;">
+      <tr><td style="color:var(--cm-text-muted);padding:5px 0;width:40%;">Tipo de acción</td><td>{{ wf.get_action_type_display }}</td></tr>
+      <tr><td style="color:var(--cm-text-muted);padding:5px 0;">Solicitante</td><td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td></tr>
+      {% if wf.registration %}
+        <tr><td style="color:var(--cm-text-muted);padding:5px 0;">Registro afectado</td>
+            <td><a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:var(--cm-primary);">#{{ wf.registration.pk }} — {{ wf.registration.full_name }}</a></td></tr>
+      {% else %}
+        <tr><td style="color:var(--cm-text-muted);padding:5px 0;">Registro afectado</td><td>Nuevo registro migrante</td></tr>
+      {% endif %}
+      <tr><td style="color:var(--cm-text-muted);padding:5px 0;">Notas</td><td>{{ wf.notes|default:"—" }}</td></tr>
+    </table>
+  </div>
 
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
-    <div style="margin-bottom:20px;">
-      <label for="id_notes" style="font-weight:600;display:block;margin-bottom:6px;">Observaciones de ejecución (opcional)</label>
-      <textarea name="notes" id="id_notes" rows="3"
-                style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
-                placeholder="Notas sobre la ejecución…"></textarea>
+    <div class="field-group">
+      <label for="id_notes">Observaciones de ejecución (opcional)</label>
+      <textarea name="notes" id="id_notes" rows="3" placeholder="Notas sobre la ejecución…"></textarea>
     </div>
 
-    <div style="margin-bottom:20px;">
-      <label for="id_cert_file" style="font-weight:600;display:block;margin-bottom:6px;">
-        Certificado digital
-      </label>
-      <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem"
-             style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>
+    <div class="field-group">
+      <label for="id_cert_file">Certificado digital (.cert) <span style="color:var(--cm-danger);">*</span></label>
+      <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem" required>
     </div>
 
     {% if request.user.access_level <= 2 %}
-      <div style="margin-bottom:20px;">
-        <label for="id_key_file" style="font-weight:600;display:block;margin-bottom:6px;">
-          Llave privada (.key) <span style="color:#b71c1c;font-size:12px;">Obligatorio</span>
-        </label>
-        <input type="file" name="key_file" id="id_key_file" accept=".key"
-               style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>
+      <div class="field-group">
+        <label for="id_key_file">Llave privada (.key) <span style="color:var(--cm-danger);font-size:12px;">Obligatorio</span></label>
+        <input type="file" name="key_file" id="id_key_file" accept=".key" required>
       </div>
     {% endif %}
 
-    <div style="margin-bottom:24px;">
-      <label for="id_password" style="font-weight:600;display:block;margin-bottom:6px;">
-        Contraseña (confirma tu identidad para la firma digital)
-      </label>
-      <input type="password" name="password" id="id_password" autocomplete="current-password"
-             style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
-             required>
+    <div class="field-group">
+      <label for="id_password">Contraseña (confirma tu identidad para la firma digital) <span style="color:var(--cm-danger);">*</span></label>
+      <input type="password" name="password" id="id_password" autocomplete="current-password" required>
     </div>
 
-    <div style="display:flex;gap:12px;">
-      <button type="submit" class="btn" style="background:#198754;color:#fff;border-color:#198754;">
-        Ejecutar y firmar
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <button type="submit" class="btn btn-success" style="font-size:15px;padding:12px 24px;">
+        <i class="fa-solid fa-pen-nib"></i> Ejecutar y firmar
       </button>
       <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light">Cancelar</a>
     </div>

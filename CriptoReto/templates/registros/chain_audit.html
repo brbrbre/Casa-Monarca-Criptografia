@@ -1,57 +1,52 @@
 {% extends "base.html" %}
 {% block content %}
 
-<h2>Auditoría de cadena criptográfica</h2>
-<p style="color:#666;margin-bottom:24px;">
+<style>.row-tampered { background:var(--cm-danger-bg); }</style>
+<h2 style="margin-bottom:6px;">Auditoría de cadena criptográfica</h2>
+<p style="color:var(--cm-text-muted);margin-bottom:24px;">
   Verificación de la integridad del registro de acciones firmadas con ECDSA (secp256k1).
   Cada entrada compromete criptográficamente toda la historia anterior mediante encadenamiento de hashes.
 </p>
 
 {% if messages %}
   {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+    <div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
   {% endfor %}
 {% endif %}
 
-<!-- Summary -->
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
-  <div class="card" style="text-align:center;">
-    <div style="font-size:28px;font-weight:700;color:#1c6a2a;">{{ valid_count }}</div>
-    <div style="font-size:13px;color:#888;margin-top:4px;">Firmas válidas</div>
+  <div class="card" style="text-align:center;margin-bottom:0;">
+    <div style="font-size:28px;font-weight:700;color:var(--cm-success);">{{ valid_count }}</div>
+    <div style="font-size:13px;color:var(--cm-text-muted);margin-top:4px;">Firmas válidas</div>
   </div>
-  <div class="card" style="text-align:center;">
-    <div style="font-size:28px;font-weight:700;color:#{{ chain_intact_count == results|length|stringformat:'s' and '1c6a2a' or 'dc3545' }};">
-      {{ chain_intact_count }}
-    </div>
-    <div style="font-size:13px;color:#888;margin-top:4px;">Eslabones íntegros</div>
+  <div class="card" style="text-align:center;margin-bottom:0;">
+    <div style="font-size:28px;font-weight:700;">{{ chain_intact_count }}</div>
+    <div style="font-size:13px;color:var(--cm-text-muted);margin-top:4px;">Eslabones íntegros</div>
   </div>
-  <div class="card" style="text-align:center;">
-    <div style="font-size:28px;font-weight:700;color:#0a3377;">{{ results|length }}</div>
-    <div style="font-size:13px;color:#888;margin-top:4px;">Total verificados</div>
+  <div class="card" style="text-align:center;margin-bottom:0;">
+    <div style="font-size:28px;font-weight:700;color:var(--cm-info);">{{ results|length }}</div>
+    <div style="font-size:13px;color:var(--cm-text-muted);margin-top:4px;">Total verificados</div>
   </div>
 </div>
 
 {% if tampered %}
-  <div class="alert" style="background:#f8d7da;color:#842029;border:1px solid #f1aeb5;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-    <strong><i class="fa-solid fa-triangle-exclamation"></i> Alerta de integridad:</strong>
-    Se detectaron {{ tampered }} entrada{{ tampered|pluralize:",s" }} con firma o cadena inválida.
-    Esto puede indicar modificación no autorizada del registro de auditoría.
+  <div style="background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;">
+    <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;"></i>
+    <span><strong>Alerta de integridad:</strong> Se detectaron {{ tampered }} entrada{{ tampered|pluralize:",s" }} con firma o cadena inválida. Esto puede indicar modificación no autorizada.</span>
   </div>
 {% else %}
-  <div class="alert" style="background:#d1e7dd;color:#0f5132;border:1px solid #a3cfbb;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
-    <i class="fa-solid fa-circle-check"></i> La cadena de auditoría está íntegra. No se detectaron modificaciones.
+  <div style="background:var(--cm-success-bg);color:var(--cm-success);border:1px solid #A5D6A7;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+    <i class="fa-solid fa-circle-check"></i>
+    <span>La cadena de auditoría está íntegra. No se detectaron modificaciones.</span>
   </div>
 {% endif %}
 
-<!-- Pagination filter -->
-<form method="get" style="display:flex;gap:10px;margin-bottom:16px;align-items:center;">
-  <label style="font-size:13px;color:#555;">Desde posición:</label>
-  <input type="number" name="start" value="{{ start }}" min="0"
-         style="width:80px;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
-  <label style="font-size:13px;color:#555;">Cantidad:</label>
-  <input type="number" name="count" value="{{ count }}" min="1" max="500"
-         style="width:80px;padding:7px 10px;border:1px solid #ccc;border-radius:6px;font-size:13px;">
-  <button type="submit" class="btn btn-light" style="font-size:13px;padding:7px 14px;">Filtrar</button>
+<form method="get" style="display:flex;gap:10px;margin-bottom:16px;align-items:center;flex-wrap:wrap;">
+  <label style="font-size:13px;color:var(--cm-text-muted);">Desde posición:</label>
+  <input type="number" name="start" value="{{ start }}" min="0" style="width:80px;">
+  <label style="font-size:13px;color:var(--cm-text-muted);">Cantidad:</label>
+  <input type="number" name="count" value="{{ count }}" min="1" max="500" style="width:80px;">
+  <button type="submit" class="btn btn-light btn-sm">Filtrar</button>
 </form>
 
 <div class="card" style="padding:0;overflow:hidden;">
@@ -69,23 +64,23 @@
       </thead>
       <tbody>
         {% for entry in results %}
-          <tr style="{% if not entry.signature_valid or not entry.chain_intact %}background:#fff5f5;{% endif %}">
+          <tr class="{% if not entry.signature_valid or not entry.chain_intact %}row-tampered{% endif %}">
             <td style="font-family:monospace;">{{ entry.chain_position }}</td>
             <td>{{ entry.subject }}</td>
             <td>{{ entry.signed_by }}</td>
             <td>{{ entry.signed_at|date:"d/m/Y H:i:s" }}</td>
             <td>
               {% if entry.signature_valid %}
-                <span style="color:#1c6a2a;font-weight:600;"><i class="fa-solid fa-check"></i> Válida</span>
+                <span style="color:var(--cm-success);font-weight:600;"><i class="fa-solid fa-check"></i> Válida</span>
               {% else %}
-                <span style="color:#dc3545;font-weight:600;"><i class="fa-solid fa-xmark"></i> Inválida</span>
+                <span style="color:var(--cm-danger);font-weight:600;"><i class="fa-solid fa-xmark"></i> Inválida</span>
               {% endif %}
             </td>
             <td>
               {% if entry.chain_intact %}
-                <span style="color:#1c6a2a;font-weight:600;"><i class="fa-solid fa-check"></i> Íntegra</span>
+                <span style="color:var(--cm-success);font-weight:600;"><i class="fa-solid fa-check"></i> Íntegra</span>
               {% else %}
-                <span style="color:#dc3545;font-weight:600;"><i class="fa-solid fa-xmark"></i> Rota</span>
+                <span style="color:var(--cm-danger);font-weight:600;"><i class="fa-solid fa-xmark"></i> Rota</span>
               {% endif %}
             </td>
           </tr>
@@ -93,7 +88,7 @@
       </tbody>
     </table>
   {% else %}
-    <div style="padding:40px;text-align:center;color:#888;">
+    <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       No hay entradas en la cadena de auditoría para el rango indicado.
     </div>
   {% endif %}
@@ -101,9 +96,7 @@
 
 {% if has_more %}
   <div style="margin-top:16px;text-align:center;">
-    <a href="?start={{ next_start }}&count={{ count }}" class="btn btn-light">
-      Siguiente página →
-    </a>
+    <a href="?start={{ next_start }}&count={{ count }}" class="btn btn-light">Siguiente página →</a>
   </div>
 {% endif %}
 

@@ -2,38 +2,40 @@
 {% block content %}
 
 <style>
-  .badge-alta   { background:#fde9e9;color:#8c1717;border:1px solid #e3a7a7;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600; }
-  .badge-media  { background:#fff3cd;color:#7a5300;border:1px solid #ffd77a;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600; }
-  .badge-baja   { background:#e2f4e4;color:#1c6a2a;border:1px solid #a9d6ad;padding:2px 10px;border-radius:999px;font-size:12px;font-weight:600; }
-  .badge-abierto    { background:#e8f0fe;color:#1a53c4;border:1px solid #a8c0f7;padding:2px 10px;border-radius:999px;font-size:12px; }
-  .badge-en_proceso { background:#fff3cd;color:#7a5300;border:1px solid #ffd77a;padding:2px 10px;border-radius:999px;font-size:12px; }
-  .badge-cerrado    { background:#f2f2f2;color:#555;border:1px solid #ccc;padding:2px 10px;border-radius:999px;font-size:12px; }
-  .mono { font-family:'Courier New',monospace;font-size:12px; }
+  .badge-alta  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border:1px solid #FFCDD2; padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-media { background:var(--cm-warning-bg); color:var(--cm-warning); border:1px solid #FFCC80; padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-baja  { background:var(--cm-success-bg); color:var(--cm-success); border:1px solid #A5D6A7; padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-alta::before  { content:'●'; font-size:8px; }
+  .badge-media::before { content:'●'; font-size:8px; }
+  .badge-baja::before  { content:'●'; font-size:8px; }
+  .badge-abierto    { background:var(--cm-info-bg);    color:var(--cm-info);    border:1px solid #90CAF9;  padding:2px 10px;border-radius:999px;font-size:12px; }
+  .badge-en_proceso { background:var(--cm-warning-bg); color:var(--cm-warning); border:1px solid #FFCC80;  padding:2px 10px;border-radius:999px;font-size:12px; }
+  .badge-cerrado    { background:#F5F5F5; color:#555; border:1px solid #E0E0E0; padding:2px 10px;border-radius:999px;font-size:12px; }
+  .ticket-id { font-family:'Courier New',monospace;font-size:12px;background:var(--cm-bg);padding:2px 8px;border-radius:6px;border:1px solid var(--cm-border); }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
   <h2 style="margin:0;">{{ title }}</h2>
 </div>
 
-<!-- Filtros -->
 <form method="get" style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
   <input type="text" name="q" value="{{ q }}" placeholder="Buscar por ID, nombre o resumen…"
-         style="flex:1;min-width:200px;padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
-  <select name="priority" style="padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+         style="flex:1;min-width:200px;">
+  <select name="priority">
     <option value="">Todas las prioridades</option>
     {% for val, label in priority_choices %}
       <option value="{{ val }}" {% if priority == val %}selected{% endif %}>{{ label }}</option>
     {% endfor %}
   </select>
-  <select name="status" style="padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+  <select name="status">
     <option value="">Todos los estados</option>
     {% for val, label in status_choices %}
       <option value="{{ val }}" {% if status == val %}selected{% endif %}>{{ label }}</option>
     {% endfor %}
   </select>
-  <button type="submit" class="btn btn-light">Filtrar</button>
+  <button type="submit" class="btn btn-light btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Filtrar</button>
   {% if q or priority or status %}
-    <a href="{% url 'registros:ticket_list' %}" class="btn btn-light">Limpiar</a>
+    <a href="{% url 'registros:ticket_list' %}" class="btn btn-light btn-sm">Limpiar</a>
   {% endif %}
 </form>
 
@@ -42,40 +44,29 @@
     <table class="table" style="margin:0;">
       <thead>
         <tr>
-          <th>ID de Caso</th>
-          <th>Resumen</th>
-          <th>Solicitante</th>
-          <th>Rol</th>
-          <th>Prioridad</th>
-          <th>Estado</th>
-          <th>Fecha</th>
-          <th></th>
+          <th>ID de Caso</th><th>Resumen</th><th>Solicitante</th>
+          <th>Rol</th><th>Prioridad</th><th>Estado</th><th>Fecha</th><th></th>
         </tr>
       </thead>
       <tbody>
         {% for ticket in tickets %}
           <tr>
-            <td><span class="mono">{{ ticket.ticket_id }}</span></td>
+            <td><span class="ticket-id">{{ ticket.ticket_id }}</span></td>
             <td style="max-width:280px;font-size:13px;">{{ ticket.summary|truncatechars:60 }}</td>
             <td style="font-size:13px;">{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</td>
             <td style="font-size:13px;">{{ ticket.rol_display }}</td>
+            <td><span class="badge-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></td>
+            <td><span class="badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span></td>
+            <td style="font-size:13px;color:var(--cm-text-muted);white-space:nowrap;">{{ ticket.created_at|date:"d/m/Y" }}</td>
             <td>
-              <span class="badge-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
-            </td>
-            <td>
-              <span class="badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
-            </td>
-            <td style="font-size:13px;color:#666;white-space:nowrap;">{{ ticket.created_at|date:"d/m/Y" }}</td>
-            <td>
-              <a href="{% url 'registros:ticket_detail' ticket.ticket_id %}"
-                 class="btn btn-light" style="font-size:12px;padding:4px 10px;">Ver</a>
+              <a href="{% url 'registros:ticket_detail' ticket.ticket_id %}" class="btn btn-light btn-sm">Ver</a>
             </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
-    <div style="padding:40px;text-align:center;color:#888;">
+    <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       No se encontraron tickets con los filtros aplicados.
     </div>
   {% endif %}
