@@ -10,7 +10,8 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.serialization import (
-    Encoding, PrivateFormat, PublicFormat, NoEncryption, load_der_private_key,
+    Encoding, PrivateFormat, PublicFormat, NoEncryption,
+    load_der_private_key, load_pem_private_key,
 )
 from cryptography.x509 import load_pem_x509_certificate
 from cryptography.x509.oid import NameOID
@@ -325,7 +326,10 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
     """
     try:
         cert = load_pem_x509_certificate(cert_pem_bytes)
-        private_key = load_der_private_key(key_der_bytes, password=None)
+        try:
+            private_key = load_der_private_key(key_der_bytes, password=None)
+        except (ValueError, TypeError):
+            private_key = load_pem_private_key(key_der_bytes, password=None)
 
         cert_pub = cert.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
         key_pub = private_key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)

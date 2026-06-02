@@ -66,23 +66,29 @@
   <!-- ── Registro migrante vinculado ─────────────────────────────────── -->
   <div class="card" style="margin-top:16px;">
     <div class="section-title">Registro migrante vinculado</div>
-    <div class="detail-grid">
-      <span class="detail-label">ID interno</span>
-      <span class="mono">{{ ticket.registration.internal_id|default:"—" }}</span>
+    {% if ticket.registration %}
+      <div class="detail-grid">
+        <span class="detail-label">ID interno</span>
+        <span class="mono">{{ ticket.registration.internal_id|default:"—" }}</span>
 
-      <span class="detail-label">Nombre completo</span>
-      <span>{{ ticket.registration.full_name }}</span>
+        <span class="detail-label">Nombre completo</span>
+        <span>{{ ticket.registration.full_name }}</span>
 
-      <span class="detail-label">Nacionalidad</span>
-      <span>{{ ticket.registration.nationality }}</span>
+        <span class="detail-label">Nacionalidad</span>
+        <span>{{ ticket.registration.nationality }}</span>
 
-      <span class="detail-label">Fecha de ingreso</span>
-      <span>{{ ticket.registration.entry_date|date:"d/m/Y" }}</span>
-    </div>
-    <div style="margin-top:12px;">
-      <a href="{% url 'registros:registro_detail' ticket.registration.pk %}"
-         class="btn btn-light" style="font-size:13px;">Ver registro completo</a>
-    </div>
+        <span class="detail-label">Fecha de ingreso</span>
+        <span>{{ ticket.registration.entry_date|date:"d/m/Y" }}</span>
+      </div>
+      <div style="margin-top:12px;">
+        <a href="{% url 'registros:registro_detail' ticket.registration.pk %}"
+           class="btn btn-light" style="font-size:13px;">Ver registro completo</a>
+      </div>
+    {% else %}
+      <div style="padding:14px 0;color:#444;font-size:14px;line-height:1.5;">
+        Este ticket está pendiente de aprobación por Coordinador. El registro migrante se vinculará cuando la solicitud sea ejecutada.
+      </div>
+    {% endif %}
   </div>
 
   <!-- ── Cambiar estado (solo coordinadores y admins) ─────────────────── -->

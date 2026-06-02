@@ -259,7 +259,11 @@
   <!-- Submit actions (outside scroll container) -->
   <div style="margin-top:16px;display:flex;align-items:center;gap:14px;">
     <button type="submit" form="reg-form" id="submit-btn" class="btn btn-primary" disabled>
-      Revisar y Firmar &#8594;
+      {% if request.user.access_level >= 3 and not editing %}
+        Enviar Solicitud &#8594;
+      {% else %}
+        Revisar y Firmar &#8594;
+      {% endif %}
     </button>
     {% if editing %}
       <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn btn-light">Cancelar</a>

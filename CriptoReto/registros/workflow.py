@@ -58,6 +58,10 @@ ESCALATION_RULES: dict[tuple, list[int]] = {
     ('arco_cancellation', 3): [2, 1],
     ('arco_cancellation', 2): [1],
 
+    # ── CREACIÓN DE REGISTRO ─────────────────────────────────────────────────
+    ('create_registration', 4): [2],
+    ('create_registration', 3): [2],
+
     # ── ARCO — Oposición ─────────────────────────────────────────────────────
     ('arco_opposition', 4): [3],
     ('arco_opposition', 3): [2],
@@ -82,6 +86,7 @@ def can_act_directly(action_type: str, user_level: int) -> bool:
     direct_map = {
         'update_registration': 2,  # Coordinador and above
         'delete_registration': 1,  # Admin only
+        'create_registration': 2,  # Coordinador and above
         'arco_access': 3,
         'arco_rectification': 2,
         'arco_cancellation': 1,
@@ -330,6 +335,45 @@ def _perform_action(wf, actor):
                     continue
             setattr(reg, field, value)
         reg.save()
+
+    elif wf.action_type == 'create_registration':
+        from .models import MigrantRegistration, Ticket, MigrantRegistrationSignature
+        from .services import sign_registration
+
+        payload = wf.payload or {}
+        reg = MigrantRegistration()
+        for field, value in payload.items():
+            if not hasattr(reg, field):
+                continue
+            setattr(reg, field, value)
+
+        reg.created_by = wf.requested_by
+        reg.created_by_role = wf.requested_by_role
+        if hasattr(reg, 'privacy_accepted_at') and isinstance(payload.get('privacy_accepted_at'), str):
+            try:
+                from datetime import datetime
+                reg.privacy_accepted_at = datetime.fromisoformat(payload['privacy_accepted_at'])
+            except ValueError:
+                reg.privacy_accepted_at = timezone.now()
+        reg.privacy_accepted_ip = payload.get('privacy_accepted_ip')
+        reg.privacy_notice_version = payload.get('privacy_notice_version')
+        reg.save()
+
+        try:
+            existing_ticket = wf.ticket
+            existing_ticket.registration = reg
+            existing_ticket.status = Ticket.STATUS_EN_PROCESO
+            existing_ticket.save(update_fields=['registration', 'status', 'updated_at'])
+        except Ticket.DoesNotExist:
+            Ticket.create_for_registration(reg, wf.requested_by)
+
+        sig_data = sign_registration(reg)
+        MigrantRegistrationSignature.objects.create(
+            registration=reg,
+            signed_by=actor,
+            signed_by_role=actor.access_level,
+            **sig_data,
+        )
 
     elif wf.action_type == 'delete_registration' and wf.registration:
         wf.registration.soft_delete(actor)

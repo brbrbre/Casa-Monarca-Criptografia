@@ -148,5 +148,7 @@ class Command(BaseCommand):
             print(f'Admin certificate issued: {cert.fingerprint}')
         except ImproperlyConfigured as exc:
             print(f'Warning: {exc}')
+        except PermissionError as exc:
+            print(f'Warning: {exc}')
 
         self.stdout.write(self.style.SUCCESS('Datos de prueba cargados correctamente.'))

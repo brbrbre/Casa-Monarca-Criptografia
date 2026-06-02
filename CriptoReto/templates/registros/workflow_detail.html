@@ -42,6 +42,10 @@
                 <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
                   #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
                 </a>
+              {% elif wf.action_type == 'create_registration' %}
+                <a href="{% url 'registros:workflow_registration_preview' wf.pk %}" style="color:#ad2b4e;">
+                  Ver registro completo
+                </a>
               {% else %}—{% endif %}</td></tr>
       <tr><td style="color:#888;padding:4px 0;">Creada el</td>
           <td>{{ wf.created_at|date:"d/m/Y H:i" }}</td></tr>
@@ -52,6 +56,12 @@
             <td>Nivel {{ wf.current_approver_level }}</td></tr>
       {% endif %}
     </table>
+    {% if wf.registration %}
+      <div style="margin-top:14px;">
+        <a href="{% url 'registros:registro_detail' wf.registration.pk %}"
+           class="btn btn-light" style="font-size:13px;">Ver registro completo</a>
+      </div>
+    {% endif %}
   </div>
 
   <div class="card">

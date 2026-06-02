@@ -13,6 +13,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='migrantregistration',
             name='folio',
-            field=models.CharField(blank=True, max_length=32, unique=True, verbose_name='Folio'),
+            field=models.CharField(blank=True, null=True, max_length=32, unique=True, verbose_name='Folio'),
         ),
     ]

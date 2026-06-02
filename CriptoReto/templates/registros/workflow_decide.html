@@ -61,7 +61,7 @@
 {% endif %}
 
 <div class="card" style="max-width:560px;">
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div style="margin-bottom:20px;">
@@ -98,6 +98,27 @@
       {% endif %}
     </div>
 
+    {% if request.user.access_level <= 2 %}
+      <div id="cert-inputs" style="display:none;margin-bottom:20px;">
+        <div style="margin-bottom:20px;">
+          <label for="id_cert_file" style="font-weight:600;display:block;margin-bottom:6px;">
+            Certificado digital
+          </label>
+          <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem"
+                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+        </div>
+        {% if request.user.access_level == 2 %}
+          <div style="margin-bottom:20px;">
+            <label for="id_key_file" style="font-weight:600;display:block;margin-bottom:6px;">
+              Llave privada (.key)
+            </label>
+            <input type="file" name="key_file" id="id_key_file" accept=".key"
+                   style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+          </div>
+        {% endif %}
+      </div>
+    {% endif %}
+
     <div style="display:flex;gap:12px;">
       <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
         Confirmar decisión
@@ -106,5 +127,23 @@
     </div>
   </form>
 </div>
+
+{% if request.user.access_level <= 2 %}
+<script>
+  (function () {
+    const radios = document.querySelectorAll('input[name="decision"]');
+    const certInputs = document.getElementById('cert-inputs');
+    if (!certInputs) return;
+
+    function updateVisibility() {
+      const approved = Array.from(radios).some(r => r.checked && r.value === 'approved');
+      certInputs.style.display = approved ? 'block' : 'none';
+    }
+
+    radios.forEach(radio => radio.addEventListener('change', updateVisibility));
+    updateVisibility();
+  })();
+</script>
+{% endif %}
 
 {% endblock %}

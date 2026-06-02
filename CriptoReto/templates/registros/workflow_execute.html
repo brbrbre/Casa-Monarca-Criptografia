@@ -9,7 +9,11 @@
 
 <div class="alert" style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
   <strong>Atención:</strong> Esta acción ejecutará <em>{{ wf.get_action_type_display }}</em>
-  sobre el registro #{{ wf.registration.pk }} ({{ wf.registration.full_name }}).
+  {% if wf.registration %}
+    sobre el registro #{{ wf.registration.pk }} ({{ wf.registration.full_name }}).
+  {% else %}
+    sobre un nuevo registro migrante.
+  {% endif %}
   La operación quedará firmada criptográficamente y es irreversible.
 </div>
 
@@ -26,17 +30,22 @@
         <td>{{ wf.get_action_type_display }}</td></tr>
     <tr><td style="color:#888;padding:5px 0;">Solicitante</td>
         <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td></tr>
-    <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
-        <td>
-          <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
-            #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
-          </a>
-        </td></tr>
+    {% if wf.registration %}
+      <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
+          <td>
+            <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+              #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
+            </a>
+          </td></tr>
+    {% else %}
+      <tr><td style="color:#888;padding:5px 0;">Registro afectado</td>
+          <td>Nuevo registro migrante</td></tr>
+    {% endif %}
     <tr><td style="color:#888;padding:5px 0;">Notas</td>
         <td>{{ wf.notes|default:"—" }}</td></tr>
   </table>
 
-  <form method="post">
+  <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 
     <div style="margin-bottom:20px;">
@@ -45,6 +54,24 @@
                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
                 placeholder="Notas sobre la ejecución…"></textarea>
     </div>
+
+    <div style="margin-bottom:20px;">
+      <label for="id_cert_file" style="font-weight:600;display:block;margin-bottom:6px;">
+        Certificado digital
+      </label>
+      <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem"
+             style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>
+    </div>
+
+    {% if request.user.access_level == 2 %}
+      <div style="margin-bottom:20px;">
+        <label for="id_key_file" style="font-weight:600;display:block;margin-bottom:6px;">
+          Llave privada (.key)
+        </label>
+        <input type="file" name="key_file" id="id_key_file" accept=".key"
+               style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;" required>
+      </div>
+    {% endif %}
 
     <div style="margin-bottom:24px;">
       <label for="id_password" style="font-weight:600;display:block;margin-bottom:6px;">

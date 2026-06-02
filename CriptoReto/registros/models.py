@@ -315,6 +315,7 @@ class WorkflowRequest(models.Model):
     # ── Action types ──────────────────────────────────────────────────────────
     ACTION_UPDATE_REGISTRATION = 'update_registration'
     ACTION_DELETE_REGISTRATION = 'delete_registration'
+    ACTION_CREATE_REGISTRATION = 'create_registration'
     ACTION_ARCO_ACCESS = 'arco_access'
     ACTION_ARCO_RECTIFICATION = 'arco_rectification'
     ACTION_ARCO_CANCELLATION = 'arco_cancellation'
@@ -323,6 +324,7 @@ class WorkflowRequest(models.Model):
     ACTION_CHOICES = [
         (ACTION_UPDATE_REGISTRATION, 'Actualizar Registro'),
         (ACTION_DELETE_REGISTRATION, 'Eliminar Registro'),
+        (ACTION_CREATE_REGISTRATION, 'Crear Registro'),
         (ACTION_ARCO_ACCESS, 'ARCO — Acceso'),
         (ACTION_ARCO_RECTIFICATION, 'ARCO — Rectificación'),
         (ACTION_ARCO_CANCELLATION, 'ARCO — Cancelación'),
@@ -669,6 +671,16 @@ class Ticket(models.Model):
         on_delete=models.CASCADE,
         related_name='ticket',
         verbose_name='Registro migrante',
+        null=True,
+        blank=True,
+    )
+    workflow_request = models.OneToOneField(
+        'WorkflowRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ticket',
+        verbose_name='Solicitud de workflow',
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -723,11 +735,33 @@ class Ticket(models.Model):
         return cls.objects.create(
             ticket_id=_ticket_id(prefix),
             registration=registration,
+            workflow_request=None,
             created_by=created_by,
             rol_display=rol,
             summary=summary,
             description=description,
             priority=priority,
+        )
+
+    @classmethod
+    def create_for_workflow_request(cls, workflow_request, created_by):
+        """Create a pending ticket for a workflow request before the MigrantRegistration exists."""
+        level = getattr(created_by, 'access_level', 4)
+        prefix, rol_display = _TICKET_ROLE_MAP.get(level, ('VOL', 'Voluntario'))
+
+        return cls.objects.create(
+            ticket_id=_ticket_id(prefix),
+            registration=None,
+            workflow_request=workflow_request,
+            created_by=created_by,
+            rol_display=rol_display,
+            summary='Solicitud de nuevo registro migrante',
+            description=(
+                f'Solicitud pendiente de aprobación por Coordinador. '
+                f'Enviada por {created_by.get_full_name() or created_by.username}.'
+            ),
+            priority=cls.PRIORITY_BAJA,
+            status=cls.STATUS_ABIERTO,
         )
 
     @staticmethod

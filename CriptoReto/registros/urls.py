@@ -26,6 +26,7 @@ urlpatterns = [
     path('workflow/<int:pk>/',            views.workflow_detail,          name='workflow_detail'),
     path('workflow/<int:pk>/decide/',     views.workflow_decide,          name='workflow_decide'),
     path('workflow/<int:pk>/execute/',    views.workflow_execute,         name='workflow_execute'),
+    path('workflow/<int:pk>/registro/',   views.workflow_registration_preview, name='workflow_registration_preview'),
     path('<int:pk>/workflow/<str:action>/', views.workflow_request_create, name='workflow_request_create'),
 
     # ── ARCO rights ────────────────────────────────────────────────────────────

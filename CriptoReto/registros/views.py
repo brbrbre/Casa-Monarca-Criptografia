@@ -3,6 +3,7 @@ from functools import wraps
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.messages import get_messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -10,6 +11,7 @@ from django.views.decorators.http import require_POST
 
 from iam.models import AuditLog
 from iam.views import onboarding_required
+from iam.certificates import validate_coordinator_cert_and_key, validate_encrypted_certificate
 from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
     ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
@@ -39,6 +41,17 @@ def _log(actor, action, details='', request=None):
     if ip:
         full = f'{full} | IP: {ip}'
     AuditLog.objects.create(actor=actor, action=action, details=full.strip())
+
+
+def _remove_permission_messages(request):
+    storage = get_messages(request)
+    kept = []
+    for message in storage:
+        if 'permiso' in message.message.lower():
+            continue
+        kept.append(message)
+    for message in kept:
+        messages.add_message(request, message.level, message.message, extra_tags=message.tags)
 
 
 def require_level(max_level, redirect_to='registros:registro_new'):
@@ -110,7 +123,32 @@ def registro_new(request):
         request.session['registro_draft'] = {k: v for k, v in request.POST.lists()}
         form = MigrantRegistrationForm(request.POST)
         if form.is_valid():
-            return redirect('registros:registro_review')
+            if request.user.access_level > 2:
+                payload = {}
+                for field, value in form.cleaned_data.items():
+                    payload[field] = value.isoformat() if hasattr(value, 'isoformat') else value
+                payload['privacy_accepted_at'] = timezone.now().isoformat()
+                payload['privacy_accepted_ip'] = _get_ip(request)
+                payload['privacy_notice_version'] = PRIVACY_NOTICE_VERSION
+                try:
+                    wf = create_workflow_request(
+                        action_type='create_registration',
+                        requester=request.user,
+                        payload=payload,
+                        notes='Solicitud de nuevo registro migrante',
+                    )
+                    Ticket.create_for_workflow_request(wf, request.user)
+                    request.session.pop('registro_draft', None)
+                    _remove_permission_messages(request)
+                    messages.success(
+                        request,
+                        'Tu solicitud fue enviada al Coordinador. Puedes seguir su estado en Tickets.',
+                    )
+                    return redirect('registros:ticket_list')
+                except ValueError as exc:
+                    messages.error(request, str(exc))
+            else:
+                return redirect('registros:registro_review')
     else:
         draft = request.session.get('registro_draft')
         from django.http import QueryDict
@@ -147,6 +185,9 @@ def registro_review(request):
     form = MigrantRegistrationForm(qd)
     if not form.is_valid():
         messages.error(request, 'Los datos contienen errores. Por favor regresa y corrígelos.')
+        return redirect('registros:registro_new')
+
+    if request.user.access_level > 2:
         return redirect('registros:registro_new')
 
     if request.method == 'POST':
@@ -444,6 +485,69 @@ def workflow_detail(request, pk):
 @login_required(login_url='iam:login')
 @onboarding_required
 @require_level(3)
+def workflow_registration_preview(request, pk):
+    wf = get_object_or_404(WorkflowRequest, pk=pk)
+    if wf.action_type != WorkflowRequest.ACTION_CREATE_REGISTRATION:
+        messages.error(request, 'Esta vista solo está disponible para solicitudes de creación de registro.')
+        return redirect('registros:workflow_detail', pk=pk)
+
+    if wf.registration:
+        return redirect('registros:registro_detail', pk=wf.registration.pk)
+
+    payload = wf.payload or {}
+    field_labels = {
+        'full_name': 'Nombre completo',
+        'birth_date': 'Fecha de nacimiento',
+        'gender': 'Género',
+        'nationality': 'Nacionalidad',
+        'country_of_origin': 'País de origen',
+        'document_type': 'Tipo de documento',
+        'document_number': 'Número de documento',
+        'phone': 'Teléfono',
+        'email': 'Correo electrónico',
+        'entry_date': 'Fecha de ingreso al país',
+        'entry_point': 'Punto de ingreso',
+        'transit_countries': 'Países de tránsito',
+        'intended_destination': 'Destino final deseado',
+        'marital_status': 'Estado civil',
+        'travels_alone': 'Viaja solo/a',
+        'group_size': 'Personas en el grupo',
+        'minors_in_group': 'Menores en el grupo',
+        'assistance_requested': 'Tipo de asistencia solicitada',
+        'migration_reason': 'Motivo de migración',
+        'current_legal_status': 'Situación migratoria actual',
+        'shelter_name': 'Nombre del albergue/alojamiento',
+        'emergency_contact_name': 'Nombre del contacto de emergencia',
+        'emergency_contact_phone': 'Teléfono del contacto de emergencia',
+        'emergency_contact_relationship': 'Parentesco del contacto de emergencia',
+        'observations': 'Observaciones adicionales',
+    }
+    field_order = [
+        'full_name', 'birth_date', 'gender', 'nationality', 'country_of_origin',
+        'document_type', 'document_number', 'phone', 'email',
+        'entry_date', 'entry_point', 'transit_countries', 'intended_destination',
+        'marital_status', 'travels_alone', 'group_size', 'minors_in_group',
+        'assistance_requested', 'migration_reason', 'current_legal_status', 'shelter_name',
+        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
+        'observations',
+    ]
+    rows = [
+        {
+            'label': field_labels.get(field, field),
+            'value': payload.get(field, '—') if payload.get(field, '') not in [None, ''] else '—',
+        }
+        for field in field_order
+    ]
+    return render(request, 'registros/workflow_registration_preview.html', {
+        'wf': wf,
+        'rows': rows,
+        'title': f'Previsualizar registro para solicitud #{wf.pk}',
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(3)
 def workflow_decide(request, pk):
     """GET: show decision form. POST: approve or reject a workflow request."""
     wf = get_object_or_404(WorkflowRequest, pk=pk)
@@ -467,10 +571,42 @@ def workflow_decide(request, pk):
 
     if not request.user.check_password(form.cleaned_data['password']):
         form.add_error('password', 'Contraseña incorrecta.')
-        return render(request, 'registros/workflow_decide.html', {'wf': wf, 'form': form})
+        return render(request, 'registros/workflow_decide.html', {
+            'wf': wf, 'form': form, 'diff_data': diff_data,
+        })
 
     decision = form.cleaned_data['decision']
     notes = form.cleaned_data.get('notes', '')
+
+    if decision == 'approved' and request.user.access_level <= 2:
+        cert_file = request.FILES.get('cert_file')
+        if not cert_file:
+            messages.error(request, 'Debes subir tu certificado digital para aprobar esta solicitud.')
+            return render(request, 'registros/workflow_decide.html', {
+                'wf': wf, 'form': form, 'diff_data': diff_data,
+            })
+
+        if request.user.access_level == 2:
+            key_file = request.FILES.get('key_file')
+            if not key_file:
+                messages.error(request, 'Debes subir tu llave privada para aprobar esta solicitud.')
+                return render(request, 'registros/workflow_decide.html', {
+                    'wf': wf, 'form': form, 'diff_data': diff_data,
+                })
+            cert_bytes = cert_file.read()
+            key_bytes = key_file.read()
+            if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
+                messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
+                return render(request, 'registros/workflow_decide.html', {
+                    'wf': wf, 'form': form, 'diff_data': diff_data,
+                })
+        else:
+            cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
+            if not validate_encrypted_certificate(request.user, cert_content):
+                messages.error(request, 'Certificado inválido. Revisa tu archivo e intenta de nuevo.')
+                return render(request, 'registros/workflow_decide.html', {
+                    'wf': wf, 'form': form, 'diff_data': diff_data,
+                })
 
     if decision == 'approved':
         ok = approve_request(wf, request.user, notes=notes)
@@ -505,6 +641,28 @@ def workflow_execute(request, pk):
     if not request.user.check_password(request.POST.get('password', '')):
         messages.error(request, 'Contraseña incorrecta.')
         return render(request, 'registros/workflow_execute.html', {'wf': wf})
+
+    if request.user.access_level <= 2:
+        cert_file = request.FILES.get('cert_file')
+        if not cert_file:
+            messages.error(request, 'Debes subir tu certificado digital para ejecutar esta solicitud.')
+            return render(request, 'registros/workflow_execute.html', {'wf': wf})
+
+        if request.user.access_level == 2:
+            key_file = request.FILES.get('key_file')
+            if not key_file:
+                messages.error(request, 'Debes subir tu llave privada para ejecutar esta solicitud.')
+                return render(request, 'registros/workflow_execute.html', {'wf': wf})
+            cert_bytes = cert_file.read()
+            key_bytes = key_file.read()
+            if not validate_coordinator_cert_and_key(request.user, cert_bytes, key_bytes):
+                messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
+                return render(request, 'registros/workflow_execute.html', {'wf': wf})
+        else:
+            cert_content = cert_file.read().decode('utf-8', errors='ignore').strip()
+            if not validate_encrypted_certificate(request.user, cert_content):
+                messages.error(request, 'Certificado inválido. Revisa tu archivo e intenta de nuevo.')
+                return render(request, 'registros/workflow_execute.html', {'wf': wf})
 
     ok = execute_request(wf, request.user, password_verified=True,
                          notes=request.POST.get('notes', ''))

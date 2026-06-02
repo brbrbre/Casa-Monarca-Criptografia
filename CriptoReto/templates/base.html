@@ -376,7 +376,7 @@
           </a>
         </li>
         {% endif %}
-        {% if lvl <= 3 %}
+        {% if lvl <= 4 %}
         <li>
           <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
             <i class="fa-solid fa-ticket"></i> Tickets
@@ -385,7 +385,8 @@
         {% endif %}
         <li>
           <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
-            <i class="fa-solid fa-plus"></i> Nuevo Registro
+            <i class="fa-solid fa-plus"></i>
+            {% if request.user.access_level >= 3 %}Nueva Solicitud{% else %}Nuevo Registro{% endif %}
           </a>
         </li>
         {% endif %}
