@@ -24,7 +24,8 @@
   .timeline-action { font-size:14px; font-weight:600; color:#111; margin-bottom:4px; }
   .timeline-reason { font-size:13px; color:#555; background:#f7f7f7; border-radius:6px; padding:7px 10px; margin-top:5px; }
   .section-heading { font-size:15px; font-weight:600; color:#111; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:9000; }
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:none; align-items:center; justify-content:center; z-index:9000; }
+  .modal-overlay.is-open { display:flex; }
   .modal-box { background:#fff; border-radius:14px; padding:28px 28px 22px; max-width:480px; width:92%; box-shadow:0 8px 32px rgba(0,0,0,0.18); }
   .modal-box h3 { margin-bottom:10px; font-size:17px; }
   .modal-box .cert-info { background:#f7f7f7; border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:13px; line-height:1.7; }
@@ -43,20 +44,20 @@
   <div style="display:flex; gap:8px;">
     {% with es=cert.effective_status %}
     {% if es == 'ACTIVE' %}
-      <button class="btn btn-warning btn-sm" onclick="document.getElementById('modal-suspender').hidden=false; document.body.style.overflow='hidden'">
+      <button class="btn btn-warning btn-sm" onclick="openDetailModal('modal-suspender')">
         <i class="fa-solid fa-pause"></i> Suspender
       </button>
-      <button class="btn btn-danger btn-sm" onclick="document.getElementById('modal-revocar').hidden=false; document.body.style.overflow='hidden'">
+      <button class="btn btn-danger btn-sm" onclick="openDetailModal('modal-revocar')">
         <i class="fa-solid fa-ban"></i> Revocar
       </button>
-      <button class="btn btn-light btn-sm" onclick="document.getElementById('modal-baja').hidden=false; document.body.style.overflow='hidden'">
+      <button class="btn btn-light btn-sm" onclick="openDetailModal('modal-baja')">
         <i class="fa-solid fa-archive"></i> Dar de baja
       </button>
     {% elif es == 'SUSPENDED' %}
-      <button class="btn btn-sm" style="background:#1c6a2a; border-color:#1c6a2a;" onclick="document.getElementById('modal-reactivar').hidden=false; document.body.style.overflow='hidden'">
+      <button class="btn btn-sm" style="background:#1c6a2a; border-color:#1c6a2a;" onclick="openDetailModal('modal-reactivar')">
         <i class="fa-solid fa-circle-check"></i> Reactivar
       </button>
-      <button class="btn btn-danger btn-sm" onclick="document.getElementById('modal-revocar').hidden=false; document.body.style.overflow='hidden'">
+      <button class="btn btn-danger btn-sm" onclick="openDetailModal('modal-revocar')">
         <i class="fa-solid fa-ban"></i> Revocar
       </button>
     {% endif %}
@@ -242,7 +243,7 @@
 <!-- ── Modales ─────────────────────────────────────────────────────────────── -->
 
 <!-- Modal: Suspender -->
-<div id="modal-suspender" class="modal-overlay" hidden>
+<div id="modal-suspender" class="modal-overlay">
   <div class="modal-box">
     <h3><i class="fa-solid fa-pause-circle" style="color:#a06000;"></i> Suspender certificado</h3>
     <div class="cert-info">
@@ -267,7 +268,7 @@
 </div>
 
 <!-- Modal: Revocar -->
-<div id="modal-revocar" class="modal-overlay" hidden>
+<div id="modal-revocar" class="modal-overlay">
   <div class="modal-box">
     <h3><i class="fa-solid fa-ban" style="color:#8c1717;"></i> Revocar certificado</h3>
     <div class="cert-info">
@@ -293,7 +294,7 @@
 </div>
 
 <!-- Modal: Dar de baja -->
-<div id="modal-baja" class="modal-overlay" hidden>
+<div id="modal-baja" class="modal-overlay">
   <div class="modal-box">
     <h3><i class="fa-solid fa-archive" style="color:#555;"></i> Dar de baja</h3>
     <div class="cert-info">
@@ -319,7 +320,7 @@
 </div>
 
 <!-- Modal: Reactivar -->
-<div id="modal-reactivar" class="modal-overlay" hidden>
+<div id="modal-reactivar" class="modal-overlay">
   <div class="modal-box">
     <h3><i class="fa-solid fa-circle-check" style="color:#1c6a2a;"></i> Reactivar certificado</h3>
     <div class="cert-info">
@@ -340,8 +341,15 @@
 </div>
 
 <script>
+  function openDetailModal(id) {
+    document.querySelectorAll('.modal-overlay.is-open').forEach(function(m) {
+      m.classList.remove('is-open');
+    });
+    document.getElementById(id).classList.add('is-open');
+    document.body.style.overflow = 'hidden';
+  }
   function closeDetailModal(id) {
-    document.getElementById(id).hidden = true;
+    document.getElementById(id).classList.remove('is-open');
     document.body.style.overflow = '';
   }
   document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
@@ -351,7 +359,7 @@
   });
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-      document.querySelectorAll('.modal-overlay:not([hidden])').forEach(function(m) {
+      document.querySelectorAll('.modal-overlay.is-open').forEach(function(m) {
         closeDetailModal(m.id);
       });
     }

@@ -16,7 +16,7 @@ from .forms import (
     PasswordChangeAuthForm, SecurityQuestionSetupForm, PasswordRecoveryRequestForm,
     SecurityAnswerForm, PasswordRecoveryResetForm,
 )
-from .models import AuditLog, CertificateAuditLog, Collaborator, LoginAttempt, UserCertificate
+from .models import Area, AuditLog, CertificateAuditLog, Collaborator, LoginAttempt, UserCertificate
 from .certificates import (
     issue_encrypted_certificate,
     validate_encrypted_certificate,
