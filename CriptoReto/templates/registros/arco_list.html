@@ -2,67 +2,73 @@
 {% block content %}
 
 <style>
-  .arco-badge {
-    display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid;
-  }
-  .arco-access        { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .arco-rectification { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .arco-cancellation  { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .arco-opposition    { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
-  .state-submitted { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .state-in_review { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .state-approved  { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
-  .state-rejected  { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .state-executed  { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
-  .state-escalated { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
+  .arco-badge { display:inline-flex;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid; }
+  .arco-access        { background:var(--cm-info-bg);    color:var(--cm-info);    border-color:#90CAF9; }
+  .arco-rectification { background:var(--cm-warning-bg); color:var(--cm-warning); border-color:#FFCC80; }
+  .arco-cancellation  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border-color:#FFCDD2; }
+  .arco-opposition    { background:var(--cm-purple-bg);  color:var(--cm-purple);  border-color:#CE93D8; }
+  .state-submitted { background:var(--cm-warning-bg); color:var(--cm-warning); border:1px solid #FFCC80; }
+  .state-in_review { background:var(--cm-info-bg);    color:var(--cm-info);    border:1px solid #90CAF9; }
+  .state-approved  { background:var(--cm-success-bg); color:var(--cm-success); border:1px solid #A5D6A7; }
+  .state-rejected  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border:1px solid #FFCDD2; }
+  .state-executed  { background:var(--cm-success-bg); color:var(--cm-success); border:1px solid #A5D6A7; }
+  .state-escalated { background:var(--cm-purple-bg);  color:var(--cm-purple);  border:1px solid #CE93D8; }
+  .arco-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid; }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
   <h2 style="margin:0;">Solicitudes ARCO</h2>
 </div>
 
-<div class="alert" style="background:#f0f4ff;border:1px solid #b0c4ff;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#1a3a7a;">
-  <strong>Derechos ARCO</strong> — Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP).<br>
-  Acceso / Oposición: Coordinador ejecuta (Nivel 2). Rectificación: Coordinador (Nivel 2). Cancelación: Admin (Nivel 1).
-  Solo Operativo o superior puede abrir casos.
+<!-- Banner ARCO con chips de derechos -->
+<div style="background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:12px;padding:16px 20px;margin-bottom:20px;">
+  <p style="font-size:13px;font-weight:600;color:var(--cm-text);margin-bottom:10px;">
+    <strong>Derechos ARCO</strong> — Ley Federal de Protección de Datos Personales en Posesión de los Particulares
+  </p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+    <span class="arco-chip" style="background:var(--cm-info-bg);color:var(--cm-info);border-color:#90CAF9;">
+      <i class="fa-solid fa-eye"></i> A · Acceso
+    </span>
+    <span class="arco-chip" style="background:var(--cm-warning-bg);color:var(--cm-warning);border-color:#FFCC80;">
+      <i class="fa-solid fa-pen"></i> R · Rectificación
+    </span>
+    <span class="arco-chip" style="background:var(--cm-danger-bg);color:var(--cm-danger);border-color:#FFCDD2;">
+      <i class="fa-solid fa-trash"></i> C · Cancelación
+    </span>
+    <span class="arco-chip" style="background:var(--cm-purple-bg);color:var(--cm-purple);border-color:#CE93D8;">
+      <i class="fa-solid fa-hand"></i> O · Oposición
+    </span>
+  </div>
+  <p style="font-size:12px;color:var(--cm-text-muted);margin:0;">
+    Acceso / Oposición: Coordinador ejecuta (Nivel 2). Rectificación: Coordinador (Nivel 2). Cancelación: Admin (Nivel 1).
+    Solo Operativo o superior puede abrir casos.
+  </p>
 </div>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
 
 <div class="card" style="padding:0;overflow:hidden;">
   {% if requests %}
     <table class="table">
       <thead>
         <tr>
-          <th>ID de caso</th>
-          <th>Tipo</th>
-          <th>Migrante</th>
-          <th>Solicitante</th>
-          <th>Fecha</th>
-          <th>Estado</th>
-          <th>Plazo legal</th>
-          <th>Acciones</th>
+          <th>ID de caso</th><th>Tipo</th><th>Migrante</th><th>Solicitante</th>
+          <th>Fecha</th><th>Estado</th><th>Plazo legal</th><th>Acciones</th>
         </tr>
       </thead>
       <tbody>
         {% for arco in requests %}
           <tr>
             <td>
-              <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:#ad2b4e;font-weight:600;font-family:monospace;">
+              <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:var(--cm-primary);font-weight:600;font-family:monospace;">
                 {{ arco.case_id }}
               </a>
             </td>
             <td>
-              <span class="arco-badge arco-{{ arco.arco_type }}">
-                {{ arco.get_arco_type_display }}
-              </span>
+              <span class="arco-badge arco-{{ arco.arco_type }}">{{ arco.get_arco_type_display }}</span>
             </td>
             <td>
-              <a href="{% url 'registros:registro_detail' arco.registration.pk %}" style="color:#ad2b4e;">
+              <a href="{% url 'registros:registro_detail' arco.registration.pk %}" style="color:var(--cm-primary);">
                 {{ arco.registration.full_name }}
               </a>
             </td>
@@ -73,42 +79,30 @@
             </td>
             <td>
               {% if arco.legal_deadline %}
-                {{ arco.legal_deadline|date:"d/m/Y" }}
+                <span style="font-weight:600;color:{% if arco.days_until_deadline is not None and arco.days_until_deadline < 0 %}var(--cm-danger){% elif arco.days_until_deadline is not None and arco.days_until_deadline <= 5 %}var(--cm-warning){% else %}inherit{% endif %};">
+                  {{ arco.legal_deadline|date:"d/m/Y" }}
+                </span>
               {% else %}—{% endif %}
             </td>
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <a href="{% url 'registros:arco_detail' arco.pk %}"
-                   class="btn btn-light" style="font-size:12px;padding:5px 10px;">Ver</a>
-
+                <a href="{% url 'registros:arco_detail' arco.pk %}" class="btn btn-light btn-sm">Ver</a>
                 {% if arco.workflow_request %}
-                  <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}"
-                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">Flujo</a>
+                  <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}" class="btn btn-light btn-sm">Flujo</a>
                 {% endif %}
-
                 {% if arco.state != 'executed' and arco.state != 'rejected' %}
                   {% if request.user.access_level <= 2 %}
                     {% if arco.arco_type == 'cancellation' %}
                       {% if request.user.access_level == 1 %}
-                        <a href="{% url 'registros:arco_execute' arco.pk %}"
-                           class="btn" style="font-size:12px;padding:5px 10px;background:#dc3545;color:#fff;border-color:#dc3545;">
-                          Ejecutar
-                        </a>
+                        <a href="{% url 'registros:arco_execute' arco.pk %}" class="btn btn-danger btn-sm">Ejecutar</a>
                       {% endif %}
                     {% else %}
-                      <a href="{% url 'registros:arco_execute' arco.pk %}"
-                         class="btn" style="font-size:12px;padding:5px 10px;background:#198754;color:#fff;border-color:#198754;">
-                        Ejecutar
-                      </a>
+                      <a href="{% url 'registros:arco_execute' arco.pk %}" class="btn btn-success btn-sm">Ejecutar</a>
                     {% endif %}
                   {% endif %}
                 {% endif %}
-
                 {% if arco.generated_document %}
-                  <a href="{% url 'registros:arco_download' arco.pk %}"
-                     class="btn btn-light" style="font-size:12px;padding:5px 10px;">
-                    Descargar PDF
-                  </a>
+                  <a href="{% url 'registros:arco_download' arco.pk %}" class="btn btn-light btn-sm">Descargar PDF</a>
                 {% endif %}
               </div>
             </td>
@@ -117,7 +111,7 @@
       </tbody>
     </table>
   {% else %}
-    <div style="padding:40px;text-align:center;color:#888;">
+    <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       No hay solicitudes ARCO registradas.
     </div>
   {% endif %}

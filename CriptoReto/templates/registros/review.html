@@ -4,43 +4,30 @@
 <style>
   .review-section { margin-bottom: 20px; }
   .review-section-title {
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    color: #ad2b4e;
-    margin-bottom: 8px;
-    padding-bottom: 4px;
-    border-bottom: 1px solid #f0d0d8;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+    color: var(--cm-primary); margin-bottom: 8px; padding-bottom: 4px;
+    border-bottom: 1px solid var(--cm-border);
   }
-  .review-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 24px;
-  }
+  .review-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
   .review-row { font-size: 14px; }
-  .review-label { color: #666; font-size: 12px; margin-bottom: 2px; }
+  .review-label { color: var(--cm-text-muted); font-size: 12px; margin-bottom: 2px; }
   .review-value { font-weight: 500; word-break: break-word; }
   dialog {
-    border: none;
-    border-radius: 12px;
-    padding: 28px 32px;
-    max-width: 420px;
-    width: 90%;
+    border: none; border-radius: 16px; padding: 28px 32px;
+    max-width: 420px; width: 90%;
     box-shadow: 0 8px 40px rgba(0,0,0,.18);
   }
   dialog::backdrop { background: rgba(0,0,0,.4); }
   .dialog-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-  .dialog-desc { font-size: 14px; color: #555; margin-bottom: 20px; line-height: 1.5; }
-  .btn-primary { background:#ad2b4e; border-color:#ad2b4e; color:#fff; }
+  .dialog-desc  { font-size: 14px; color: var(--cm-text-muted); margin-bottom: 20px; line-height: 1.5; }
 </style>
 
 <div style="max-width:820px;">
   <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-    <a href="{% url 'registros:registro_new' %}" class="btn btn-light" style="font-size:13px;">&#8592; Regresar y editar</a>
+    <a href="{% url 'registros:registro_new' %}" class="btn btn-light btn-sm">← Regresar y editar</a>
     <h2 style="margin:0;">Revisar registro</h2>
   </div>
-  <p style="font-size:14px;color:#666;margin-bottom:20px;">
+  <p style="font-size:14px;color:var(--cm-text-muted);margin-bottom:20px;">
     Verifica que todos los datos sean correctos. Una vez confirmado, se generará la firma digital y el registro quedará guardado.
   </p>
 
@@ -61,21 +48,19 @@
   </div>
 
   <div style="margin-top:8px;display:flex;gap:12px;align-items:center;">
-    <button class="btn btn-primary" onclick="document.getElementById('confirm-dialog').showModal()">
-      &#128274; Confirmar y Firmar
+    <button class="btn" onclick="document.getElementById('confirm-dialog').showModal()">
+      <i class="fa-solid fa-lock"></i> Confirmar y Firmar
     </button>
     <a href="{% url 'registros:registro_new' %}" class="btn btn-light">Editar datos</a>
   </div>
 </div>
 
-<!-- ── Password confirmation modal ──────────────────────────────────────── -->
 <dialog id="confirm-dialog">
   <div class="dialog-title">Confirmar identidad</div>
   <div class="dialog-desc">
     Ingresa tu contraseña para generar la firma digital y registrar los datos.<br>
     <strong>Este paso no se puede deshacer.</strong>
   </div>
-
   <form method="post" action="{% url 'registros:registro_review' %}">
     {% csrf_token %}
     <div class="field-group">
@@ -91,16 +76,14 @@
       {% endfor %}
     {% endif %}
     <div style="display:flex;gap:10px;margin-top:16px;">
-      <button type="submit" class="btn btn-primary">Firmar y Registrar</button>
-      <button type="button" class="btn btn-light"
-              onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
+      <button type="submit" class="btn"><i class="fa-solid fa-pen-nib"></i> Firmar y Registrar</button>
+      <button type="button" class="btn btn-light" onclick="document.getElementById('confirm-dialog').close()">Cancelar</button>
     </div>
   </form>
 </dialog>
 
 {% if messages %}
 <script>
-  // Re-open the dialog if password was wrong (error message present)
   {% for message in messages %}
     {% if 'incorrecta' in message.message|lower %}
     document.getElementById('confirm-dialog').showModal();

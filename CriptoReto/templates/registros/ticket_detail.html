@@ -2,27 +2,24 @@
 {% block content %}
 
 <style>
-  .badge-alta   { background:#fde9e9;color:#8c1717;border:1px solid #e3a7a7;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600; }
-  .badge-media  { background:#fff3cd;color:#7a5300;border:1px solid #ffd77a;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600; }
-  .badge-baja   { background:#e2f4e4;color:#1c6a2a;border:1px solid #a9d6ad;padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600; }
-  .badge-abierto    { background:#e8f0fe;color:#1a53c4;border:1px solid #a8c0f7;padding:3px 12px;border-radius:999px;font-size:13px; }
-  .badge-en_proceso { background:#fff3cd;color:#7a5300;border:1px solid #ffd77a;padding:3px 12px;border-radius:999px;font-size:13px; }
-  .badge-cerrado    { background:#f2f2f2;color:#555;border:1px solid #ccc;padding:3px 12px;border-radius:999px;font-size:13px; }
-  .section-title {
-    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-    color:#ad2b4e;margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid #f0d0d8;
-  }
+  .badge-alta  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border:1px solid #FFCDD2; padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-media { background:var(--cm-warning-bg); color:var(--cm-warning); border:1px solid #FFCC80; padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-baja  { background:var(--cm-success-bg); color:var(--cm-success); border:1px solid #A5D6A7; padding:3px 12px;border-radius:999px;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px; }
+  .badge-alta::before  { content:'●'; font-size:8px; }
+  .badge-media::before { content:'●'; font-size:8px; }
+  .badge-baja::before  { content:'●'; font-size:8px; }
+  .badge-abierto    { background:var(--cm-info-bg);    color:var(--cm-info);    border:1px solid #90CAF9;  padding:3px 12px;border-radius:999px;font-size:13px; }
+  .badge-en_proceso { background:var(--cm-warning-bg); color:var(--cm-warning); border:1px solid #FFCC80;  padding:3px 12px;border-radius:999px;font-size:13px; }
+  .badge-cerrado    { background:#F5F5F5; color:#555; border:1px solid #E0E0E0; padding:3px 12px;border-radius:999px;font-size:13px; }
+  .section-title { font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--cm-primary);margin:18px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--cm-border); }
   .detail-grid { display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:14px; }
-  .detail-label { color:#666; }
-  .mono { font-family:'Courier New',monospace;font-size:12px;word-break:break-all;color:#333; }
-  .description-box {
-    background:#f9f9f9;border:1px solid #e8e8e8;border-radius:8px;
-    padding:14px 16px;font-size:14px;line-height:1.7;white-space:pre-wrap;
-  }
+  .detail-label { color:var(--cm-text-muted); }
+  .mono { font-family:'Courier New',monospace;font-size:12px;word-break:break-all;color:var(--cm-text); }
+  .description-box { background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:10px;padding:14px 16px;font-size:14px;line-height:1.7;white-space:pre-wrap; }
 </style>
 
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
-  <a href="{% url 'registros:ticket_list' %}" class="btn btn-light" style="font-size:13px;">&#8592; Regresar</a>
+  <a href="{% url 'registros:ticket_list' %}" class="btn btn-light btn-sm">← Regresar</a>
   <h2 style="margin:0;">{{ title }}</h2>
   <span class="badge-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span>
   <span class="badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span>
@@ -30,82 +27,52 @@
 
 <div style="max-width:820px;">
 
-  <!-- ── Datos del ticket ─────────────────────────────────────────────── -->
   <div class="card">
     <div class="section-title">Información del ticket</div>
     <div class="detail-grid">
-      <span class="detail-label">ID de caso</span>
-      <span class="mono">{{ ticket.ticket_id }}</span>
-
-      <span class="detail-label">Resumen</span>
-      <span><strong>{{ ticket.summary }}</strong></span>
-
-      <span class="detail-label">Solicitante</span>
-      <span>{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</span>
-
-      <span class="detail-label">Rol del solicitante</span>
-      <span>{{ ticket.rol_display }}</span>
-
-      <span class="detail-label">Prioridad</span>
-      <span><span class="badge-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></span>
-
-      <span class="detail-label">Estado</span>
-      <span><span class="badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span></span>
-
-      <span class="detail-label">Fecha de creación</span>
-      <span>{{ ticket.created_at|date:"d/m/Y H:i" }}</span>
-
-      <span class="detail-label">Última actualización</span>
-      <span>{{ ticket.updated_at|date:"d/m/Y H:i" }}</span>
+      <span class="detail-label">ID de caso</span><span class="mono">{{ ticket.ticket_id }}</span>
+      <span class="detail-label">Resumen</span><span><strong>{{ ticket.summary }}</strong></span>
+      <span class="detail-label">Solicitante</span><span>{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</span>
+      <span class="detail-label">Rol del solicitante</span><span>{{ ticket.rol_display }}</span>
+      <span class="detail-label">Prioridad</span><span><span class="badge-{{ ticket.priority }}">{{ ticket.get_priority_display }}</span></span>
+      <span class="detail-label">Estado</span><span><span class="badge-{{ ticket.status }}">{{ ticket.get_status_display }}</span></span>
+      <span class="detail-label">Fecha de creación</span><span>{{ ticket.created_at|date:"d/m/Y H:i" }}</span>
+      <span class="detail-label">Última actualización</span><span>{{ ticket.updated_at|date:"d/m/Y H:i" }}</span>
     </div>
-
     <div class="section-title" style="margin-top:18px;">Descripción</div>
     <div class="description-box">{{ ticket.description }}</div>
   </div>
 
-  <!-- ── Registro migrante vinculado ─────────────────────────────────── -->
   <div class="card" style="margin-top:16px;">
     <div class="section-title">Registro migrante vinculado</div>
     {% if ticket.registration %}
       <div class="detail-grid">
-        <span class="detail-label">ID interno</span>
-        <span class="mono">{{ ticket.registration.internal_id|default:"—" }}</span>
-
-        <span class="detail-label">Nombre completo</span>
-        <span>{{ ticket.registration.full_name }}</span>
-
-        <span class="detail-label">Nacionalidad</span>
-        <span>{{ ticket.registration.nationality }}</span>
-
-        <span class="detail-label">Fecha de ingreso</span>
-        <span>{{ ticket.registration.entry_date|date:"d/m/Y" }}</span>
+        <span class="detail-label">ID interno</span><span class="mono">{{ ticket.registration.internal_id|default:"—" }}</span>
+        <span class="detail-label">Nombre completo</span><span>{{ ticket.registration.full_name }}</span>
+        <span class="detail-label">Nacionalidad</span><span>{{ ticket.registration.nationality }}</span>
+        <span class="detail-label">Fecha de ingreso</span><span>{{ ticket.registration.entry_date|date:"d/m/Y" }}</span>
       </div>
       <div style="margin-top:12px;">
-        <a href="{% url 'registros:registro_detail' ticket.registration.pk %}"
-           class="btn btn-light" style="font-size:13px;">Ver registro completo</a>
+        <a href="{% url 'registros:registro_detail' ticket.registration.pk %}" class="btn btn-light btn-sm">Ver registro completo</a>
       </div>
     {% else %}
-      <div style="padding:14px 0;color:#444;font-size:14px;line-height:1.5;">
+      <div style="padding:14px 0;color:var(--cm-text-muted);font-size:14px;line-height:1.5;">
         Este ticket está pendiente de aprobación por Coordinador. El registro migrante se vinculará cuando la solicitud sea ejecutada.
       </div>
     {% endif %}
   </div>
 
-  <!-- ── Cambiar estado (solo coordinadores y admins) ─────────────────── -->
   {% if can_update_status %}
   <div class="card" style="margin-top:16px;">
     <div class="section-title">Actualizar estado del ticket</div>
     <form method="post" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
       {% csrf_token %}
-      <select name="status" style="padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+      <select name="status">
         {% for val, label in status_choices %}
           <option value="{{ val }}" {% if ticket.status == val %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
-      <button type="submit" class="btn"
-              style="background:#ad2b4e;border-color:#ad2b4e;color:#fff;">
-        Guardar cambio
-      </button>
+      <button type="submit" class="btn btn-sm"><i class="fa-solid fa-floppy-disk"></i> Guardar cambio</button>
     </form>
   </div>
   {% endif %}

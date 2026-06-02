@@ -2,11 +2,11 @@
 {% block content %}
 
 <div style="margin-bottom:20px;">
-  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver a la solicitud</a>
+  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:var(--cm-primary);text-decoration:none;">← Volver a la solicitud</a>
 </div>
 
-<h2>Previsualizar registro pendiente</h2>
-<p style="color:#666;margin-bottom:24px;">
+<h2 style="margin-bottom:6px;">Previsualizar registro pendiente</h2>
+<p style="color:var(--cm-text-muted);margin-bottom:24px;">
   Solicitud #{{ wf.pk }} — {{ wf.get_action_type_display }}
 </p>
 
@@ -14,8 +14,8 @@
   <h4 style="margin:0 0 14px;">Información del registro</h4>
   <div style="display:grid;grid-template-columns:200px 1fr;gap:10px 18px;font-size:14px;">
     {% for row in rows %}
-      <div style="color:#666;">{{ row.label }}</div>
-      <div style="color:#111;white-space:pre-wrap;">{{ row.value }}</div>
+      <div style="color:var(--cm-text-muted);">{{ row.label }}</div>
+      <div style="color:var(--cm-text);white-space:pre-wrap;">{{ row.value }}</div>
     {% endfor %}
   </div>
 </div>

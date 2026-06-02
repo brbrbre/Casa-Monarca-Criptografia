@@ -3,85 +3,77 @@
 
 <style>
   .timeline { position:relative; padding-left:28px; }
-  .timeline::before {
-    content:''; position:absolute; left:8px; top:0; bottom:0;
-    width:2px; background:#e0d0d8;
-  }
+  .timeline::before { content:''; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--cm-border); }
   .tl-item { position:relative; margin-bottom:18px; }
-  .tl-dot {
-    position:absolute; left:-24px; top:4px;
-    width:12px; height:12px; border-radius:50%;
-    border:2px solid #ad2b4e; background:#fff;
-  }
-  .tl-dot.create   { background:#ad2b4e; }
-  .tl-dot.arco     { background:#5a2d82; border-color:#5a2d82; }
-  .tl-dot.delete   { background:#dc3545; border-color:#dc3545; }
-  .tl-dot.export   { background:#0d6efd; border-color:#0d6efd; }
-  .tl-dot.consent  { background:#198754; border-color:#198754; }
-  .tl-dot.workflow { background:#fd7e14; border-color:#fd7e14; }
-  .tl-meta { font-size:12px; color:#888; margin-top:2px; }
-  .tl-detail { font-size:13px; color:#444; margin-top:3px; }
-  .ev-badge {
-    display:inline-flex;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid;
-  }
-  .ev-view        { background:#f2f2f2;color:#555;border-color:#ccc; }
-  .ev-create      { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
-  .ev-update      { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .ev-delete      { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .ev-consent     { background:#d1e7dd;color:#0a4e2a;border-color:#7ccca0; }
-  .ev-arco_created   { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
-  .ev-arco_reviewed  { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .ev-arco_executed  { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
-  .ev-export         { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .ev-workflow_created  { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .ev-workflow_approved { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
-  .ev-workflow_rejected { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .ev-workflow_executed { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
+  .tl-dot { position:absolute; left:-24px; top:4px; width:12px; height:12px; border-radius:50%; border:2px solid var(--cm-primary); background:#fff; }
+  .tl-dot.create   { background:var(--cm-primary);  border-color:var(--cm-primary); }
+  .tl-dot.arco     { background:var(--cm-purple);   border-color:var(--cm-purple); }
+  .tl-dot.delete   { background:var(--cm-danger);   border-color:var(--cm-danger); }
+  .tl-dot.export   { background:var(--cm-info);     border-color:var(--cm-info); }
+  .tl-dot.consent  { background:var(--cm-success);  border-color:var(--cm-success); }
+  .tl-dot.workflow { background:var(--cm-warning);  border-color:var(--cm-warning); }
+  .tl-meta   { font-size:12px; color:var(--cm-text-muted); margin-top:2px; }
+  .tl-detail { font-size:13px; color:var(--cm-text-muted); margin-top:3px; }
+
+  .ev-badge { display:inline-flex; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; border:1px solid; }
+  .ev-view              { background:#F5F5F5; color:#555; border-color:#E0E0E0; }
+  .ev-create            { background:var(--cm-success-bg);  color:var(--cm-success);  border-color:#A5D6A7; }
+  .ev-update            { background:var(--cm-warning-bg);  color:var(--cm-warning);  border-color:#FFCC80; }
+  .ev-delete            { background:var(--cm-danger-bg);   color:var(--cm-danger);   border-color:#FFCDD2; }
+  .ev-consent           { background:var(--cm-success-bg);  color:var(--cm-success);  border-color:#A5D6A7; }
+  .ev-arco_created      { background:var(--cm-purple-bg);   color:var(--cm-purple);   border-color:#CE93D8; }
+  .ev-arco_reviewed     { background:var(--cm-info-bg);     color:var(--cm-info);     border-color:#90CAF9; }
+  .ev-arco_executed     { background:var(--cm-success-bg);  color:var(--cm-success);  border-color:#A5D6A7; }
+  .ev-export            { background:var(--cm-info-bg);     color:var(--cm-info);     border-color:#90CAF9; }
+  .ev-workflow_created  { background:var(--cm-warning-bg);  color:var(--cm-warning);  border-color:#FFCC80; }
+  .ev-workflow_approved { background:var(--cm-success-bg);  color:var(--cm-success);  border-color:#A5D6A7; }
+  .ev-workflow_rejected { background:var(--cm-danger-bg);   color:var(--cm-danger);   border-color:#FFCDD2; }
+  .ev-workflow_executed { background:var(--cm-success-bg);  color:var(--cm-success);  border-color:#A5D6A7; }
+
   .section-title {
-    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
-    color:#ad2b4e;margin:24px 0 10px;padding-bottom:4px;border-bottom:1px solid #f0d0d8;
+    font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+    color:var(--cm-primary); margin:24px 0 10px; padding-bottom:4px;
+    border-bottom:1px solid var(--cm-border);
   }
 </style>
 
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-  <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn btn-light" style="font-size:13px;">&#8592; Volver al registro</a>
+  <a href="{% url 'registros:registro_detail' registration.pk %}" class="btn btn-light btn-sm">← Volver al registro</a>
   <h2 style="margin:0;">{{ title }}</h2>
 </div>
 
 <div style="max-width:860px;">
 
-  <!-- Summary card -->
   <div class="card" style="margin-bottom:24px;">
     <div style="display:grid;grid-template-columns:180px 1fr;gap:8px;font-size:14px;">
-      <span style="color:#666;">Folio interno</span>
+      <span style="color:var(--cm-text-muted);">Folio interno</span>
       <span style="font-family:monospace;">{{ registration.internal_id|default:registration.pk }}</span>
-      <span style="color:#666;">Nombre</span>
+      <span style="color:var(--cm-text-muted);">Nombre</span>
       <span><strong>{{ registration.full_name }}</strong></span>
-      <span style="color:#666;">Consentimiento</span>
+      <span style="color:var(--cm-text-muted);">Consentimiento</span>
       <span>
         {% if registration.privacy_accepted_at %}
           {{ registration.privacy_accepted_at|date:"d/m/Y H:i" }} —
           v{{ registration.privacy_notice_version }} —
           {{ registration.get_consent_method_display }}
           {% if registration.consent_by_proxy %}
-            <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:4px;">Capturado por personal</span>
+            <span style="background:var(--cm-warning-bg);color:var(--cm-warning);border:1px solid var(--cm-accent);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:4px;">Capturado por personal</span>
           {% endif %}
         {% else %}—{% endif %}
       </span>
-      <span style="color:#666;">Estado</span>
+      <span style="color:var(--cm-text-muted);">Estado</span>
       <span>
         {% if registration.is_deleted %}
-          <span style="background:#f8d7da;color:#842029;border:1px solid #f1aeb5;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">Cancelado (ARCO)</span>
+          <span style="background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">Cancelado (ARCO)</span>
           — {{ registration.deleted_at|date:"d/m/Y H:i" }}
           por {{ registration.deleted_by.get_full_name|default:registration.deleted_by.username }}
         {% else %}
-          <span style="background:#d1e7dd;color:#0f5132;border:1px solid #a3cfbb;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">Activo</span>
+          <span style="background:var(--cm-success-bg);color:var(--cm-success);border:1px solid #A5D6A7;border-radius:4px;padding:2px 8px;font-size:12px;font-weight:600;">Activo</span>
         {% endif %}
       </span>
     </div>
   </div>
 
-  <!-- Timeline of RegistrationEvents -->
   <div class="section-title">Bitácora de actividades del expediente</div>
   {% if events %}
     <div class="timeline">
@@ -98,50 +90,37 @@
           "></div>
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
             <span class="ev-badge ev-{{ ev.event_type }}">{{ ev.get_event_type_display }}</span>
-            <span style="font-size:13px;color:#333;">
-              {% if ev.actor %}
-                {{ ev.actor.get_full_name|default:ev.actor.username }}
-                (Nivel {{ ev.actor_role }})
-              {% else %}—{% endif %}
+            <span style="font-size:13px;color:var(--cm-text);">
+              {% if ev.actor %}{{ ev.actor.get_full_name|default:ev.actor.username }} (Nivel {{ ev.actor_role }}){% else %}—{% endif %}
             </span>
           </div>
           <div class="tl-meta">
             {{ ev.created_at|date:"d/m/Y H:i:s" }}
             {% if ev.ip_address %} · IP: {{ ev.ip_address }}{% endif %}
           </div>
-          {% if ev.details %}
-            <div class="tl-detail">{{ ev.details }}</div>
-          {% endif %}
+          {% if ev.details %}<div class="tl-detail">{{ ev.details }}</div>{% endif %}
         </div>
       {% endfor %}
     </div>
   {% else %}
-    <p style="color:#888;font-size:14px;">No hay eventos registrados aún.</p>
+    <p style="color:var(--cm-text-muted);font-size:14px;">No hay eventos registrados aún.</p>
   {% endif %}
 
-  <!-- ARCO cases -->
   {% if arcos %}
     <div class="section-title">Solicitudes ARCO vinculadas</div>
     <div class="card" style="padding:0;overflow:hidden;">
       <table class="table">
         <thead>
           <tr>
-            <th>ID de caso</th>
-            <th>Tipo</th>
-            <th>Estado</th>
-            <th>Solicitante</th>
-            <th>Ejecutado por</th>
-            <th>Plazo legal</th>
-            <th>Firma de cierre</th>
+            <th>ID de caso</th><th>Tipo</th><th>Estado</th><th>Solicitante</th>
+            <th>Ejecutado por</th><th>Plazo legal</th><th>Firma de cierre</th>
           </tr>
         </thead>
         <tbody>
           {% for arco in arcos %}
           <tr>
             <td>
-              <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:#ad2b4e;font-family:monospace;">
-                {{ arco.case_id }}
-              </a>
+              <a href="{% url 'registros:arco_detail' arco.pk %}" style="color:var(--cm-primary);font-family:monospace;">{{ arco.case_id }}</a>
             </td>
             <td>{{ arco.get_arco_type_display }}</td>
             <td>{{ arco.get_state_display }}</td>
@@ -165,42 +144,30 @@
     </div>
   {% endif %}
 
-  <!-- Workflow requests -->
   {% if workflow_requests %}
     <div class="section-title">Solicitudes de flujo de trabajo</div>
     <div class="card" style="padding:0;overflow:hidden;">
       <table class="table">
         <thead>
           <tr>
-            <th>WF#</th>
-            <th>Acción</th>
-            <th>Estado</th>
-            <th>Solicitante</th>
-            <th>Pasos de aprobación</th>
-            <th>Firma</th>
+            <th>WF#</th><th>Acción</th><th>Estado</th><th>Solicitante</th>
+            <th>Pasos de aprobación</th><th>Firma</th>
           </tr>
         </thead>
         <tbody>
           {% for wf in workflow_requests %}
           <tr>
-            <td>
-              <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;">#{{ wf.pk }}</a>
-            </td>
+            <td><a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:var(--cm-primary);">#{{ wf.pk }}</a></td>
             <td>{{ wf.get_action_type_display }}</td>
             <td>{{ wf.get_state_display }}</td>
             <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}</td>
             <td style="font-size:12px;">
               {% for step in wf.approval_steps.all %}
-                <div>
-                  {{ step.actor.get_full_name|default:step.actor.username }}
-                  ({{ step.get_action_display }}, {{ step.created_at|date:"d/m/Y H:i" }})
-                </div>
+                <div>{{ step.actor.get_full_name|default:step.actor.username }} ({{ step.get_action_display }}, {{ step.created_at|date:"d/m/Y H:i" }})</div>
               {% empty %}—{% endfor %}
             </td>
             <td>
-              {% if wf.action_signature %}
-                <span style="font-family:monospace;font-size:11px;">{{ wf.action_signature.message_hash|slice:":16" }}…</span>
-              {% else %}—{% endif %}
+              {% if wf.action_signature %}<span style="font-family:monospace;font-size:11px;">{{ wf.action_signature.message_hash|slice:":16" }}…</span>{% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}

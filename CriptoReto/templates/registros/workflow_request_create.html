@@ -2,16 +2,16 @@
 {% block content %}
 
 <div style="margin-bottom:20px;">
-  <a href="{% url 'registros:registro_detail' registration.pk %}" style="color:#ad2b4e;text-decoration:none;">
+  <a href="{% url 'registros:registro_detail' registration.pk %}" style="color:var(--cm-primary);text-decoration:none;">
     ← Volver al registro #{{ registration.pk }}
   </a>
 </div>
 
 <h2>{{ title }}</h2>
-<p style="color:#666;margin-bottom:4px;">
+<p style="color:var(--cm-text-muted);margin-bottom:4px;">
   Registro: <strong>{{ registration.full_name }}</strong>
 </p>
-<p style="color:#888;font-size:13px;margin-bottom:24px;">
+<p style="color:var(--cm-text-muted);font-size:13px;margin-bottom:24px;">
   Tu nivel de acceso (Nivel {{ request.user.access_level }}) requiere aprobación para realizar esta acción.
   {% if chain_display %}Cadena de aprobación: <strong>{{ chain_display }}</strong>.{% endif %}
 </p>
@@ -22,38 +22,30 @@
 
     {% if action_type == 'update_registration' and form %}
       <h4 style="margin:0 0 16px;font-size:15px;">Cambios propuestos</h4>
-      <p style="font-size:13px;color:#666;margin-bottom:16px;">
+      <p style="font-size:13px;color:var(--cm-text-muted);margin-bottom:16px;">
         Modifica los campos que deseas actualizar. Solo los campos con cambios serán aplicados al aprobarse.
       </p>
-
       {% for field in form %}
         <div class="field-group">
           <label for="{{ field.id_for_label }}">{{ field.label }}</label>
           {{ field }}
-          {% if field.errors %}
-            <div style="color:#c0392b;font-size:12px;margin-top:4px;">{{ field.errors.0 }}</div>
-          {% endif %}
-          {% if field.help_text %}
-            <div class="help-text">{{ field.help_text }}</div>
-          {% endif %}
+          {% if field.errors %}<div style="color:var(--cm-danger);font-size:12px;margin-top:4px;">{{ field.errors.0 }}</div>{% endif %}
+          {% if field.help_text %}<div class="help-text">{{ field.help_text }}</div>{% endif %}
         </div>
       {% endfor %}
-
-      <hr style="margin:20px 0;border:none;border-top:1px solid #eee;">
+      <hr style="margin:20px 0;border:none;border-top:1px solid var(--cm-border);">
     {% endif %}
 
     <div class="field-group">
       <label for="id_notes">
         {% if action_type == 'delete_registration' %}Motivo de la eliminación{% else %}Justificación de la solicitud{% endif %}
-        <span style="color:#c0392b;">*</span>
+        <span style="color:var(--cm-danger);">*</span>
       </label>
-      <textarea name="notes" id="id_notes" rows="4"
-                style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;"
-                placeholder="Describe el motivo de tu solicitud…" required></textarea>
+      <textarea name="notes" id="id_notes" rows="4" placeholder="Describe el motivo de tu solicitud…" required></textarea>
     </div>
 
     <div style="display:flex;gap:12px;">
-      <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
+      <button type="submit" class="btn">
         <i class="fa-solid fa-paper-plane"></i>
         {% if action_type == 'delete_registration' %}Enviar solicitud de eliminación{% else %}Enviar solicitud{% endif %}
       </button>

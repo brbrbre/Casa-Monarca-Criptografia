@@ -2,71 +2,57 @@
 {% block content %}
 
 <style>
-  .state-badge {
-    display:inline-flex;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid;
-  }
-  .state-submitted  { background:#fff3cd;color:#856404;border-color:#ffc107; }
-  .state-pending    { background:#cfe2ff;color:#0a3377;border-color:#84b4ff; }
-  .state-escalated  { background:#f0d6ff;color:#5a2d82;border-color:#c77dff; }
-  .state-approved   { background:#d1e7dd;color:#0f5132;border-color:#a3cfbb; }
-  .state-rejected   { background:#f8d7da;color:#842029;border-color:#f1aeb5; }
-  .state-executed   { background:#e2f4e4;color:#1c6a2a;border-color:#a9d6ad; }
-  .step-row { border-left:3px solid #dee2e6;padding:10px 16px;margin:8px 0; }
-  .step-approved { border-color:#198754; }
-  .step-rejected { border-color:#dc3545; }
+  .state-badge { display:inline-flex;padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid; }
+  .state-submitted { background:var(--cm-warning-bg); color:var(--cm-warning); border-color:#FFCC80; }
+  .state-pending   { background:var(--cm-info-bg);    color:var(--cm-info);    border-color:#90CAF9; }
+  .state-escalated { background:var(--cm-purple-bg);  color:var(--cm-purple);  border-color:#CE93D8; }
+  .state-approved  { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .state-rejected  { background:var(--cm-danger-bg);  color:var(--cm-danger);  border-color:#FFCDD2; }
+  .state-executed  { background:var(--cm-success-bg); color:var(--cm-success); border-color:#A5D6A7; }
+  .step-row { border-left:3px solid var(--cm-border); padding:10px 16px; margin:8px 0; border-radius:0 8px 8px 0; }
+  .step-approved { border-color:var(--cm-success); background:var(--cm-success-bg); }
+  .step-rejected { border-color:var(--cm-danger);  background:var(--cm-danger-bg); }
 </style>
 
 <div style="margin-bottom:20px;">
-  <a href="{% url 'registros:workflow_list' %}" style="color:#ad2b4e;text-decoration:none;">← Volver a solicitudes</a>
+  <a href="{% url 'registros:workflow_list' %}" style="color:var(--cm-primary);text-decoration:none;">← Volver a solicitudes</a>
 </div>
 
 <h2>Solicitud de flujo #{{ wf.pk }} — {{ wf.get_action_type_display }}</h2>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
 
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
   <div class="card">
     <h4 style="margin:0 0 12px;">Detalles</h4>
     <table style="width:100%;font-size:14px;border-collapse:collapse;">
-      <tr><td style="color:#888;padding:4px 0;width:40%;">Estado</td>
+      <tr><td style="color:var(--cm-text-muted);padding:4px 0;width:40%;">Estado</td>
           <td><span class="state-badge state-{{ wf.state }}">{{ wf.get_state_display }}</span></td></tr>
-      <tr><td style="color:#888;padding:4px 0;">Solicitado por</td>
-          <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }}
-              (Nivel {{ wf.requested_by_role }})</td></tr>
-      <tr><td style="color:#888;padding:4px 0;">Registro</td>
+      <tr><td style="color:var(--cm-text-muted);padding:4px 0;">Solicitado por</td>
+          <td>{{ wf.requested_by.get_full_name|default:wf.requested_by.username }} (Nivel {{ wf.requested_by_role }})</td></tr>
+      <tr><td style="color:var(--cm-text-muted);padding:4px 0;">Registro</td>
           <td>{% if wf.registration %}
-                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+                <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:var(--cm-primary);">
                   #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
                 </a>
               {% elif wf.action_type == 'create_registration' %}
-                <a href="{% url 'registros:workflow_registration_preview' wf.pk %}" style="color:#ad2b4e;">
-                  Ver registro completo
-                </a>
+                <a href="{% url 'registros:workflow_registration_preview' wf.pk %}" style="color:var(--cm-primary);">Ver registro completo</a>
               {% else %}—{% endif %}</td></tr>
-      <tr><td style="color:#888;padding:4px 0;">Creada el</td>
-          <td>{{ wf.created_at|date:"d/m/Y H:i" }}</td></tr>
-      <tr><td style="color:#888;padding:4px 0;">Actualizada</td>
-          <td>{{ wf.updated_at|date:"d/m/Y H:i" }}</td></tr>
+      <tr><td style="color:var(--cm-text-muted);padding:4px 0;">Creada el</td><td>{{ wf.created_at|date:"d/m/Y H:i" }}</td></tr>
+      <tr><td style="color:var(--cm-text-muted);padding:4px 0;">Actualizada</td><td>{{ wf.updated_at|date:"d/m/Y H:i" }}</td></tr>
       {% if wf.current_approver_level %}
-        <tr><td style="color:#888;padding:4px 0;">Aprobador actual</td>
-            <td>Nivel {{ wf.current_approver_level }}</td></tr>
+        <tr><td style="color:var(--cm-text-muted);padding:4px 0;">Aprobador actual</td><td>Nivel {{ wf.current_approver_level }}</td></tr>
       {% endif %}
     </table>
     {% if wf.registration %}
       <div style="margin-top:14px;">
-        <a href="{% url 'registros:registro_detail' wf.registration.pk %}"
-           class="btn btn-light" style="font-size:13px;">Ver registro completo</a>
+        <a href="{% url 'registros:registro_detail' wf.registration.pk %}" class="btn btn-light btn-sm">Ver registro completo</a>
       </div>
     {% endif %}
   </div>
-
   <div class="card">
     <h4 style="margin:0 0 12px;">Notas del solicitante</h4>
-    <p style="font-size:14px;color:#444;">{{ wf.notes|default:"Sin notas adicionales." }}</p>
+    <p style="font-size:14px;color:var(--cm-text-muted);">{{ wf.notes|default:"Sin notas adicionales." }}</p>
   </div>
 </div>
 
@@ -76,22 +62,20 @@
   <table style="width:100%;border-collapse:collapse;font-size:13px;">
     <thead>
       <tr>
-        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Campo</th>
-        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Valor actual</th>
-        <th style="text-align:left;padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;color:#555;">Valor propuesto</th>
-        <th style="padding:8px 12px;background:#fafafa;border-bottom:2px solid #eee;"></th>
+        <th style="text-align:left;padding:8px 12px;background:var(--cm-bg);border-bottom:2px solid var(--cm-border);color:var(--cm-text-muted);">Campo</th>
+        <th style="text-align:left;padding:8px 12px;background:var(--cm-bg);border-bottom:2px solid var(--cm-border);color:var(--cm-text-muted);">Valor actual</th>
+        <th style="text-align:left;padding:8px 12px;background:var(--cm-bg);border-bottom:2px solid var(--cm-border);color:var(--cm-text-muted);">Valor propuesto</th>
+        <th style="padding:8px 12px;background:var(--cm-bg);border-bottom:2px solid var(--cm-border);"></th>
       </tr>
     </thead>
     <tbody>
       {% for row in diff_data %}
-        <tr style="{% if row.changed %}background:#fffbea;{% else %}color:#aaa;{% endif %}border-bottom:1px solid #f0f0f0;">
+        <tr style="{% if row.changed %}background:var(--cm-warning-bg);{% else %}color:var(--cm-text-muted);{% endif %}border-bottom:1px solid var(--cm-border);">
           <td style="padding:8px 12px;">{{ row.label }}</td>
           <td style="padding:8px 12px;">{{ row.current|default:"—" }}</td>
           <td style="padding:8px 12px;">{{ row.proposed|default:"—" }}</td>
           <td style="padding:8px 12px;">
-            {% if row.changed %}
-              <span style="background:#f2b01f;color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600;">Modificado</span>
-            {% endif %}
+            {% if row.changed %}<span style="background:var(--cm-accent);color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600;">Modificado</span>{% endif %}
           </td>
         </tr>
       {% endfor %}
@@ -100,7 +84,6 @@
 </div>
 {% endif %}
 
-<!-- Approval steps -->
 <div class="card" style="margin-bottom:24px;">
   <h4 style="margin:0 0 16px;">Historial de aprobación</h4>
   {% if steps %}
@@ -109,37 +92,27 @@
         <div style="display:flex;justify-content:space-between;align-items:center;">
           <div>
             <strong>{{ step.get_action_display }}</strong> por
-            {{ step.actor.get_full_name|default:step.actor.username }}
-            (Nivel {{ step.actor_role }})
+            {{ step.actor.get_full_name|default:step.actor.username }} (Nivel {{ step.actor_role }})
           </div>
-          <small style="color:#888;">{{ step.created_at|date:"d/m/Y H:i" }}</small>
+          <small style="color:var(--cm-text-muted);">{{ step.created_at|date:"d/m/Y H:i" }}</small>
         </div>
-        {% if step.notes %}
-          <div style="margin-top:6px;font-size:13px;color:#555;">{{ step.notes }}</div>
-        {% endif %}
+        {% if step.notes %}<div style="margin-top:6px;font-size:13px;color:var(--cm-text-muted);">{{ step.notes }}</div>{% endif %}
       </div>
     {% endfor %}
   {% else %}
-    <p style="color:#888;font-size:14px;">Aún no hay pasos de aprobación.</p>
+    <p style="color:var(--cm-text-muted);font-size:14px;">Aún no hay pasos de aprobación.</p>
   {% endif %}
 </div>
 
-<!-- Action buttons -->
 <div style="display:flex;gap:12px;">
   {% if can_act %}
-    <a href="{% url 'registros:workflow_decide' wf.pk %}"
-       class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
-      Aprobar / Rechazar
-    </a>
+    <a href="{% url 'registros:workflow_decide' wf.pk %}" class="btn"><i class="fa-solid fa-scale-balanced"></i> Aprobar / Rechazar</a>
   {% endif %}
   {% if wf.state == 'approved' and can_execute %}
-    <a href="{% url 'registros:workflow_execute' wf.pk %}"
-       class="btn" style="background:#198754;color:#fff;border-color:#198754;">
-      Ejecutar solicitud
-    </a>
+    <a href="{% url 'registros:workflow_execute' wf.pk %}" class="btn btn-success"><i class="fa-solid fa-play"></i> Ejecutar solicitud</a>
   {% endif %}
   {% if wf.action_signature %}
-    <div style="padding:8px 14px;background:#e2f4e4;border-radius:8px;font-size:13px;color:#1c6a2a;border:1px solid #a9d6ad;">
+    <div style="padding:8px 14px;background:var(--cm-success-bg);border-radius:8px;font-size:13px;color:var(--cm-success);border:1px solid #A5D6A7;display:flex;align-items:center;gap:6px;">
       <i class="fa-solid fa-check"></i> Firmado criptográficamente
     </div>
   {% endif %}

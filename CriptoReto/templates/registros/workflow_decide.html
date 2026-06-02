@@ -2,34 +2,34 @@
 {% block content %}
 
 <style>
-  .diff-changed { background:#fffbea; }
-  .diff-unchanged { color:#888; }
+  .diff-changed   { background:var(--cm-warning-bg); }
+  .diff-unchanged { color:var(--cm-text-muted); }
   .diff-table td, .diff-table th { padding:8px 12px; font-size:13px; }
   .diff-table { width:100%; border-collapse:collapse; margin-bottom:8px; }
-  .diff-table th { background:#fafafa; color:#555; font-weight:600; border-bottom:2px solid #eee; }
-  .diff-table td { border-bottom:1px solid #f0f0f0; }
-  .tag-changed { background:#f2b01f;color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600; }
+  .diff-table th { background:var(--cm-bg); color:var(--cm-text-muted); font-weight:600; border-bottom:2px solid var(--cm-border); }
+  .diff-table td { border-bottom:1px solid var(--cm-border); }
+  .tag-changed { background:var(--cm-accent);color:#111;border-radius:4px;font-size:11px;padding:1px 6px;font-weight:600; }
 </style>
 
 <div style="margin-bottom:20px;">
-  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:#ad2b4e;text-decoration:none;">← Volver al detalle</a>
+  <a href="{% url 'registros:workflow_detail' wf.pk %}" style="color:var(--cm-primary);text-decoration:none;">← Volver al detalle</a>
 </div>
 
 <h2>Decisión sobre solicitud #{{ wf.pk }}</h2>
-<p style="color:#666;margin-bottom:24px;">
+<p style="color:var(--cm-text-muted);margin-bottom:24px;">
   <strong>Acción:</strong> {{ wf.get_action_type_display }} &nbsp;|&nbsp;
   <strong>Solicitado por:</strong> {{ wf.requested_by.get_full_name|default:wf.requested_by.username }}
   {% if wf.registration %}
     &nbsp;|&nbsp; <strong>Registro:</strong>
-    <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:#ad2b4e;">
+    <a href="{% url 'registros:registro_detail' wf.registration.pk %}" style="color:var(--cm-primary);">
       #{{ wf.registration.pk }} — {{ wf.registration.full_name }}
     </a>
   {% endif %}
 </p>
 
 {% if wf.notes %}
-  <div class="card" style="max-width:740px;margin-bottom:20px;background:#fffdf5;border-color:#fce8b2;">
-    <strong style="font-size:13px;color:#856404;">Justificación del solicitante:</strong>
+  <div class="card" style="max-width:740px;margin-bottom:20px;background:#FFFBEA;border-color:var(--cm-accent);">
+    <strong style="font-size:13px;color:var(--cm-warning);">Justificación del solicitante:</strong>
     <p style="margin:6px 0 0;font-size:14px;">{{ wf.notes }}</p>
   </div>
 {% endif %}
@@ -38,14 +38,7 @@
   <div class="card" style="max-width:740px;margin-bottom:24px;">
     <h4 style="margin:0 0 14px;font-size:15px;">Cambios propuestos</h4>
     <table class="diff-table">
-      <thead>
-        <tr>
-          <th>Campo</th>
-          <th>Valor actual</th>
-          <th>Valor propuesto</th>
-          <th></th>
-        </tr>
-      </thead>
+      <thead><tr><th>Campo</th><th>Valor actual</th><th>Valor propuesto</th><th></th></tr></thead>
       <tbody>
         {% for row in diff_data %}
           <tr class="{% if row.changed %}diff-changed{% else %}diff-unchanged{% endif %}">
@@ -65,62 +58,46 @@
     {% csrf_token %}
 
     <div style="margin-bottom:20px;">
-      <label style="font-weight:600;display:block;margin-bottom:8px;">{{ form.decision.label }}</label>
-      {% for radio in form.decision %}
-        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;cursor:pointer;">
-          {{ radio.tag }}
-          <span>{{ radio.choice_label }}</span>
-        </label>
-      {% endfor %}
-      {% if form.decision.errors %}
-        <div style="color:#c0392b;font-size:13px;">{{ form.decision.errors.0 }}</div>
-      {% endif %}
+      <label style="font-weight:600;display:block;margin-bottom:10px;">{{ form.decision.label }}</label>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        {% for radio in form.decision %}
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:10px 18px;border:2px solid var(--cm-border);border-radius:10px;font-size:14px;font-weight:500;transition:all .12s;">
+            {{ radio.tag }}
+            <span>{{ radio.choice_label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+      {% if form.decision.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:6px;">{{ form.decision.errors.0 }}</div>{% endif %}
     </div>
 
     <div style="margin-bottom:20px;">
-      <label for="{{ form.notes.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
-        Notas / Motivo de rechazo
-      </label>
+      <label for="{{ form.notes.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">Notas / Motivo de rechazo</label>
       {{ form.notes }}
-      {% if form.notes.errors %}
-        <div style="color:#c0392b;font-size:13px;">{{ form.notes.errors.0 }}</div>
-      {% endif %}
+      {% if form.notes.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.notes.errors.0 }}</div>{% endif %}
     </div>
 
     <div style="margin-bottom:24px;">
-      <label for="{{ form.password.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">
-        {{ form.password.label }}
-      </label>
+      <label for="{{ form.password.id_for_label }}" style="font-weight:600;display:block;margin-bottom:6px;">{{ form.password.label }}</label>
       {{ form.password }}
-      <small style="color:#888;font-size:12px;">Tu contraseña confirma tu identidad en el registro de auditoría.</small>
-      {% if form.password.errors %}
-        <div style="color:#c0392b;font-size:13px;">{{ form.password.errors.0 }}</div>
-      {% endif %}
+      <small style="color:var(--cm-text-muted);font-size:12px;">Tu contraseña confirma tu identidad en el registro de auditoría.</small>
+      {% if form.password.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.password.errors.0 }}</div>{% endif %}
     </div>
 
     {% if request.user.access_level <= 2 %}
       <div id="cert-inputs" style="display:none;margin-bottom:20px;">
-        <div style="margin-bottom:20px;">
-          <label for="id_cert_file" style="font-weight:600;display:block;margin-bottom:6px;">
-            Certificado digital (.cert)
-          </label>
-          <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem"
-                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+        <div class="field-group">
+          <label for="id_cert_file">Certificado digital (.cert)</label>
+          <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem">
         </div>
-        <div style="margin-bottom:20px;">
-          <label for="id_key_file" style="font-weight:600;display:block;margin-bottom:6px;">
-            Llave privada (.key)
-          </label>
-          <input type="file" name="key_file" id="id_key_file" accept=".key"
-                 style="width:100%;padding:10px;border:1px solid #ccc;border-radius:8px;font-size:14px;">
+        <div class="field-group">
+          <label for="id_key_file">Llave privada (.key)</label>
+          <input type="file" name="key_file" id="id_key_file" accept=".key">
         </div>
       </div>
     {% endif %}
 
     <div style="display:flex;gap:12px;">
-      <button type="submit" class="btn" style="background:#ad2b4e;color:#fff;border-color:#ad2b4e;">
-        Confirmar decisión
-      </button>
+      <button type="submit" class="btn"><i class="fa-solid fa-check"></i> Confirmar decisión</button>
       <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light">Cancelar</a>
     </div>
   </form>
@@ -132,12 +109,10 @@
     const radios = document.querySelectorAll('input[name="decision"]');
     const certInputs = document.getElementById('cert-inputs');
     if (!certInputs) return;
-
     function updateVisibility() {
       const approved = Array.from(radios).some(r => r.checked && r.value === 'approved');
       certInputs.style.display = approved ? 'block' : 'none';
     }
-
     radios.forEach(radio => radio.addEventListener('change', updateVisibility));
     updateVisibility();
   })();
