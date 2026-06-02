@@ -109,6 +109,28 @@ class MigrantRegistration(models.Model):
         'Versión del aviso de privacidad', max_length=10, default=PRIVACY_NOTICE_VERSION,
     )
 
+    # ── Consent capture method ────────────────────────────────────────────────
+    # Beneficiaries often lack devices; staff captures consent on their behalf.
+    CONSENT_DIGITAL = 'digital'
+    CONSENT_VERBAL = 'verbal'
+    CONSENT_WRITTEN = 'written'
+    CONSENT_METHOD_CHOICES = [
+        (CONSENT_DIGITAL, 'Digital (este formulario)'),
+        (CONSENT_VERBAL, 'Verbal con testigo'),
+        (CONSENT_WRITTEN, 'Firmado en papel'),
+    ]
+    consent_method = models.CharField(
+        'Método de captura del consentimiento',
+        max_length=10,
+        choices=CONSENT_METHOD_CHOICES,
+        default=CONSENT_DIGITAL,
+    )
+    consent_by_proxy = models.BooleanField(
+        'Capturado por personal en nombre del beneficiario',
+        default=False,
+        help_text='Marcar cuando el personal captura el consentimiento presencialmente en nombre del beneficiario.',
+    )
+
     # ── Metadata ──────────────────────────────────────────────────────────────
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -853,3 +875,76 @@ class Ticket(models.Model):
         if any(a in medium for a in assistances):
             return Ticket.PRIORITY_MEDIA
         return Ticket.PRIORITY_BAJA
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# REGISTRATION EXPEDIENTE AUDIT LOG
+# ══════════════════════════════════════════════════════════════════════════════
+
+class RegistrationEvent(models.Model):
+    """
+    Per-registration audit trail for all events related to a specific
+    MigrantRegistration: views, edits, ARCO actions, exports, consent.
+
+    This provides the per-expediente timeline required by LFPDPPP compliance.
+    Unlike AuditLog (which logs IAM/actor actions), RegistrationEvent is indexed
+    by the migrant record so the full history of ONE person's data is retrievable.
+    """
+
+    EVENT_VIEW = 'view'
+    EVENT_CREATE = 'create'
+    EVENT_UPDATE = 'update'
+    EVENT_DELETE = 'delete'
+    EVENT_CONSENT = 'consent'
+    EVENT_ARCO_CREATED = 'arco_created'
+    EVENT_ARCO_REVIEWED = 'arco_reviewed'
+    EVENT_ARCO_EXECUTED = 'arco_executed'
+    EVENT_EXPORT = 'export'
+    EVENT_WORKFLOW_CREATED = 'workflow_created'
+    EVENT_WORKFLOW_APPROVED = 'workflow_approved'
+    EVENT_WORKFLOW_REJECTED = 'workflow_rejected'
+    EVENT_WORKFLOW_EXECUTED = 'workflow_executed'
+
+    EVENT_CHOICES = [
+        (EVENT_VIEW, 'Consulta'),
+        (EVENT_CREATE, 'Creación'),
+        (EVENT_UPDATE, 'Modificación'),
+        (EVENT_DELETE, 'Eliminación'),
+        (EVENT_CONSENT, 'Consentimiento registrado'),
+        (EVENT_ARCO_CREATED, 'Solicitud ARCO recibida'),
+        (EVENT_ARCO_REVIEWED, 'Solicitud ARCO en revisión'),
+        (EVENT_ARCO_EXECUTED, 'Solicitud ARCO ejecutada'),
+        (EVENT_EXPORT, 'Exportación de datos'),
+        (EVENT_WORKFLOW_CREATED, 'Solicitud de flujo creada'),
+        (EVENT_WORKFLOW_APPROVED, 'Solicitud de flujo aprobada'),
+        (EVENT_WORKFLOW_REJECTED, 'Solicitud de flujo rechazada'),
+        (EVENT_WORKFLOW_EXECUTED, 'Solicitud de flujo ejecutada'),
+    ]
+
+    registration = models.ForeignKey(
+        MigrantRegistration,
+        on_delete=models.PROTECT,
+        related_name='events',
+        verbose_name='Registro',
+    )
+    event_type = models.CharField('Tipo de evento', max_length=24, choices=EVENT_CHOICES, db_index=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='registration_events',
+        verbose_name='Actor',
+    )
+    actor_role = models.PositiveSmallIntegerField('Nivel del actor', null=True, blank=True)
+    details = models.TextField('Detalles', blank=True)
+    ip_address = models.GenericIPAddressField('IP', null=True, blank=True)
+    created_at = models.DateTimeField('Fecha y hora', auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Evento de expediente'
+        verbose_name_plural = 'Eventos de expediente'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.get_event_type_display()} — reg#{self.registration_id} — {self.created_at:%Y-%m-%d %H:%M}'

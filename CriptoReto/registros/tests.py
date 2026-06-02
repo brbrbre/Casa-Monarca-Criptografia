@@ -39,9 +39,9 @@ def _make_user(username, access_level, area=None):
 
 
 def _login(client, user):
-    """Log in and, for Level-2 coordinators, inject the required cert_validated flag."""
+    """Log in and inject cert_validated for levels 1 and 2 (both need cert+key)."""
     client.force_login(user)
-    if user.access_level == 2:
+    if user.access_level <= 2:
         session = client.session
         session['cert_validated'] = True
         session.save()
@@ -392,17 +392,11 @@ class ArcoExecuteSignatureTest(TestCase):
         self.coord = _make_user('arco_exec_coord', 2, area=self.area)
         self.registration = _make_registration(self.admin)
 
-        # Create a UserCertificate for coord so validate_coordinator_cert_and_key works
-        from iam.certificates import issue_coordinator_key_cert, get_coordinator_key_bytes
-        cert_obj = issue_coordinator_key_cert(self.coord, self.admin)
-        cert_pem_bytes = cert_obj.certificate_data.encode('utf-8')
-        key_der_bytes = get_coordinator_key_bytes(cert_obj)
-        self._cert_pem = cert_pem_bytes
-        self._key_der = key_der_bytes
-
-        # Seed a UserCertificate for admin (encrypted)
-        from iam.certificates import issue_encrypted_certificate
-        issue_encrypted_certificate(self.admin, self.admin)
+        # Create a UserCertificate for coord (RSA cert+key)
+        from iam.certificates import issue_cert_and_key, get_coordinator_key_bytes
+        cert_obj = issue_cert_and_key(self.coord, self.admin)
+        self._cert_pem = cert_obj.certificate_data.encode('utf-8')
+        self._key_der = get_coordinator_key_bytes(cert_obj)
 
     def _make_arco(self, user, arco_type='access'):
         arco = ArcoRequest.objects.create(
@@ -478,15 +472,15 @@ class ArcoCancellationAdminOnlyTest(TestCase):
         self.coord = _make_user('arco_cancel_coord', 2, area=self.area)
         self.registration = _make_registration(self.admin)
 
-        from iam.certificates import issue_coordinator_key_cert, get_coordinator_key_bytes
-        cert_obj = issue_coordinator_key_cert(self.coord, self.admin)
+        from iam.certificates import issue_cert_and_key, get_coordinator_key_bytes
+        cert_obj = issue_cert_and_key(self.coord, self.admin)
         self._cert_pem = cert_obj.certificate_data.encode('utf-8')
         self._key_der = get_coordinator_key_bytes(cert_obj)
 
-        from iam.certificates import issue_encrypted_certificate
-        admin_cert = issue_encrypted_certificate(self.admin, self.admin)
-        from iam.certificates import encrypt_certificate, generate_certificate_payload
-        self._admin_cert_str = admin_cert.certificate_data
+        # Admin also uses RSA cert+key (same format as coordinator)
+        admin_cert_obj = issue_cert_and_key(self.admin, self.admin)
+        self._admin_cert_pem = admin_cert_obj.certificate_data.encode('utf-8')
+        self._admin_key_der = get_coordinator_key_bytes(admin_cert_obj)
 
     def _make_cancellation_arco(self):
         return ArcoRequest.objects.create(
@@ -522,11 +516,8 @@ class ArcoCancellationAdminOnlyTest(TestCase):
         c.post(url, {
             'password': 'Test1234!',
             'notes': 'Eliminación solicitada por el titular.',
-            'cert_file': SimpleUploadedFile(
-                'admin.cert',
-                self._admin_cert_str.encode('utf-8'),
-                content_type='text/plain',
-            ),
+            'cert_file': SimpleUploadedFile('admin.cert', self._admin_cert_pem, content_type='text/plain'),
+            'key_file': SimpleUploadedFile('admin.key', self._admin_key_der, content_type='application/octet-stream'),
         })
         arco.refresh_from_db()
         self.assertEqual(arco.state, ArcoRequest.STATE_EXECUTED)

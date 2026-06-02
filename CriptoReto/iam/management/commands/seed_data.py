@@ -2,7 +2,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from iam.certificates import issue_encrypted_certificate
+from iam.certificates import issue_cert_and_key
 from iam.models import Area, Collaborator, AuditLog
 
 
@@ -22,7 +22,8 @@ class Command(BaseCommand):
         for slug, name, description in areas:
             Area.objects.update_or_create(slug=slug, defaults={'name': name, 'description': description})
 
-        admin, _ = Collaborator.objects.get_or_create(
+        # En produccion real, el primer Admin debe ejecutar este script de instalacion manualmente.
+        admin, created = Collaborator.objects.get_or_create(
             username='admin',
             defaults={
                 'email': 'admin@casamonarca.org',
@@ -33,13 +34,29 @@ class Command(BaseCommand):
                 'area': Area.objects.get(slug='it'),
                 'onboarding_date': timezone.now().date(),
                 'is_staff': True,
-                'is_superuser': True,
                 'is_active': True,
             },
         )
-        if not admin.password:
+        if not admin.has_usable_password() or created:
             admin.set_password('Admin2026!')
             admin.save()
+
+        # Bootstrap the admin's onboarding as if a senior admin approved it (self-bootstrap).
+        # This is only valid during initial seed/installation — real admins go through onboarding.
+        if admin.onboarding_status != Collaborator.ONBOARDING_STATUS_APPROVED:
+            admin.onboarding_status = Collaborator.ONBOARDING_STATUS_APPROVED
+            admin.onboarding_approved_at = timezone.now()
+            admin.onboarding_approved_by = admin  # self-bootstrap, valid only in seed
+            admin.save(update_fields=['onboarding_status', 'onboarding_approved_at', 'onboarding_approved_by'])
+
+        if not admin.certificate_delivered_at:
+            try:
+                cert = issue_cert_and_key(admin, issued_by=admin)
+                admin.certificate_delivered_at = timezone.now()
+                admin.save(update_fields=['certificate_delivered_at'])
+                print(f'Admin cert+key emitidos. Fingerprint: {cert.fingerprint}')
+            except (PermissionError, ImproperlyConfigured, Exception) as exc:
+                print(f'Warning cert: {exc}')
 
         seeds = [
             {
@@ -142,13 +159,5 @@ class Command(BaseCommand):
                     action='Creación de usuario de prueba',
                     details=f'Usuario de prueba creado con contraseña temporal.',
                 )
-
-        try:
-            cert = issue_encrypted_certificate(admin, issued_by=admin)
-            print(f'Admin certificate issued: {cert.fingerprint}')
-        except ImproperlyConfigured as exc:
-            print(f'Warning: {exc}')
-        except PermissionError as exc:
-            print(f'Warning: {exc}')
 
         self.stdout.write(self.style.SUCCESS('Datos de prueba cargados correctamente.'))

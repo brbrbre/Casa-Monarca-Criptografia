@@ -195,7 +195,7 @@
              style="font-size:13px;">
     </div>
 
-    {% if request.user.access_level == 2 %}
+    {% if request.user.access_level <= 2 %}
     <div style="margin-bottom:12px;">
       <label style="font-weight:600;display:block;margin-bottom:4px;font-size:13px;">Llave privada (.key)</label>
       <input type="file" name="key_file" required accept=".key"

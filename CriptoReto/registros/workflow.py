@@ -57,7 +57,11 @@ ESCALATION_RULES: dict[tuple, list[int]] = {
     ('arco_cancellation', 2): [1],
 
     # ── CREACIÓN DE REGISTRO ─────────────────────────────────────────────────
-    ('create_registration', 4): [2],
+    # Chain meaning: all entries before the last REVIEW (approve/reject without executing);
+    # the LAST entry EXECUTES the action (sign + perform the DB mutation).
+    # Voluntario (4) → Operativo (3) revisa → Coordinador (2) ejecuta
+    ('create_registration', 4): [3, 2],
+    # Operativo (3) → Coordinador (2) ejecuta
     ('create_registration', 3): [2],
 
     # ── ARCO — Oposición ─────────────────────────────────────────────────────

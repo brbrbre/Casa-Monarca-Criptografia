@@ -78,15 +78,43 @@
     {% if can_approve %}
     <div style="background:#e8f5e9; border:1px solid #a5d6a7; border-radius:8px; padding:14px 18px; margin-bottom:20px; font-size:14px; color:#1b5e20;">
       <strong>El onboarding está completo.</strong>
-      {% if collaborator.access_level == 2 %}
-        Al aprobar, se emitirá el certificado (.cert) y la llave privada (.key) del coordinador automáticamente.
-        El coordinador deberá descargar ambos archivos al iniciar sesión.
+      {% if collaborator.access_level <= 2 %}
+        Al aprobar, se emitirá el certificado (.cert) y la llave privada (.key) automáticamente.
+        El usuario deberá descargar ambos archivos al iniciar sesión.
       {% else %}
         Al aprobar, el usuario podrá acceder al sistema de inmediato.
       {% endif %}
     </div>
-    <form method="post">
+
+    <div style="background:#fff3cd; border:1px solid #ffc107; border-radius:8px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#856404;">
+      <strong>Firma requerida:</strong> Para aprobar este onboarding debes firmar con tu certificado institucional.
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
+      <div style="display:grid; gap:14px; margin-bottom:20px;">
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_password">
+            Tu contraseña <span style="color:#b71c1c;">*</span>
+          </label>
+          <input type="password" name="password" id="id_approve_password" required
+                 style="width:100%; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_cert">
+            Tu certificado (.cert) <span style="color:#b71c1c;">*</span>
+          </label>
+          <input type="file" name="cert_file" id="id_approve_cert" accept=".cert,.pem" required
+                 style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:5px;" for="id_approve_key">
+            Tu llave privada (.key) <span style="color:#b71c1c;">*</span>
+          </label>
+          <input type="file" name="key_file" id="id_approve_key" accept=".key" required
+                 style="width:100%; padding:8px 10px; border:1px solid #d1d5db; border-radius:8px; font-size:14px;">
+        </div>
+      </div>
       <div class="inline-actions">
         <button type="submit" class="btn">Aprobar onboarding</button>
         <a href="{% url 'iam:pending_onboarding' %}" class="btn btn-light">Cancelar</a>

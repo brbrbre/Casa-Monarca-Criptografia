@@ -93,6 +93,7 @@ def decrypt_certificate(encrypted_str: str) -> dict:
         raise ValueError('Invalid or tampered certificate.') from exc
 
 
+# legacy — no new issuances; use issue_cert_and_key for levels 1 and 2
 def issue_encrypted_certificate(collaborator, issued_by):
     existing_cert = getattr(collaborator, 'certificate', None)
     if existing_cert and existing_cert.is_valid:
@@ -131,6 +132,7 @@ def issue_encrypted_certificate(collaborator, issued_by):
     return certificate
 
 
+# legacy — no new issuances; use validate_cert_and_key for levels 1 and 2
 def validate_encrypted_certificate(collaborator, encrypted_str) -> bool:
     try:
         payload = decrypt_certificate(encrypted_str)
@@ -377,3 +379,10 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
             action='CERTIFICATE_VALIDATION_FAILED', details=f'exception:{str(exc)[:120]}',
         )
         return False
+
+
+# ── Unified aliases for all privileged levels (1 and 2) ──────────────────────
+# Use these in all new code — both admin (level 1) and coordinator (level 2)
+# use the same RSA cert PEM + PKCS#8 DER key format.
+issue_cert_and_key = issue_coordinator_key_cert
+validate_cert_and_key = validate_coordinator_cert_and_key

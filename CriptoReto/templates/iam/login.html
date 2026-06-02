@@ -301,14 +301,14 @@
 
         <hr class="divider">
 
-        <!-- Sección coordinador: .cert + .key obligatorios -->
+        <!-- Sección niveles 1 y 2: .cert + .key obligatorios (mismo formato RSA) -->
         <div id="coordCertSection" class="cert-section cert-section-coordinator fade-in" style="display:none;">
           <p class="cert-section-title coord-title">
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round"
                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            Firma digital del coordinador (e.firma)
+            Firma digital institucional (e.firma)
           </p>
           <div class="field-group">
             <label for="id_certificate">
@@ -317,7 +317,7 @@
             </label>
             {{ form.certificate }}
             <p class="field-hint">
-              Archivo <strong>.cert</strong> emitido por Casa Monarca para tu cuenta de coordinador.
+              Archivo <strong>.cert</strong> emitido por Casa Monarca para tu cuenta.
             </p>
           </div>
           <div class="field-group">
@@ -329,26 +329,6 @@
             <p class="field-hint">
               Archivo <strong>.key</strong> correspondiente a tu certificado.
               Mantenlo en un lugar seguro y no lo compartas.
-            </p>
-          </div>
-        </div>
-
-        <!-- Sección admin: .cert opcional (comportamiento actual) -->
-        <div id="adminCertSection" class="cert-section cert-section-admin fade-in" style="display:none;">
-          <p class="cert-section-title admin-title">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Certificado de administrador
-          </p>
-          <div class="field-group">
-            <label for="id_certificate">
-              Certificado (.cert)
-            </label>
-            {{ form.certificate }}
-            <p class="field-hint">
-              Sube el archivo <strong>.cert</strong> para validación adicional de acceso.
             </p>
           </div>
         </div>
@@ -368,7 +348,6 @@
     (function () {
       var usernameInput = document.getElementById('id_username');
       var coordSection = document.getElementById('coordCertSection');
-      var adminSection = document.getElementById('adminCertSection');
       var certInput = document.getElementById('id_certificate');
       var keyInput = document.getElementById('id_key_file');
       var debounceTimer = null;
@@ -376,16 +355,14 @@
 
       function showSection(role) {
         coordSection.style.display = 'none';
-        adminSection.style.display = 'none';
         if (certInput) { certInput.required = false; }
         if (keyInput) { keyInput.required = false; }
 
-        if (role === 'coordinator') {
+        // Both admin (level 1) and coordinator (level 2) require .cert + .key
+        if (role === 'coordinator' || role === 'admin') {
           coordSection.style.display = 'block';
           if (certInput) { certInput.required = true; }
           if (keyInput) { keyInput.required = true; }
-        } else if (role === 'admin') {
-          adminSection.style.display = 'block';
         }
       }
 
