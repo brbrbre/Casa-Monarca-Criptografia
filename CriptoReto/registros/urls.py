@@ -10,10 +10,12 @@ urlpatterns = [
     path('<int:pk>/exito/', views.registro_exito,  name='registro_exito'),
 
     # ── CRUD ───────────────────────────────────────────────────────────────────
-    path('',                    views.registro_list,   name='registro_list'),
-    path('<int:pk>/',           views.registro_detail, name='registro_detail'),
-    path('<int:pk>/editar/',    views.registro_edit,   name='registro_edit'),
-    path('<int:pk>/eliminar/',  views.registro_delete, name='registro_delete'),
+    path('',                             views.registro_list,         name='registro_list'),
+    path('eliminados/',                  views.registro_deleted_list, name='registro_deleted_list'),
+    path('<int:pk>/',                    views.registro_detail,       name='registro_detail'),
+    path('<int:pk>/editar/',             views.registro_edit,         name='registro_edit'),
+    path('<int:pk>/eliminar/',           views.registro_delete,       name='registro_delete'),
+    path('<int:pk>/expediente/',         views.registro_expediente,   name='registro_expediente'),
 
     # ── Crypto ─────────────────────────────────────────────────────────────────
     path('<int:pk>/verificar/', views.registro_verify,   name='registro_verify'),

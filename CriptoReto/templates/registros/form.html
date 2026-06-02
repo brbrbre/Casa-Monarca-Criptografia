@@ -250,6 +250,28 @@
         {% if form.data_consent.errors %}<ul class="error-list" style="margin-top:8px;">{% for e in form.data_consent.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
       </div>
 
+      <!-- Consent capture method (LFPDPPP: beneficiarios sin dispositivos) -->
+      <div style="margin-top:14px;background:#f0f4ff;border:1px solid #b0c4ff;border-radius:8px;padding:14px;">
+        <p style="font-size:13px;font-weight:600;margin:0 0 10px;color:#1a3a7a;">
+          Captura del consentimiento
+          <span style="font-weight:400;color:#555;font-size:12px;"> — requerido por LFPDPPP Art. 8</span>
+        </p>
+        <div class="field-group" style="margin-bottom:10px;">
+          <label for="{{ form.consent_method.id_for_label }}" style="font-size:13px;">
+            {{ form.consent_method.label }}
+          </label>
+          {{ form.consent_method }}
+          <small style="color:#888;font-size:12px;">{{ form.consent_method.help_text }}</small>
+        </div>
+        <div class="field-group">
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:13px;">
+            {{ form.consent_by_proxy }}
+            <span>{{ form.consent_by_proxy.label }}</span>
+          </label>
+          <small style="color:#888;font-size:12px;margin-top:4px;display:block;">{{ form.consent_by_proxy.help_text }}</small>
+        </div>
+      </div>
+
       <!-- Invisible sentinel: scroll reaching here unlocks the button -->
       <div id="form-end-marker" style="height:1px;"></div>
 
