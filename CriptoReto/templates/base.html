@@ -475,11 +475,7 @@
           </a>
         </li>
         {% endif %}
-        <li>
-          <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
-            <i class="fa-solid fa-ticket"></i> Tickets
-          </a>
-        </li>
+       
       </ul>
 
       {% endwith %}
