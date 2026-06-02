@@ -101,6 +101,17 @@
             (Nivel {{ registration.created_by_role }})</span>
       <span class="detail-label">Fecha de creación</span><span>{{ registration.created_at|date:"d/m/Y H:i:s" }}</span>
       <span class="detail-label">Última actualización</span><span>{{ registration.updated_at|date:"d/m/Y H:i:s" }}</span>
+      {% if registration.privacy_accepted_at %}
+      <span class="detail-label">Consentimiento</span>
+      <span>
+        {{ registration.privacy_accepted_at|date:"d/m/Y H:i" }} —
+        v{{ registration.privacy_notice_version }} —
+        {{ registration.get_consent_method_display }}
+        {% if registration.consent_by_proxy %}
+          <span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:1px 6px;font-size:11px;font-weight:600;margin-left:4px;">Por personal</span>
+        {% endif %}
+      </span>
+      {% endif %}
     </div>
   </div>
 
@@ -127,6 +138,13 @@
 
   <!-- ── Actions ──────────────────────────────────────────────────── -->
   <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+
+    {% if request.user.access_level <= 2 %}
+      <a href="{% url 'registros:registro_expediente' registration.pk %}"
+         class="btn btn-light" style="font-size:13px;">
+        <i class="fa-solid fa-clock-rotate-left"></i> Expediente / Historial
+      </a>
+    {% endif %}
 
     {% if request.user.access_level <= 2 %}
       {# Coordinadores y Admin editan directamente #}

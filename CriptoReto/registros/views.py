@@ -999,6 +999,8 @@ def arco_create(request, pk):
         _log(request.user, 'arco_request_created',
              f'{arco.case_id} {arco.get_arco_type_display()} para Registro #{registration.pk}',
              request=request)
+        _reg_event(registration, RegistrationEvent.EVENT_ARCO_CREATED, request.user,
+                   details=f'{arco.case_id} — {arco.get_arco_type_display()}', request=request)
 
         messages.success(request, f'Solicitud ARCO {arco.case_id} registrada.')
         return redirect('registros:arco_detail', pk=arco.pk)
@@ -1022,6 +1024,16 @@ def arco_detail(request, pk):
     if user.access_level == 3 and arco.requested_by != user:
         messages.error(request, 'No tienes acceso a esta solicitud ARCO.')
         return redirect('registros:arco_list')
+
+    # Transition to in_review when a Coordinator/Admin opens the case
+    if user.access_level <= 2 and arco.state == ArcoRequest.STATE_SUBMITTED:
+        arco.state = ArcoRequest.STATE_IN_REVIEW
+        arco.reviewed_by = user
+        arco.reviewed_at = timezone.now()
+        arco.save(update_fields=['state', 'reviewed_by', 'reviewed_at'])
+        _reg_event(arco.registration, RegistrationEvent.EVENT_ARCO_REVIEWED, user,
+                   details=f'{arco.case_id} ({arco.get_arco_type_display()}) marcado en revisión',
+                   request=request)
 
     can_execute = (
         user.access_level <= 2
@@ -1178,6 +1190,13 @@ def arco_execute(request, pk):
          f'{arco.case_id} {arco.get_arco_type_display()} | '
          f'firma: {action_sig.message_hash[:16]}…',
          request=request)
+    _reg_event(arco.registration, RegistrationEvent.EVENT_ARCO_EXECUTED, request.user,
+               details=(f'{arco.case_id} — {arco.get_arco_type_display()} | '
+                        f'firma: {action_sig.message_hash[:16]}…'),
+               request=request)
+    if arco.arco_type == ArcoRequest.ARCO_ACCESS:
+        _reg_event(arco.registration, RegistrationEvent.EVENT_EXPORT, request.user,
+                   details=f'PDF de Acceso generado: {arco.case_id}', request=request)
 
     messages.success(request, f'Solicitud ARCO {arco.case_id} ejecutada y firmada.')
     return redirect('registros:arco_detail', pk=pk)
@@ -1204,6 +1223,53 @@ def arco_download(request, pk):
         filename=f'{arco.case_id}_acceso.pdf',
         content_type='application/pdf',
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXPEDIENTE — consolidated per-registration timeline (ARCO compliance)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(2)
+def registro_expediente(request, pk):
+    """
+    Full audit timeline for one MigrantRegistration.
+    Satisfies LFPDPPP Requisito 4 & 5: trazabilidad + bitácora de actividades.
+    Level 1–2 only — Operativo has no business need for the full history.
+    """
+    registration = get_object_or_404(MigrantRegistration, pk=pk)
+    events = registration.events.select_related('actor').order_by('created_at')
+    arcos = registration.arco_requests.select_related('requested_by', 'executed_by').order_by('created_at')
+    workflow_requests = registration.workflow_requests.select_related(
+        'requested_by'
+    ).prefetch_related('approval_steps__actor').order_by('created_at')
+
+    return render(request, 'registros/expediente.html', {
+        'registration': registration,
+        'events': events,
+        'arcos': arcos,
+        'workflow_requests': workflow_requests,
+        'title': f'Expediente — {registration.full_name}',
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(1)
+def registro_deleted_list(request):
+    """
+    Admin-only: list of soft-deleted (cancelled) registrations.
+    Required for ARCO Cancelación compliance verification — the audit evidence
+    must remain accessible even after the beneficiary's data is suppressed.
+    """
+    qs = MigrantRegistration.objects.filter(is_deleted=True).select_related(
+        'deleted_by', 'created_by'
+    ).order_by('-deleted_at')
+    return render(request, 'registros/registro_eliminados.html', {
+        'registrations': qs,
+        'title': 'Registros cancelados (ARCO)',
+    })
 
 
 # ══════════════════════════════════════════════════════════════════════════════

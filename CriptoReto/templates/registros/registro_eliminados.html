@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .section-title {
+    font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+    color:#ad2b4e;margin:24px 0 10px;padding-bottom:4px;border-bottom:1px solid #f0d0d8;
+  }
+</style>
+
+<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+  <h2 style="margin:0;">{{ title }}</h2>
+</div>
+
+<div class="alert" style="background:#fdeaea;border:1px solid #f5c6cb;border-radius:8px;padding:14px 18px;margin-bottom:20px;font-size:13px;color:#b71c1c;">
+  <strong>Acceso exclusivo Administrador.</strong>
+  Esta lista muestra registros suprimidos por una solicitud ARCO de Cancelación.
+  Los datos del beneficiario han sido eliminados del sistema operativo, pero
+  la evidencia de autorización y cumplimiento se conserva conforme al Art. 11
+  de la LFPDPPP.
+</div>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="alert alert-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if registrations %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Folio</th>
+          <th>Nombre</th>
+          <th>Eliminado el</th>
+          <th>Eliminado por</th>
+          <th>Creado por</th>
+          <th>Fecha creación</th>
+          <th>Consentimiento</th>
+          <th>Expediente</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reg in registrations %}
+          <tr style="background:#fdf3f4;">
+            <td style="font-family:monospace;font-size:12px;color:#842029;">{{ reg.internal_id|default:reg.pk }}</td>
+            <td>
+              <span style="text-decoration:line-through;color:#888;">{{ reg.full_name }}</span>
+            </td>
+            <td>{{ reg.deleted_at|date:"d/m/Y H:i"|default:"—" }}</td>
+            <td>
+              {% if reg.deleted_by %}
+                {{ reg.deleted_by.get_full_name|default:reg.deleted_by.username }}
+                (Nivel {{ reg.deleted_by.access_level }})
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {{ reg.created_by.get_full_name|default:reg.created_by.username }}
+              (Nivel {{ reg.created_by_role }})
+            </td>
+            <td>{{ reg.created_at|date:"d/m/Y" }}</td>
+            <td style="font-size:12px;">
+              v{{ reg.privacy_notice_version }}
+              {% if reg.privacy_accepted_at %}
+                · {{ reg.privacy_accepted_at|date:"d/m/Y" }}
+              {% endif %}
+              {% if reg.consent_by_proxy %}
+                <br><span style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:4px;padding:0 4px;font-size:10px;">Por personal</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{% url 'registros:registro_expediente' reg.pk %}"
+                 class="btn btn-light" style="font-size:12px;padding:4px 10px;">
+                Historial
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="padding:40px;text-align:center;color:#888;">
+      No hay registros cancelados.
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}
