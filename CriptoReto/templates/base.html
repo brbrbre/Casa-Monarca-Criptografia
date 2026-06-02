@@ -381,7 +381,9 @@
 
     <nav class="sidebar" id="sidebar">
       <div class="sidebar-logo">
-        <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca">
+        <a href="{% if request.user.access_level <= 2 %}{% url 'iam:dashboard' %}{% else %}{% url 'iam:detail' request.user.pk %}{% endif %}" style="display:block;">
+          <img src="{% static 'logo-cm.png' %}" alt="Casa Monarca" style="cursor:pointer;">
+        </a>
         <div class="sidebar-user">
           {{ request.user.get_full_name|default:request.user.username }}<br>
           {{ request.user.get_access_level_display }}

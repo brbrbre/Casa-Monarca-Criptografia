@@ -1,348 +1,192 @@
-import base64
-import hashlib
-import json
-import secrets
-from datetime import datetime, timezone as dt_timezone, timedelta
+"""
+Gestión de certificados X.509 para Casa Monarca — capa de servicio Django.
 
-from cryptography import x509
-from cryptography.exceptions import InvalidTag
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.serialization import (
-    Encoding, PrivateFormat, PublicFormat, NoEncryption,
-    load_der_private_key, load_pem_private_key,
-)
-from cryptography.x509 import load_pem_x509_certificate
-from cryptography.x509.oid import NameOID
+TODA la criptografía delega a crypto_core.certificates y crypto_core.ca.
+Este módulo solo contiene lógica de negocio Django (ORM, AuditLog, etc.).
+
+Reglas absolutas:
+  - Solo admin (nivel 1) y coordinador (nivel 2) reciben certificados.
+  - La clave privada del usuario NUNCA se guarda en la BD.
+  - Los certificados son firmados por la CA interna (no auto-firmados).
+"""
+
+import os
+from pathlib import Path
+
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 from .models import AuditLog, UserCertificate
 
+# ── Carga de la CA ──────────────────────────────────────────────────────────────
 
-def _get_encryption_key() -> bytes:
-    raw_key = getattr(settings, 'CERT_ENCRYPTION_KEY', None)
-    if not raw_key:
-        raise ImproperlyConfigured('CERT_ENCRYPTION_KEY must be set in Django settings.')
-
-    if isinstance(raw_key, str):
-        key_bytes = raw_key.encode('utf-8')
-    else:
-        key_bytes = raw_key
-
-    if len(key_bytes) == 32:
-        return key_bytes
-
-    try:
-        decoded = base64.urlsafe_b64decode(key_bytes)
-        if len(decoded) == 32:
-            return decoded
-    except Exception:
-        pass
-
-    return hashlib.sha256(key_bytes).digest()
+def _get_ca_cert_pem() -> bytes:
+    ca_cert_path = getattr(settings, 'CA_CERT_PATH', 'certs/ca_cert.pem')
+    path = Path(ca_cert_path)
+    if not path.is_absolute():
+        path = Path(settings.BASE_DIR) / path
+    if not path.exists():
+        raise FileNotFoundError(
+            f'Certificado de la CA no encontrado en {path}. '
+            'Ejecuta: python scripts/init_system.py'
+        )
+    return path.read_bytes()
 
 
-def _get_issuer_name() -> str:
-    return getattr(settings, 'CERT_ISSUER_NAME', 'Casa Monarca')
+def _get_revoked_serials() -> set:
+    """Retorna el conjunto de seriales revocados en la BD."""
+    return set(
+        UserCertificate.objects
+        .filter(status=UserCertificate.STATUS_REVOKED)
+        .values_list('serial_number', flat=True)
+    )
 
 
-def _get_expiration_days() -> int:
-    days = getattr(settings, 'CERT_EXPIRATION_DAYS', 30)
-    try:
-        return int(days)
-    except (TypeError, ValueError):
-        raise ImproperlyConfigured('CERT_EXPIRATION_DAYS must be an integer.')
+# ── Emisión ─────────────────────────────────────────────────────────────────────
 
+def issue_cert_and_key(collaborator, issued_by) -> UserCertificate:
+    """
+    Emite un certificado X.509 firmado por la CA para un colaborador.
 
-def generate_certificate_payload(collaborator) -> dict:
-    now = timezone.now()
-    expires_at = now + timedelta(days=_get_expiration_days())
-    return {
-        'username': collaborator.username,
-        'internal_id': collaborator.internal_id,
-        'email': collaborator.email,
-        'area': collaborator.area.name if collaborator.area else None,
-        'access_level': collaborator.access_level,
-        'role': collaborator.role,
-        'issued_at': now.isoformat(),
-        'expires_at': expires_at.isoformat(),
-        'issuer': _get_issuer_name(),
-    }
+    SOLO para niveles 1 (admin) y 2 (coordinador).
+    La clave privada NO se guarda en la BD — se retorna en UserCertificate.pending_key_pem
+    como atributo temporal para que la vista la entregue al usuario.
 
+    Raises:
+        PermissionError si el colaborador ya tiene certificado activo.
+        ValueError si el rol no permite certificado.
+    """
+    from crypto_core.certificates import emit_certificate, get_cert_metadata
 
-def encrypt_certificate(payload: dict) -> str:
-    plaintext = json.dumps(payload, separators=(',', ':'), sort_keys=True, ensure_ascii=False).encode('utf-8')
-    key = _get_encryption_key()
-    aesgcm = AESGCM(key)
-    nonce = secrets.token_bytes(12)
-    ciphertext = aesgcm.encrypt(nonce, plaintext, None)
-    return base64.urlsafe_b64encode(nonce + ciphertext).decode('utf-8')
+    # Validar que el nivel de acceso permite certificado
+    level = getattr(collaborator, 'access_level', 4)
+    if level > 2:
+        raise ValueError(
+            f'Solo los niveles 1 (admin) y 2 (coordinador) reciben certificados. '
+            f'Nivel actual: {level}.'
+        )
 
-
-def decrypt_certificate(encrypted_str: str) -> dict:
-    try:
-        payload_bytes = base64.urlsafe_b64decode(encrypted_str.encode('utf-8'))
-        nonce = payload_bytes[:12]
-        ciphertext = payload_bytes[12:]
-        plaintext = AESGCM(_get_encryption_key()).decrypt(nonce, ciphertext, None)
-        return json.loads(plaintext.decode('utf-8'))
-    except (InvalidTag, ValueError, json.JSONDecodeError) as exc:
-        raise ValueError('Invalid or tampered certificate.') from exc
-
-
-# legacy — no new issuances; use issue_cert_and_key for levels 1 and 2
-def issue_encrypted_certificate(collaborator, issued_by):
     existing_cert = getattr(collaborator, 'certificate', None)
     if existing_cert and existing_cert.is_valid:
-        raise PermissionError('Certificate already issued')
+        raise PermissionError('El colaborador ya tiene un certificado activo.')
 
-    payload = generate_certificate_payload(collaborator)
-    encrypted_payload = encrypt_certificate(payload)
-    fingerprint = hashlib.sha256(encrypted_payload.encode('utf-8')).hexdigest()
-    expires_at = timezone.now() + timedelta(days=_get_expiration_days())
+    role = 'admin' if level == 1 else 'coordinador'
+    area_name = collaborator.area.name if collaborator.area else 'Sin área'
+
+    # Cargar CA
+    ca_cert_pem = _get_ca_cert_pem()
+    ca_key_encrypted = _load_ca_key_encrypted()
+    ca_password = _get_ca_password()
+
+    from crypto_core.ca import load_ca
+    ca_cert, ca_key = load_ca(ca_cert_pem, ca_key_encrypted, ca_password)
+
+    cert_pem, private_key_pem = emit_certificate(
+        user_id=collaborator.pk,
+        username=collaborator.username,
+        role=role,
+        area=area_name,
+        ca_cert=ca_cert,
+        ca_key=ca_key,
+        valid_days=getattr(settings, 'CERT_EXPIRATION_DAYS', 365),
+    )
+
+    metadata = get_cert_metadata(cert_pem)
+    expires_at = metadata['expires_at']
 
     if existing_cert:
-        existing_cert.certificate_data = encrypted_payload
-        existing_cert.fingerprint = fingerprint
+        existing_cert.certificate_data = cert_pem.decode('utf-8')
+        existing_cert.fingerprint = metadata['fingerprint_sha256']
+        existing_cert.serial_number = metadata['serial_number']
         existing_cert.expires_at = expires_at
         existing_cert.is_revoked = False
         existing_cert.revoked_at = None
         existing_cert.revoked_by = None
+        existing_cert.status = UserCertificate.STATUS_ACTIVE
         existing_cert.issued_by = issued_by
+        existing_cert.key_data = ''  # La clave privada NO se guarda en BD
         existing_cert.save()
         certificate = existing_cert
     else:
         certificate = UserCertificate.objects.create(
             collaborator=collaborator,
-            certificate_data=encrypted_payload,
-            fingerprint=fingerprint,
+            certificate_data=cert_pem.decode('utf-8'),
+            fingerprint=metadata['fingerprint_sha256'],
+            serial_number=metadata['serial_number'],
             expires_at=expires_at,
             issued_by=issued_by,
+            key_data='',  # La clave privada NO se guarda en BD
         )
 
     AuditLog.objects.create(
         actor=issued_by,
         target=collaborator,
         action='CERTIFICATE_ISSUED',
-        details=fingerprint,
+        details=f'serial={metadata["serial_number"]} fingerprint={metadata["fingerprint_sha256"][:16]}…',
     )
+
+    # Adjuntar la clave privada como atributo temporal (no persiste en BD)
+    certificate._pending_private_key_pem = private_key_pem
     return certificate
 
 
-# legacy — no new issuances; use validate_cert_and_key for levels 1 and 2
-def validate_encrypted_certificate(collaborator, encrypted_str) -> bool:
+def _load_ca_key_encrypted() -> str:
+    ca_key_path = getattr(settings, 'CA_KEY_PATH', 'certs/ca_key.enc.pem')
+    path = Path(ca_key_path)
+    if not path.is_absolute():
+        path = Path(settings.BASE_DIR) / path
+    if not path.exists():
+        raise FileNotFoundError(f'Clave de CA cifrada no encontrada en {path}.')
+    return path.read_text()
+
+
+def _get_ca_password() -> str:
+    password = os.environ.get('CA_MASTER_PASSWORD')
+    if not password:
+        raise RuntimeError(
+            'CA_MASTER_PASSWORD no está en el entorno. '
+            'Esta contraseña es necesaria para emitir certificados.'
+        )
+    return password
+
+
+# ── Validación ──────────────────────────────────────────────────────────────────
+
+def validate_cert_and_key(collaborator, cert_pem_bytes: bytes, key_pem_bytes: bytes) -> bool:
+    """
+    Valida el par certificado/clave privada de un colaborador.
+
+    Verifica:
+      1. La clave privada corresponde al certificado.
+      2. El certificado está firmado por la CA interna.
+      3. El fingerprint coincide con el de la BD.
+      4. El certificado no está revocado ni expirado.
+    """
+    from crypto_core.certificates import (
+        verify_certificate, check_key_matches_cert, get_cert_fingerprint,
+    )
+
     try:
-        payload = decrypt_certificate(encrypted_str)
-    except ValueError:
-        AuditLog.objects.create(
-            actor=collaborator,
-            target=collaborator,
-            action='CERTIFICATE_VALIDATION_FAILED',
-            details='decrypt_failed',
-        )
-        return False
-
-    if payload.get('username') != collaborator.username or payload.get('internal_id') != collaborator.internal_id:
-        AuditLog.objects.create(
-            actor=collaborator,
-            target=collaborator,
-            action='CERTIFICATE_VALIDATION_FAILED',
-            details='payload_mismatch',
-        )
-        return False
-
-    try:
-        certificate = collaborator.certificate
-    except UserCertificate.DoesNotExist:
-        AuditLog.objects.create(
-            actor=collaborator,
-            target=collaborator,
-            action='CERTIFICATE_VALIDATION_FAILED',
-            details='certificate_missing',
-        )
-        return False
-
-    if not certificate.is_valid:
-        AuditLog.objects.create(
-            actor=collaborator,
-            target=collaborator,
-            action='CERTIFICATE_VALIDATION_FAILED',
-            details='certificate_invalid',
-        )
-        return False
-
-    fingerprint = hashlib.sha256(encrypted_str.encode('utf-8')).hexdigest()
-    if fingerprint != certificate.fingerprint:
-        AuditLog.objects.create(
-            actor=collaborator,
-            target=collaborator,
-            action='CERTIFICATE_VALIDATION_FAILED',
-            details='fingerprint_mismatch',
-        )
-        return False
-
-    AuditLog.objects.create(
-        actor=collaborator,
-        target=collaborator,
-        action='CERTIFICATE_VALIDATED',
-        details=fingerprint,
-    )
-    return True
-
-
-# ---------------------------------------------------------------------------
-# Coordinator certificate: RSA key pair + self-signed X.509 (.key / .cert)
-# This mirrors the SAT e-firma format: PKCS#8 DER private key + PEM certificate.
-# ---------------------------------------------------------------------------
-
-def _encrypt_bytes(data: bytes) -> str:
-    """AES-GCM encrypt arbitrary bytes; returns base64url string for DB storage."""
-    key = _get_encryption_key()
-    nonce = secrets.token_bytes(12)
-    ciphertext = AESGCM(key).encrypt(nonce, data, None)
-    return base64.urlsafe_b64encode(nonce + ciphertext).decode('utf-8')
-
-
-def _decrypt_bytes(encrypted_str: str) -> bytes:
-    """Reverse of _encrypt_bytes."""
-    payload = base64.urlsafe_b64decode(encrypted_str.encode('utf-8'))
-    nonce, ciphertext = payload[:12], payload[12:]
-    return AESGCM(_get_encryption_key()).decrypt(nonce, ciphertext, None)
-
-
-def generate_coordinator_key_cert(collaborator) -> tuple:
-    """
-    Generate a 2048-bit RSA key pair and a self-signed X.509 certificate.
-    Returns (key_der: bytes, cert_pem: bytes).
-    The .key file is PKCS#8 DER (like SAT); the .cert file is PEM.
-    """
-    private_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-    now = datetime.now(dt_timezone.utc)
-    expires = now + timedelta(days=_get_expiration_days())
-
-    subject = x509.Name([
-        x509.NameAttribute(NameOID.COUNTRY_NAME, 'MX'),
-        x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, 'CDMX'),
-        x509.NameAttribute(NameOID.ORGANIZATION_NAME, _get_issuer_name()),
-        x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, collaborator.area.name if collaborator.area else 'Sin área'),
-        x509.NameAttribute(NameOID.COMMON_NAME, collaborator.username),
-        x509.NameAttribute(NameOID.EMAIL_ADDRESS, collaborator.email),
-        x509.NameAttribute(NameOID.SERIAL_NUMBER, collaborator.internal_id),
-    ])
-
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(subject)
-        .issuer_name(subject)
-        .public_key(private_key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now)
-        .not_valid_after(expires)
-        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
-        .add_extension(
-            x509.KeyUsage(
-                digital_signature=True, content_commitment=True,
-                key_encipherment=False, data_encipherment=False,
-                key_agreement=False, key_cert_sign=False,
-                crl_sign=False, encipher_only=False, decipher_only=False,
-            ),
-            critical=True,
-        )
-        .sign(private_key, hashes.SHA256())
-    )
-
-    key_der = private_key.private_bytes(
-        encoding=Encoding.DER,
-        format=PrivateFormat.PKCS8,
-        encryption_algorithm=NoEncryption(),
-    )
-    cert_pem = cert.public_bytes(Encoding.PEM)
-    return key_der, cert_pem
-
-
-def issue_coordinator_key_cert(collaborator, issued_by):
-    """
-    Issue .key and .cert files for a coordinator.
-    Stores the PEM certificate in certificate_data and the AES-GCM encrypted
-    DER private key in key_data.  Compatible with the existing UserCertificate model.
-    """
-    existing_cert = getattr(collaborator, 'certificate', None)
-    if existing_cert and existing_cert.is_valid:
-        raise PermissionError('Certificate already issued')
-
-    key_der, cert_pem = generate_coordinator_key_cert(collaborator)
-
-    cert_pem_str = cert_pem.decode('utf-8')
-    fingerprint = hashlib.sha256(cert_pem).hexdigest()
-    encrypted_key = _encrypt_bytes(key_der)
-    expires_at = timezone.now() + timedelta(days=_get_expiration_days())
-
-    if existing_cert:
-        existing_cert.certificate_data = cert_pem_str
-        existing_cert.fingerprint = fingerprint
-        existing_cert.key_data = encrypted_key
-        existing_cert.expires_at = expires_at
-        existing_cert.is_revoked = False
-        existing_cert.revoked_at = None
-        existing_cert.revoked_by = None
-        existing_cert.issued_by = issued_by
-        existing_cert.save()
-        certificate = existing_cert
-    else:
-        certificate = UserCertificate.objects.create(
-            collaborator=collaborator,
-            certificate_data=cert_pem_str,
-            fingerprint=fingerprint,
-            key_data=encrypted_key,
-            expires_at=expires_at,
-            issued_by=issued_by,
-        )
-
-    AuditLog.objects.create(
-        actor=issued_by,
-        target=collaborator,
-        action='CERTIFICATE_ISSUED',
-        details=fingerprint,
-    )
-    return certificate
-
-
-def get_coordinator_key_bytes(certificate) -> bytes:
-    """Return decrypted PKCS#8 DER private key bytes for download as .key file."""
-    if not certificate.key_data:
-        raise ValueError('No private key stored for this certificate.')
-    return _decrypt_bytes(certificate.key_data)
-
-
-def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_der_bytes: bytes) -> bool:
-    """
-    Validate coordinator login: verify the uploaded .cert and .key files.
-    Checks:
-      1. The private key matches the certificate's public key.
-      2. The certificate fingerprint matches what is stored in the DB.
-      3. The stored certificate is still valid (not revoked / not expired).
-    """
-    try:
-        cert = load_pem_x509_certificate(cert_pem_bytes)
-        try:
-            private_key = load_der_private_key(key_der_bytes, password=None)
-        except (ValueError, TypeError):
-            private_key = load_pem_private_key(key_der_bytes, password=None)
-
-        cert_pub = cert.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
-        key_pub = private_key.public_key().public_bytes(Encoding.DER, PublicFormat.SubjectPublicKeyInfo)
-
-        if cert_pub != key_pub:
+        # 1. Verificar par cert/key
+        if not check_key_matches_cert(cert_pem_bytes, key_pem_bytes):
             AuditLog.objects.create(
                 actor=collaborator, target=collaborator,
                 action='CERTIFICATE_VALIDATION_FAILED', details='key_cert_mismatch',
             )
             return False
 
+        # 2. Verificar contra CA
+        ca_cert_pem = _get_ca_cert_pem()
+        revoked_serials = _get_revoked_serials()
+        cert_info = verify_certificate(cert_pem_bytes, ca_cert_pem, revoked_serials)
+        if not cert_info['valid']:
+            AuditLog.objects.create(
+                actor=collaborator, target=collaborator,
+                action='CERTIFICATE_VALIDATION_FAILED', details=cert_info['reason'],
+            )
+            return False
+
+        # 3. Verificar fingerprint contra BD
         try:
             db_cert = collaborator.certificate
         except UserCertificate.DoesNotExist:
@@ -352,15 +196,8 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
             )
             return False
 
-        if not db_cert.is_valid:
-            AuditLog.objects.create(
-                actor=collaborator, target=collaborator,
-                action='CERTIFICATE_VALIDATION_FAILED', details='certificate_invalid',
-            )
-            return False
-
-        uploaded_fingerprint = hashlib.sha256(cert_pem_bytes).hexdigest()
-        if uploaded_fingerprint != db_cert.fingerprint:
+        uploaded_fp = get_cert_fingerprint(cert_pem_bytes)
+        if uploaded_fp != db_cert.fingerprint:
             AuditLog.objects.create(
                 actor=collaborator, target=collaborator,
                 action='CERTIFICATE_VALIDATION_FAILED', details='fingerprint_mismatch',
@@ -369,7 +206,7 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
 
         AuditLog.objects.create(
             actor=collaborator, target=collaborator,
-            action='CERTIFICATE_VALIDATED', details=db_cert.fingerprint,
+            action='CERTIFICATE_VALIDATED', details=db_cert.fingerprint[:16] + '…',
         )
         return True
 
@@ -381,19 +218,106 @@ def validate_coordinator_cert_and_key(collaborator, cert_pem_bytes: bytes, key_d
         return False
 
 
-# ── Unified aliases for all privileged levels (1 and 2) ──────────────────────
-# Use these in all new code — both admin (level 1) and coordinator (level 2)
-# use the same RSA cert PEM + PKCS#8 DER key format.
-issue_cert_and_key = issue_coordinator_key_cert
-validate_cert_and_key = validate_coordinator_cert_and_key
+# ── Revocación ──────────────────────────────────────────────────────────────────
+
+def revoke_certificate(certificate: UserCertificate, reason: str, revoked_by) -> None:
+    """
+    Revoca un certificado. Solo admin (nivel 1) puede revocar.
+    """
+    certificate.is_revoked = True
+    certificate.revoked_at = timezone.now()
+    certificate.revoked_by = revoked_by
+    certificate.status = UserCertificate.STATUS_REVOKED
+    certificate.revocation_reason = reason
+    certificate.save()
+
+    AuditLog.objects.create(
+        actor=revoked_by,
+        target=certificate.collaborator,
+        action='CERTIFICATE_REVOKED',
+        details=f'reason={reason} serial={certificate.serial_number}',
+    )
+
+
+# ── Descarga de clave privada ────────────────────────────────────────────────────
+
+def get_coordinator_key_bytes(certificate: UserCertificate) -> bytes:
+    """
+    Retorna los bytes de la clave privada si están disponibles como atributo temporal.
+    La clave privada NO se guarda en BD — solo está disponible justo después de la emisión.
+    """
+    pending_key = getattr(certificate, '_pending_private_key_pem', None)
+    if pending_key:
+        return pending_key
+    raise ValueError(
+        'La clave privada ya no está disponible. '
+        'Solo se puede descargar inmediatamente después de emitir el certificado. '
+        'Si se perdió, revoca el certificado y emite uno nuevo.'
+    )
+
+
+# ── Compatibilidad con código legacy ────────────────────────────────────────────
+
+# Alias para código existente que usa estos nombres
+validate_coordinator_cert_and_key = validate_cert_and_key
+issue_coordinator_key_cert = issue_cert_and_key
+
+
+def issue_encrypted_certificate(collaborator, issued_by):
+    """
+    OBSOLETO — los niveles 3 y 4 no reciben certificados.
+
+    En la arquitectura correcta SOLO niveles 1 (admin) y 2 (coordinador) tienen
+    certificados X.509. Los niveles 3 y 4 se autentican solo con usuario y contraseña.
+
+    Raises PermissionError para impedir la emisión incorrecta.
+    """
+    level = getattr(collaborator, 'access_level', 4)
+    raise PermissionError(
+        f'El colaborador "{collaborator.username}" tiene nivel de acceso {level}. '
+        'Solo los niveles 1 (admin) y 2 (coordinador) pueden recibir certificados digitales. '
+        'Los niveles 3 y 4 se autentican únicamente con usuario y contraseña.'
+    )
+
+
+def validate_encrypted_certificate(collaborator, encrypted_str: str) -> bool:
+    """
+    OBSOLETO — validaba el formato de certificado cifrado AES-GCM propietario (legado).
+
+    El nuevo sistema usa certificados X.509 firmados por la CA interna.
+    Para validar un certificado X.509 actual, usa validate_cert_and_key().
+
+    Retorna False siempre y registra en AuditLog el uso de formato obsoleto.
+    """
+    AuditLog.objects.create(
+        actor=collaborator,
+        target=collaborator,
+        action='CERTIFICATE_VALIDATION_FAILED',
+        details='formato_obsoleto: validate_encrypted_certificate fue llamado. Migrar a validate_cert_and_key.',
+    )
+    return False
 
 
 def extract_cert_serial_number(certificate_data: str) -> str:
-    """Return the X.509 serial number (hex) from a PEM certificate, or '' if not X.509."""
+    """Extrae el número de serie X.509 de un certificado PEM."""
     if not certificate_data or not certificate_data.strip().startswith('-----BEGIN CERTIFICATE-----'):
         return ''
     try:
-        cert = load_pem_x509_certificate(certificate_data.encode())
-        return format(cert.serial_number, 'x').upper()
+        from crypto_core.certificates import get_cert_metadata
+        metadata = get_cert_metadata(certificate_data.encode('utf-8'))
+        return metadata['serial_number']
     except Exception:
         return ''
+
+
+# ── Funciones legacy eliminadas ─────────────────────────────────────────────────
+# Las siguientes funciones han sido ELIMINADAS porque eran incorrectas:
+#
+# ✗ issue_encrypted_certificate   — usaba AES-GCM sobre JSON de usuario (no X.509 real)
+# ✗ validate_encrypted_certificate — validaba un cifrado propietario, no una firma X.509
+# ✗ encrypt_certificate / decrypt_certificate — cifrado de payload, no certificado real
+# ✗ generate_coordinator_key_cert — generaba certs AUTO-FIRMADOS (sin CA)
+# ✗ _encrypt_bytes / _decrypt_bytes — guardaba la clave privada en BD (prohibido)
+# ✗ _get_encryption_key — derivaba clave de SHA-256 del SECRET_KEY (débil)
+#
+# Usa issue_cert_and_key / validate_cert_and_key en su lugar.

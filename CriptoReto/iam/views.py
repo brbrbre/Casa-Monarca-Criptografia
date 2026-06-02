@@ -860,10 +860,13 @@ def issue_certificate_view(request, pk):
     is_coordinator = collaborator.access_level <= 2
     if request.method == 'POST':
         try:
-            if is_coordinator:
-                certificate = issue_cert_and_key(collaborator, issued_by=request.user)
-            else:
-                certificate = issue_encrypted_certificate(collaborator, issued_by=request.user)
+            if not is_coordinator:
+                raise PermissionError(
+                    f'El colaborador "{collaborator.username}" tiene nivel de acceso '
+                    f'{collaborator.access_level}. Solo los niveles 1 (admin) y '
+                    '2 (coordinador) reciben certificados digitales.'
+                )
+            certificate = issue_cert_and_key(collaborator, issued_by=request.user)
             issued_certificate = certificate.certificate_data
             certificate_filename = f'{collaborator.username}.cert'
             _log(request.user, 'CERTIFICATE_ISSUED', f'Certificado emitido para {collaborator.username}.', target=collaborator, request=request)
@@ -893,22 +896,26 @@ def validate_certificate_view(request, pk):
         messages.error(request, 'No tienes permisos para validar este certificado.')
         return redirect('iam:dashboard')
 
-    certificate_string = ''
     if request.method == 'POST':
-        certificate_string = request.POST.get('certificate', '').strip()
-        if not certificate_string:
-            messages.error(request, 'Debes proporcionar una cadena de certificado.')
+        cert_file = request.FILES.get('cert_file')
+        key_file = request.FILES.get('key_file')
+        
+        if not cert_file or not key_file:
+            messages.error(request, 'Debes proporcionar tanto el certificado (.cert) como la clave privada (.key).')
         else:
-            valid = validate_encrypted_certificate(collaborator, certificate_string)
-            if valid:
-                messages.success(request, 'Certificado validado correctamente.')
+            try:
+                cert_bytes = cert_file.read()
+                key_bytes = key_file.read()
+            except Exception as e:
+                messages.error(request, f'Error al leer los archivos: {str(e)}')
+                return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator})
+            
+            if validate_cert_and_key(collaborator, cert_bytes, key_bytes):
+                messages.success(request, 'Certificado validado correctamente. ✓')
             else:
-                messages.error(request, 'La validación del certificado falló.')
+                messages.error(request, 'La validación del certificado falló. Revisa los archivos.')
 
-    return render(request, 'iam/certificate_validate.html', {
-        'collaborator': collaborator,
-        'certificate': certificate_string,
-    })
+    return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator})
 
 
 @login_required(login_url='iam:login')

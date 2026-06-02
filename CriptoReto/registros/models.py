@@ -948,3 +948,61 @@ class RegistrationEvent(models.Model):
 
     def __str__(self):
         return f'{self.get_event_type_display()} — reg#{self.registration_id} — {self.created_at:%Y-%m-%d %H:%M}'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# LOGS DE FLUJOS FINALES — firmados digitalmente con certificado X.509
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SignedFlowLog(models.Model):
+    """
+    Log inmutable de un flujo final firmado digitalmente con certificado X.509.
+
+    Un flujo final es una acción irreversible que requiere firma:
+      - Aceptar/rechazar solicitud de registro
+      - Eliminar registro (soft delete)
+      - Procesar solicitud ARCO
+      - Autorizar documento
+      - Revocar acceso de colaborador
+
+    Solo admin (nivel 1) y coordinador (nivel 2) pueden generar estos logs.
+    La firma se verifica contra la CA interna al momento de creación.
+    """
+
+    ACTION_CHOICES = [
+        ('accept_user_registration',   'Aceptar registro de usuario'),
+        ('reject_user_registration',   'Rechazar registro de usuario'),
+        ('delete_record',              'Eliminar registro (soft delete)'),
+        ('process_arco_access',        'Procesar ARCO — Acceso'),
+        ('process_arco_rectification', 'Procesar ARCO — Rectificación'),
+        ('process_arco_cancellation',  'Procesar ARCO — Cancelación'),
+        ('process_arco_opposition',    'Procesar ARCO — Oposición'),
+        ('authorize_document',         'Autorizar documento'),
+        ('revoke_user_access',         'Revocar acceso de colaborador'),
+    ]
+
+    action = models.CharField('Acción', max_length=40, choices=ACTION_CHOICES)
+    log_data_json = models.TextField('JSON canónico del log')
+    signature_b64 = models.TextField('Firma digital base64')
+    cert_fingerprint = models.CharField('Fingerprint del certificado', max_length=64)
+    signer_user_id = models.PositiveIntegerField('ID del firmante')
+    target_id = models.PositiveIntegerField('ID del objetivo', null=True, blank=True)
+    target_type = models.CharField('Tipo del objetivo', max_length=64, blank=True)
+    signed_at = models.DateTimeField('Firmado el', auto_now_add=True)
+    is_verified = models.BooleanField('Firma verificada al crear', default=True)
+
+    class Meta:
+        verbose_name = 'Log de flujo final firmado'
+        verbose_name_plural = 'Logs de flujos finales firmados'
+        ordering = ['-signed_at']
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise PermissionError('Los logs firmados son inmutables y no se pueden modificar.')
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionError('Los logs firmados no se pueden eliminar.')
+
+    def __str__(self):
+        return f'SignedLog#{self.pk} {self.action} by user#{self.signer_user_id} @ {self.signed_at:%Y-%m-%d %H:%M}'

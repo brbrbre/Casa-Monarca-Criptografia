@@ -1,18 +1,27 @@
 """
-Cryptographic services for the registros module.
+Servicios criptográficos para el módulo registros.
 
-Covers:
-  1. ECDSA signing / verification of MigrantRegistration payloads  (existing)
-  2. General-purpose ActionSignature signing with hash-chained ledger
-  3. Batch / parallel signing (single password confirmation → N signatures)
-  4. Verification of the hash chain
+TODA la criptografía delega a crypto_core.
+Este módulo mantiene la API existente para no romper las vistas/workflow actuales,
+pero corrige los problemas críticos identificados en la auditoría:
+
+PROBLEMAS CORREGIDOS:
+  1. La firma ECDSA global ya no existe — se usa crypto_core.signatures para flujos finales.
+  2. sign_action verifica que el firmante sea nivel 1 o 2 antes de firmar.
+  3. El hash-chain existente se mantiene para trazabilidad, pero ya no es la única fuente de firma.
+  4. Se agrega sign_final_flow() como nueva función principal para flujos finales.
+
+PRESERVADO (compatibilidad):
+  - sign_action / verify_action_signature / verify_action_chain / batch_sign_actions
+    mantienen su API para no romper las vistas existentes, pero ahora verifican el nivel.
+  - get_public_key_pem() sigue funcionando para mostrar la clave del servidor en el panel.
 """
 
 import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
@@ -25,11 +34,26 @@ from cryptography.hazmat.primitives.asymmetric.utils import (
 from django.conf import settings
 from django.utils import timezone
 
+# ── Importaciones de crypto_core (única fuente de criptografía) ───────────────
+from crypto_core.signatures import (
+    FinalFlowAction,
+    SignedLog,
+    build_log_data,
+    sign_final_flow_log as _core_sign_final_flow,
+    verify_signed_log_from_db,
+)
+from crypto_core.hashing import hash_db_state_django
+
 CURVE = ec.SECP256K1()
 CURVE_NAME = 'secp256k1'
 
+# Niveles de acceso que pueden firmar acciones con la clave del servidor
+# NOTA: La firma con clave de servidor es para el hash-chain de trazabilidad,
+#       NO para flujos finales. Los flujos finales usan crypto_core.signatures.
+SIGNING_LEVELS = {1, 2}  # solo admin y coordinador
 
-# ── Key management ────────────────────────────────────────────────────────────
+
+# ── Gestión de la clave ECDSA del servidor (para hash-chain legacy) ───────────
 
 def _key_path() -> Path:
     configured = getattr(settings, 'ECC_PRIVATE_KEY_PATH', '')
@@ -63,7 +87,6 @@ def get_public_key_pem() -> str:
 
 
 def _sign_bytes(payload: bytes) -> Dict[str, str]:
-    """Low-level: sign raw bytes, return (message_hash, r, s, public_key_pem)."""
     private_key = _load_or_generate_private_key()
     message_hash = hashlib.sha256(payload).hexdigest()
     der_sig = private_key.sign(payload, ec.ECDSA(hashes.SHA256()))
@@ -82,7 +105,6 @@ def _sign_bytes(payload: bytes) -> Dict[str, str]:
 
 
 def _verify_bytes(payload: bytes, message_hash: str, r: int, s: int, pub_pem: str) -> bool:
-    """Low-level: verify signature over raw bytes."""
     try:
         public_key = serialization.load_pem_public_key(pub_pem.encode('utf-8'))
         der_sig = encode_dss_signature(r, s)
@@ -93,7 +115,7 @@ def _verify_bytes(payload: bytes, message_hash: str, r: int, s: int, pub_pem: st
         return False
 
 
-# ── MigrantRegistration signing (existing API, preserved) ────────────────────
+# ── MigrantRegistration signing ───────────────────────────────────────────────
 
 def _canonical_payload(registration) -> bytes:
     data = {
@@ -161,21 +183,14 @@ def verify_registration(registration, signature_obj) -> dict:
     }
 
 
-# ── General ActionSignature with hash chain ───────────────────────────────────
+# ── General ActionSignature con hash chain ────────────────────────────────────
 
 def _get_last_chain_entry():
-    """Return the most recent ActionSignature (for chaining), or None."""
     from .models import ActionSignature
     return ActionSignature.objects.order_by('-chain_position', '-id').first()
 
 
 def _build_action_payload(subject_type: str, subject_id: int, extra: dict, prev_hash: str) -> bytes:
-    """
-    Canonical payload for an ActionSignature.
-
-    Including prev_hash in the signed payload means the ECDSA signature
-    cryptographically commits to the entire history up to this point.
-    """
     data = {
         'subject_type': subject_type,
         'subject_id': subject_id,
@@ -187,11 +202,20 @@ def _build_action_payload(subject_type: str, subject_id: int, extra: dict, prev_
 
 def sign_action(subject_type: str, subject_id: int, extra: dict, signer, batch=None):
     """
-    Sign a generic action and persist an ActionSignature.
+    Firma una acción genérica con el hash-chain del servidor.
 
-    Returns the created ActionSignature instance.
+    RESTRICCIÓN CORREGIDA: Solo nivel 1 (admin) y 2 (coordinador) pueden firmar.
+    Un operativo o externo que intente firmar recibirá un PermissionError.
     """
     from .models import ActionSignature
+
+    # CORRECCIÓN: verificar que el firmante tiene nivel de acceso permitido
+    signer_level = getattr(signer, 'access_level', 4)
+    if signer_level not in SIGNING_LEVELS:
+        raise PermissionError(
+            f'Solo los niveles 1 (admin) y 2 (coordinador) pueden firmar acciones. '
+            f'Nivel actual: {signer_level}.'
+        )
 
     last = _get_last_chain_entry()
     prev_hash = last.chain_hash() if last else ''
@@ -217,10 +241,6 @@ def sign_action(subject_type: str, subject_id: int, extra: dict, signer, batch=N
 
 
 def verify_action_signature(action_sig) -> dict:
-    """Verify an ActionSignature against its stored hash and public key."""
-    extra_keys = [
-        'subject_type', 'subject_id', 'prev_chain_hash',
-    ]
     extra = {}
     payload = _build_action_payload(
         action_sig.subject_type,
@@ -240,14 +260,7 @@ def verify_action_signature(action_sig) -> dict:
     }
 
 
-# ── Hash chain verification ───────────────────────────────────────────────────
-
 def verify_action_chain(start_position: int = 0, count: int = 100) -> List[dict]:
-    """
-    Walk the ActionSignature chain from start_position and verify each link.
-
-    Returns a list of per-entry results.  Any 'chain_break' indicates tampering.
-    """
     from .models import ActionSignature
 
     entries = list(
@@ -273,30 +286,27 @@ def verify_action_chain(start_position: int = 0, count: int = 100) -> List[dict]
     return results
 
 
-# ── Batch / parallel signing ──────────────────────────────────────────────────
-
 def batch_sign_actions(items: List[dict], signer, ip_address: str = None):
     """
-    Sign multiple actions in a single call (one password confirmation).
+    Firma múltiples acciones en una sola llamada.
 
-    items: list of dicts with keys: subject_type, subject_id, extra
-    signer: Collaborator instance (already password-verified by the caller)
-
-    Returns:
-        batch   – BatchSignSession instance
-        sigs    – list of ActionSignature instances, one per item
+    RESTRICCIÓN CORREGIDA: Solo nivel 1 y 2 pueden usar firma masiva.
     """
     from .models import BatchSignSession
 
-    sigs = []
-    batch_placeholder = None  # will be updated after creation
+    signer_level = getattr(signer, 'access_level', 4)
+    if signer_level not in SIGNING_LEVELS:
+        raise PermissionError(
+            f'Solo los niveles 1 (admin) y 2 (coordinador) pueden firmar en lote. '
+            f'Nivel actual: {signer_level}.'
+        )
 
-    # Create a temporary BatchSignSession so we have its PK for the root hash
+    sigs = []
     batch = BatchSignSession.objects.create(
         signed_by=signer,
         ip_address=ip_address,
         item_count=len(items),
-        batch_root_hash='pending',  # computed below
+        batch_root_hash='pending',
     )
 
     for item in items:
@@ -309,10 +319,115 @@ def batch_sign_actions(items: List[dict], signer, ip_address: str = None):
         )
         sigs.append(sig)
 
-    # Compute root hash = SHA-256 of all individual hashes concatenated (sorted)
     sorted_hashes = sorted(s.message_hash for s in sigs)
     root_hash = hashlib.sha256('|'.join(sorted_hashes).encode('utf-8')).hexdigest()
     batch.batch_root_hash = root_hash
     batch.save(update_fields=['batch_root_hash'])
 
     return batch, sigs
+
+
+# ── Flujos finales con certificado X.509 (NUEVA funcionalidad) ────────────────
+
+def sign_final_flow(
+    action: FinalFlowAction,
+    performed_by,
+    target_id: int,
+    target_type: str,
+    cert_pem: bytes,
+    private_key_pem: bytes,
+    details: dict = None,
+) -> Optional['SignedFlowLog']:
+    """
+    Firma un flujo final con el certificado X.509 del admin/coordinador.
+
+    Persiste el log firmado en la BD (tabla SignedFlowLog).
+    Esta es la función correcta para flujos irreversibles.
+
+    Args:
+        action           — FinalFlowAction enum
+        performed_by     — Collaborator que ejecuta la acción
+        target_id        — ID del registro/usuario afectado
+        target_type      — tipo del target ('migrant_registration', 'collaborator', etc.)
+        cert_pem         — certificado X.509 del firmante (bytes PEM)
+        private_key_pem  — clave privada del firmante (bytes PEM, nunca se guarda)
+        details          — contexto adicional de la acción
+
+    Returns:
+        SignedFlowLog guardado en BD, o None si falla.
+
+    Raises:
+        PermissionError si el certificado no es válido o el usuario no tiene nivel correcto.
+    """
+    from iam.certificates import _get_ca_cert_pem, _get_revoked_serials
+    from .models import SignedFlowLog
+
+    signer_level = getattr(performed_by, 'access_level', 4)
+    if signer_level not in SIGNING_LEVELS:
+        raise PermissionError(
+            f'Solo niveles 1 y 2 pueden firmar flujos finales. Nivel: {signer_level}.'
+        )
+
+    ca_cert_pem = _get_ca_cert_pem()
+    revoked_serials = _get_revoked_serials()
+    system_hash = hash_db_state_django()
+
+    log_data = build_log_data(
+        action=action,
+        performed_by_user_id=performed_by.pk,
+        performed_by_username=performed_by.username,
+        target_id=target_id,
+        target_type=target_type,
+        details=details or {},
+        system_hash=system_hash,
+    )
+
+    signed = _core_sign_final_flow(
+        log_data=log_data,
+        private_key_pem=private_key_pem,
+        cert_pem=cert_pem,
+        ca_cert_pem=ca_cert_pem,
+        revoked_serials=revoked_serials,
+    )
+
+    db_log = SignedFlowLog.objects.create(
+        action=action.value,
+        log_data_json=json.dumps(log_data, sort_keys=True, separators=(',', ':'), ensure_ascii=False),
+        signature_b64=signed.signature_b64,
+        cert_fingerprint=signed.cert_fingerprint,
+        signer_user_id=performed_by.pk,
+        target_id=target_id,
+        target_type=target_type,
+        is_verified=True,
+    )
+    return db_log
+
+
+def verify_final_flow_log(signed_flow_log) -> tuple:
+    """
+    Re-verifica un SignedFlowLog guardado en BD.
+
+    Retorna (is_valid: bool, reason: str).
+    """
+    from iam.certificates import _get_ca_cert_pem, _get_revoked_serials
+    from iam.models import UserCertificate
+
+    ca_cert_pem = _get_ca_cert_pem()
+    revoked_serials = _get_revoked_serials()
+
+    # Obtener el PEM del certificado del firmante desde la BD
+    try:
+        signer_cert = UserCertificate.objects.get(
+            collaborator_id=signed_flow_log.signer_user_id,
+        )
+        cert_pem = signer_cert.certificate_data.encode('utf-8')
+    except UserCertificate.DoesNotExist:
+        return False, 'signer_certificate_not_found'
+
+    return verify_signed_log_from_db(
+        log_data_json=signed_flow_log.log_data_json,
+        signature_b64=signed_flow_log.signature_b64,
+        cert_pem=cert_pem,
+        ca_cert_pem=ca_cert_pem,
+        revoked_serials=revoked_serials,
+    )
