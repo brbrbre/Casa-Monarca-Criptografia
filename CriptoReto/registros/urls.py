@@ -30,9 +30,11 @@ urlpatterns = [
     path('<int:pk>/workflow/<str:action>/', views.workflow_request_create, name='workflow_request_create'),
 
     # ── ARCO rights ────────────────────────────────────────────────────────────
-    path('arco/',                    views.arco_list,    name='arco_list'),
-    path('<int:pk>/arco/nueva/',     views.arco_create,  name='arco_create'),
-    path('arco/<int:pk>/ejecutar/',  views.arco_execute, name='arco_execute'),
+    path('arco/',                         views.arco_list,     name='arco_list'),
+    path('<int:pk>/arco/nueva/',          views.arco_create,   name='arco_create'),
+    path('arco/<int:pk>/',               views.arco_detail,   name='arco_detail'),
+    path('arco/<int:pk>/ejecutar/',       views.arco_execute,  name='arco_execute'),
+    path('arco/<int:pk>/descargar/',      views.arco_download, name='arco_download'),
 
     # ── Audit chain ────────────────────────────────────────────────────────────
     path('cadena/', views.chain_audit_view, name='chain_audit'),

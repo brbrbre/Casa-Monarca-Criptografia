@@ -530,6 +530,43 @@ class ArcoRequest(models.Model):
     state = models.CharField('Estado', max_length=20, choices=STATE_CHOICES, default=STATE_SUBMITTED, db_index=True)
     description = models.TextField('Descripción de la solicitud')
 
+    # ── Case identifier ───────────────────────────────────────────────────────
+    case_id = models.CharField('ID de caso ARCO', max_length=20, unique=True, blank=True)
+
+    # ── Documents ─────────────────────────────────────────────────────────────
+    attached_document = models.FileField(
+        'Documento adjunto (PDF)',
+        upload_to='arco_docs/',
+        null=True,
+        blank=True,
+    )
+    generated_document = models.FileField(
+        'Documento generado (PDF de Acceso)',
+        upload_to='arco_exports/',
+        null=True,
+        blank=True,
+    )
+
+    # ── Closure signature ─────────────────────────────────────────────────────
+    action_signature = models.OneToOneField(
+        ActionSignature,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_request_closure',
+        verbose_name='Firma de cierre',
+    )
+
+    # ── Linked ticket ─────────────────────────────────────────────────────────
+    ticket = models.OneToOneField(
+        'Ticket',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_request',
+        verbose_name='Ticket de caso',
+    )
+
     requested_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -580,7 +617,12 @@ class ArcoRequest(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'ARCO#{self.pk} {self.get_arco_type_display()} [{self.get_state_display()}]'
+        return f'{self.case_id or f"ARCO#{self.pk}"} {self.get_arco_type_display()} [{self.get_state_display()}]'
+
+    def save(self, *args, **kwargs):
+        if not self.case_id:
+            self.case_id = f'ARCO-{uuid.uuid4().hex[:8].upper()}'
+        super().save(*args, **kwargs)
 
     @property
     def required_executor_level(self) -> int:
@@ -761,6 +803,44 @@ class Ticket(models.Model):
                 f'Enviada por {created_by.get_full_name() or created_by.username}.'
             ),
             priority=cls.PRIORITY_BAJA,
+            status=cls.STATUS_ABIERTO,
+        )
+
+    @classmethod
+    def create_for_arco(cls, arco, created_by):
+        """Auto-generate a ticket when an ArcoRequest is created."""
+        level = getattr(created_by, 'access_level', 4)
+        prefix, rol = _TICKET_ROLE_MAP.get(level, ('OPER', 'Operativo'))
+
+        arco_labels = {
+            'access': 'Acceso',
+            'rectification': 'Rectificación',
+            'cancellation': 'Cancelación',
+            'opposition': 'Oposición',
+        }
+        type_label = arco_labels.get(arco.arco_type, arco.arco_type)
+
+        summary = (
+            f'Solicitud ARCO {type_label}: {arco.case_id} — '
+            f'{arco.registration.full_name}'
+        )
+        description = '\n'.join([
+            f'ID de caso ARCO: {arco.case_id}',
+            f'Tipo: {type_label}',
+            f'Registro afectado: {arco.registration.internal_id} — {arco.registration.full_name}',
+            f'Solicitante: {created_by.get_full_name() or created_by.username} (Nivel {level} — {rol})',
+            f'Descripción: {arco.description[:200]}',
+        ])
+
+        return cls.objects.create(
+            ticket_id=_ticket_id(prefix),
+            registration=None,
+            workflow_request=None,
+            created_by=created_by,
+            rol_display=rol,
+            summary=summary,
+            description=description,
+            priority=cls.PRIORITY_MEDIA,
             status=cls.STATUS_ABIERTO,
         )
 

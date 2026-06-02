@@ -45,16 +45,14 @@ ESCALATION_RULES: dict[tuple, list[int]] = {
     ('delete_registration', 2): [1],
 
     # ── ARCO — Acceso (read request) ─────────────────────────────────────────
-    # Operativo can fulfil directly; Coordinador authorises when external asked
-    ('arco_access', 4): [3],
+    # Voluntario (4) cannot create ARCO cases — rule removed.
+    # Operativo (3) creates; Coordinador (2) executes.
     ('arco_access', 3): [2],
 
     # ── ARCO — Rectificación (update data) ───────────────────────────────────
-    ('arco_rectification', 4): [3, 2],
     ('arco_rectification', 3): [2],
 
     # ── ARCO — Cancelación (delete data — Admin only) ────────────────────────
-    ('arco_cancellation', 4): [3, 2, 1],
     ('arco_cancellation', 3): [2, 1],
     ('arco_cancellation', 2): [1],
 
@@ -63,7 +61,7 @@ ESCALATION_RULES: dict[tuple, list[int]] = {
     ('create_registration', 3): [2],
 
     # ── ARCO — Oposición ─────────────────────────────────────────────────────
-    ('arco_opposition', 4): [3],
+    # Voluntario (4) cannot create ARCO cases — rule removed.
     ('arco_opposition', 3): [2],
 }
 
