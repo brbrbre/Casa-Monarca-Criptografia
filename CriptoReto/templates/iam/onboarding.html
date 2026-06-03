@@ -122,6 +122,21 @@
   </div>
 </div>
 
+{% elif onboarding_state == 'cert_expired' %}
+<div class="card" style="text-align:center;padding:40px 32px;">
+  <div style="width:72px;height:72px;border-radius:50%;background:#FFF8E1;color:#F57F17;font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+    <i class="fa-solid fa-clock-rotate-left"></i>
+  </div>
+  <h2 style="margin-bottom:12px;color:#F57F17;">Certificado expirado</h2>
+  <p style="color:var(--cm-text-muted);margin-bottom:8px;max-width:520px;margin-left:auto;margin-right:auto;">
+    Tu certificado digital venció el <strong>{{ certificate.expires_at|date:"d/m/Y H:i" }}</strong> y ya no es válido para firmar registros.
+  </p>
+  <p style="color:var(--cm-text-muted);margin-bottom:28px;max-width:520px;margin-left:auto;margin-right:auto;">
+    Contacta a un administrador de nivel 1 para que reemita tu certificado. Una vez reemitido, podrás volver a acceder al sistema.
+  </p>
+  <a href="{% url 'iam:logout' %}" class="btn btn-light" style="min-width:200px;">Cerrar sesión</a>
+</div>
+
 {% elif onboarding_state == 'rejected' %}
 <div class="card" style="text-align:center;padding:40px 32px;">
   <div style="width:72px;height:72px;border-radius:50%;background:var(--cm-danger-bg);color:var(--cm-danger);font-size:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
