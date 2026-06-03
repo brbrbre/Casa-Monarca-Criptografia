@@ -14,11 +14,31 @@
   .state-executed  { background:var(--cm-success-bg); color:var(--cm-success); border:1px solid #A5D6A7; }
   .state-escalated { background:var(--cm-purple-bg);  color:var(--cm-purple);  border:1px solid #CE93D8; }
   .arco-chip { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:999px; font-size:12px; font-weight:700; border:1px solid; }
+  .notif-card { background:#FFFBEA;border:1px solid var(--cm-accent);border-left:4px solid var(--cm-accent);border-radius:10px;padding:14px 18px;margin-bottom:10px; }
 </style>
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
   <h2 style="margin:0;">Solicitudes ARCO</h2>
 </div>
+
+{% if arco_notifications %}
+  <div class="card" style="margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h4 style="margin:0;font-size:15px;"><i class="fa-solid fa-bell" style="color:var(--cm-accent);"></i> Notificaciones ARCO sin leer</h4>
+      <form method="post" action="{% url 'registros:notifications_mark_read' %}" style="margin:0;">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'registros:arco_list' %}">
+        <button type="submit" class="btn btn-light btn-sm">Marcar todas como leídas</button>
+      </form>
+    </div>
+    {% for notif in arco_notifications %}
+      <div class="notif-card">
+        <div style="font-size:14px;">{{ notif.message }}</div>
+        <div style="font-size:11px;color:var(--cm-text-muted);margin-top:4px;">{{ notif.created_at|date:"d/m/Y H:i" }}</div>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 
 <!-- Banner ARCO con chips de derechos -->
 <div style="background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:12px;padding:16px 20px;margin-bottom:20px;">

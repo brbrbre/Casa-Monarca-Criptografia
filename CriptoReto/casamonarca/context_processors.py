@@ -14,10 +14,13 @@ def workflow_context(request):
         or (st == 'approved' and bool(cd) and bool(request.session.get('cert_validated')))
     )
 
+    all_unread = Notification.objects.filter(recipient=u, is_read=False)
+    arco_unread = all_unread.filter(message__icontains='ARCO')
+    non_arco_unread = all_unread.exclude(message__icontains='ARCO')
+
     return {
         'pending_workflow_count': pending_requests_for(u).count(),
-        'unread_notifications_count': Notification.objects.filter(
-            recipient=u, is_read=False,
-        ).count(),
+        'unread_notifications_count': non_arco_unread.count(),
+        'unread_arco_notifications_count': arco_unread.count(),
         'nav_unlocked': nav_unlocked,
     }

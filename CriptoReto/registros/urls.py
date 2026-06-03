@@ -32,11 +32,12 @@ urlpatterns = [
     path('<int:pk>/workflow/<str:action>/', views.workflow_request_create, name='workflow_request_create'),
 
     # ── ARCO rights ────────────────────────────────────────────────────────────
-    path('arco/',                         views.arco_list,     name='arco_list'),
-    path('<int:pk>/arco/nueva/',          views.arco_create,   name='arco_create'),
-    path('arco/<int:pk>/',               views.arco_detail,   name='arco_detail'),
-    path('arco/<int:pk>/ejecutar/',       views.arco_execute,  name='arco_execute'),
-    path('arco/<int:pk>/descargar/',      views.arco_download, name='arco_download'),
+    path('arco/',                         views.arco_list,           name='arco_list'),
+    path('arco/cancelados/',             views.arco_cancelled_list,  name='arco_cancelled_list'),
+    path('<int:pk>/arco/nueva/',          views.arco_create,         name='arco_create'),
+    path('arco/<int:pk>/',               views.arco_detail,         name='arco_detail'),
+    path('arco/<int:pk>/ejecutar/',       views.arco_execute,        name='arco_execute'),
+    path('arco/<int:pk>/descargar/',      views.arco_download,       name='arco_download'),
 
     # ── Audit chain ────────────────────────────────────────────────────────────
     path('cadena/', views.chain_audit_view, name='chain_audit'),
@@ -47,4 +48,11 @@ urlpatterns = [
     # ── Tickets ────────────────────────────────────────────────────────────────
     path('tickets/',              views.ticket_list,   name='ticket_list'),
     path('tickets/<str:ticket_id>/', views.ticket_detail, name='ticket_detail'),
+
+    # ── ARCO Tickets (separate from generic Tickets) ───────────────────────────
+    path('arco-tickets/',                              views.arco_ticket_list,                name='arco_ticket_list'),
+    path('arco-tickets/<str:ticket_id>/',              views.arco_ticket_detail,              name='arco_ticket_detail'),
+    path('arco-tickets/<str:ticket_id>/escalar/',      views.arco_ticket_escalate,            name='arco_ticket_escalate'),
+    path('arco-tickets/<str:ticket_id>/aprobar/',      views.arco_ticket_approve_and_execute, name='arco_ticket_approve'),
+    path('arco-tickets/<str:ticket_id>/rechazar/',     views.arco_ticket_reject,              name='arco_ticket_reject'),
 ]

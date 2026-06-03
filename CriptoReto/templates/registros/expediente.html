@@ -134,7 +134,7 @@
             <td>{{ arco.legal_deadline|date:"d/m/Y"|default:"—" }}</td>
             <td>
               {% if arco.action_signature %}
-                <span style="font-family:monospace;font-size:11px;">{{ arco.action_signature.message_hash|slice:":16" }}…</span>
+                <span style="color:var(--cm-success);font-weight:600;"><i class="fa-solid fa-shield-halved"></i> Firmada</span>
               {% else %}—{% endif %}
             </td>
           </tr>
@@ -167,7 +167,7 @@
               {% empty %}—{% endfor %}
             </td>
             <td>
-              {% if wf.action_signature %}<span style="font-family:monospace;font-size:11px;">{{ wf.action_signature.message_hash|slice:":16" }}…</span>{% else %}—{% endif %}
+              {% if wf.action_signature %}<span style="color:var(--cm-success);font-weight:600;"><i class="fa-solid fa-shield-halved"></i> Firmada</span>{% else %}—{% endif %}
             </td>
           </tr>
           {% endfor %}

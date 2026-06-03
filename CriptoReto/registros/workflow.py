@@ -338,6 +338,28 @@ def _perform_action(wf, actor):
             setattr(reg, field, value)
         reg.save()
 
+        # Re-sign after update so the stored signature remains valid
+        from .services import sign_registration
+        from .models import MigrantRegistrationSignature
+        sig_data = sign_registration(reg)
+        updated = MigrantRegistrationSignature.objects.filter(registration=reg).update(
+            message_hash=sig_data['message_hash'],
+            signature_r=sig_data['signature_r'],
+            signature_s=sig_data['signature_s'],
+            public_key=sig_data['public_key'],
+            curve_name=sig_data['curve_name'],
+            signed_by=actor,
+            signed_by_role=actor.access_level,
+            signed_at=timezone.now(),
+        )
+        if not updated:
+            MigrantRegistrationSignature.objects.create(
+                registration=reg,
+                signed_by=actor,
+                signed_by_role=actor.access_level,
+                **sig_data,
+            )
+
     elif wf.action_type == 'create_registration':
         from .models import MigrantRegistration, Ticket, MigrantRegistrationSignature
         from .services import sign_registration

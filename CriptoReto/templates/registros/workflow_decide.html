@@ -53,9 +53,39 @@
   </div>
 {% endif %}
 
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+
+  {% if show_edit_fields %}
+  <div class="card" style="max-width:740px;margin-bottom:24px;border-color:var(--cm-primary);">
+    <h4 style="margin:0 0 8px;font-size:15px;"><i class="fa-solid fa-pen-to-square" style="color:var(--cm-primary);"></i> Ajuste de datos antes de firmar</h4>
+    <p style="color:var(--cm-text-muted);font-size:13px;margin:0 0 16px;">
+      Como ejecutor final puedes corregir los campos antes de firmar. Deja los campos sin cambios si no hay nada que corregir.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      {% for fd in editable_payload_fields %}
+        <div class="field-group" style="margin-bottom:0;">
+          <label style="font-size:12px;font-weight:600;color:var(--cm-text-muted);">{{ fd.label }}</label>
+          {% if fd.input_type == 'select' %}
+            <select name="edit_{{ fd.field }}" style="font-size:13px;">
+              <option value="">— sin cambio —</option>
+              {% for cv, cl in fd.choices %}
+                <option value="{{ cv }}" {% if fd.value == cv %}selected{% endif %}>{{ cl }}</option>
+              {% endfor %}
+            </select>
+          {% elif fd.input_type == 'date' %}
+            <input type="date" name="edit_{{ fd.field }}" value="{{ fd.value }}" style="font-size:13px;">
+          {% else %}
+            <input type="text" name="edit_{{ fd.field }}" value="{{ fd.value }}" style="font-size:13px;">
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
 <div class="card" style="max-width:560px;">
-  <form method="post" enctype="multipart/form-data">
-    {% csrf_token %}
+    {# CSRF already sent above; no nested form tag here #}
 
     <div style="margin-bottom:20px;">
       <label style="font-weight:600;display:block;margin-bottom:10px;">{{ form.decision.label }}</label>
@@ -84,26 +114,51 @@
     </div>
 
     {% if request.user.access_level <= 2 %}
-      <div id="cert-inputs" style="display:none;margin-bottom:20px;">
-        <div class="field-group">
-          <label for="id_cert_file">Certificado digital (.cert)</label>
-          <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem">
+      {% if is_final_executor %}
+        {# Final executor: cert+key always required (they sign here) #}
+        <div style="margin-bottom:20px;">
+          <div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--cm-warning);">
+            <i class="fa-solid fa-pen-nib"></i>
+            <strong>Eres el ejecutor final.</strong> Al aprobar, la solicitud quedará firmada y ejecutada de inmediato.
+          </div>
+          <div class="field-group">
+            <label for="id_cert_file">Certificado digital (.cert) <span style="color:var(--cm-danger);">*</span></label>
+            <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem" required>
+          </div>
+          <div class="field-group">
+            <label for="id_key_file">Llave privada (.key) <span style="color:var(--cm-danger);">*</span></label>
+            <input type="file" name="key_file" id="id_key_file" accept=".key" required>
+          </div>
         </div>
-        <div class="field-group">
-          <label for="id_key_file">Llave privada (.key)</label>
-          <input type="file" name="key_file" id="id_key_file" accept=".key">
+      {% else %}
+        {# Intermediate approver: cert+key only shown when approving (JS toggle) #}
+        <div id="cert-inputs" style="display:none;margin-bottom:20px;">
+          <div class="field-group">
+            <label for="id_cert_file">Certificado digital (.cert)</label>
+            <input type="file" name="cert_file" id="id_cert_file" accept=".cert,.pem">
+          </div>
+          <div class="field-group">
+            <label for="id_key_file">Llave privada (.key)</label>
+            <input type="file" name="key_file" id="id_key_file" accept=".key">
+          </div>
         </div>
-      </div>
+      {% endif %}
     {% endif %}
 
     <div style="display:flex;gap:12px;">
-      <button type="submit" class="btn"><i class="fa-solid fa-check"></i> Confirmar decisión</button>
+      <button type="submit" class="btn">
+        {% if is_final_executor %}
+          <i class="fa-solid fa-pen-nib"></i> Aprobar y firmar
+        {% else %}
+          <i class="fa-solid fa-check"></i> Confirmar decisión
+        {% endif %}
+      </button>
       <a href="{% url 'registros:workflow_detail' wf.pk %}" class="btn btn-light">Cancelar</a>
     </div>
-  </form>
-</div>
+</div>{# end card #}
+</form>{# end form — wraps both edit fields and decision fields #}
 
-{% if request.user.access_level <= 2 %}
+{% if request.user.access_level <= 2 and not is_final_executor %}
 <script>
   (function () {
     const radios = document.querySelectorAll('input[name="decision"]');

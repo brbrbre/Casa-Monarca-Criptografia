@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h1>Tickets ARCO</h1>
+<p style="color:var(--cm-text-muted); margin-bottom:20px;">
+  Solicitudes de derechos de acceso, rectificación, cancelación u oposición.
+</p>
+
+{% if tickets %}
+  <table style="width:100%; border-collapse:collapse;">
+    <thead>
+      <tr style="background-color:var(--cm-surface); border-bottom:2px solid var(--cm-border);">
+        <th style="padding:10px; text-align:left;">ID</th>
+        <th style="padding:10px; text-align:left;">Tipo ARCO</th>
+        <th style="padding:10px; text-align:left;">Estado</th>
+        <th style="padding:10px; text-align:left;">Creado por</th>
+        <th style="padding:10px; text-align:left;">Fecha</th>
+        <th style="padding:10px; text-align:center;">Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for ticket in tickets %}
+        <tr style="border-bottom:1px solid var(--cm-border);">
+          <td style="padding:10px;"><strong>{{ ticket.ticket_id }}</strong></td>
+          <td style="padding:10px;">{{ ticket.arco_request.get_arco_type_display }}</td>
+          <td style="padding:10px;">
+            <span style="background-color:var(--cm-accent);color:white;padding:4px 8px;border-radius:4px;">
+              {{ ticket.get_state_display }}
+            </span>
+          </td>
+          <td style="padding:10px;">{{ ticket.created_by.get_full_name }}</td>
+          <td style="padding:10px;">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+          <td style="padding:10px; text-align:center;">
+            <a href="{% url 'registros:arco_ticket_detail' ticket.ticket_id %}" style="color:var(--cm-primary);text-decoration:none;">
+              Ver →
+            </a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p style="color:var(--cm-text-muted);">No hay tickets ARCO pendientes.</p>
+{% endif %}
+
+{% endblock %}

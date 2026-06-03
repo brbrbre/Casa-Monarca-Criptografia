@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+
+<style>
+  .cancelled-badge {
+    display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:600;
+    padding:2px 8px; border-radius:999px; background:var(--cm-danger-bg);
+    color:var(--cm-danger); border:1px solid var(--cm-danger);
+  }
+</style>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+  <h2 style="margin:0;">{{ title }}</h2>
+  <a href="{% url 'registros:registro_list' %}" class="btn btn-light btn-sm">← Volver a registros</a>
+</div>
+
+<div style="background:var(--cm-warning-bg);border:1px solid var(--cm-accent);border-radius:10px;padding:12px 18px;margin-bottom:20px;font-size:13px;color:var(--cm-warning);max-width:860px;">
+  <i class="fa-solid fa-shield-halved"></i>
+  <strong>Datos personales suprimidos (LFPDPPP).</strong>
+  Esta lista muestra únicamente el identificador interno, la razón y la fecha de cancelación.
+  No se exponen nombre, apellidos, teléfono ni ningún otro dato de identificación personal.
+</div>
+
+<form method="get" style="margin-bottom:18px;max-width:400px;">
+  <div style="display:flex;gap:8px;">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por folio (MIG-XXXXXXXX)"
+           style="flex:1;padding:8px 12px;border:1px solid var(--cm-border);border-radius:8px;font-size:14px;">
+    <button type="submit" class="btn btn-sm"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+    {% if q %}<a href="{% url 'registros:arco_cancelled_list' %}" class="btn btn-light btn-sm">Limpiar</a>{% endif %}
+  </div>
+</form>
+
+{% if registrations %}
+<div style="overflow-x:auto;max-width:860px;">
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Folio interno</th>
+        <th>Razón ARCO</th>
+        <th>Cancelado el</th>
+        <th>Ejecutado por</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for reg in registrations %}
+      <tr>
+        <td style="font-family:monospace;font-weight:700;">{{ reg.internal_id|default:"—" }}</td>
+        <td>
+          {% if reg.arco_cancellation_reason == 'cancellation' %}
+            Cancelación ARCO
+          {% elif reg.arco_cancellation_reason == 'opposition' %}
+            Oposición ARCO
+          {% else %}
+            {{ reg.arco_cancellation_reason|default:"—" }}
+          {% endif %}
+        </td>
+        <td>{{ reg.arco_cancelled_at|date:"d/m/Y H:i" }}</td>
+        <td>
+          {% if reg.arco_cancelled_by %}
+            {{ reg.arco_cancelled_by.get_full_name|default:reg.arco_cancelled_by.username }}
+            <small style="color:var(--cm-text-muted);">(Nivel {{ reg.arco_cancelled_by.access_level }})</small>
+          {% else %}—{% endif %}
+        </td>
+        <td><span class="cancelled-badge"><i class="fa-solid fa-ban"></i> Cancelado</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p style="color:var(--cm-text-muted);font-size:13px;margin-top:8px;">
+  {{ registrations|length }} registro{% if registrations|length != 1 %}s{% endif %} encontrado{% if registrations|length != 1 %}s{% endif %}.
+</p>
+{% else %}
+<div style="color:var(--cm-text-muted);padding:24px 0;font-size:14px;">
+  {% if q %}No se encontraron registros cancelados con folio "<strong>{{ q }}</strong>".
+  {% else %}No hay registros cancelados por ARCO.{% endif %}
+</div>
+{% endif %}
+
+{% endblock %}
