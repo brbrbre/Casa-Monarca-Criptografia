@@ -204,6 +204,18 @@ def validate_cert_and_key(collaborator, cert_pem_bytes: bytes, key_pem_bytes: by
             )
             return False
 
+        # 4. Verificar que el certificado no esté suspendido o dado de baja en BD
+        if db_cert.status in (
+            UserCertificate.STATUS_SUSPENDED,
+            UserCertificate.STATUS_INACTIVE,
+        ):
+            AuditLog.objects.create(
+                actor=collaborator, target=collaborator,
+                action='CERTIFICATE_VALIDATION_FAILED',
+                details=f'cert_status:{db_cert.status.lower()}',
+            )
+            return False
+
         AuditLog.objects.create(
             actor=collaborator, target=collaborator,
             action='CERTIFICATE_VALIDATED', details=db_cert.fingerprint[:16] + '…',

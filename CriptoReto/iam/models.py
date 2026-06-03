@@ -229,6 +229,17 @@ class Collaborator(AbstractUser):
             return 'Rechazado'
         if not self.is_active:
             return 'Inactivo'
+        if self.access_level <= 2:
+            try:
+                cert = self.certificate
+                if cert.status == 'SUSPENDED':
+                    return 'Activo — Cert. Suspendido'
+                if cert.status == 'REVOKED':
+                    return 'Activo — Cert. Revocado'
+                if cert.status == 'INACTIVE':
+                    return 'Activo — Cert. Baja'
+            except Exception:
+                pass
         return 'Activo'
 
     @property
