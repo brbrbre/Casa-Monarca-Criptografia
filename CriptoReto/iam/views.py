@@ -475,7 +475,16 @@ def login_view(request):
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(request, 'Tu cuenta ha sido revocada. Contacta al administrador.')
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
-                elif not db_user.is_active:
+                elif db_user.access_level <= 2:
+                    try:
+                        _db_cert = db_user.certificate
+                        if _db_cert.status == UserCertificate.STATUS_SUSPENDED:
+                            LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
+                            messages.error(request, 'Tu certificado digital está suspendido. No puedes iniciar sesión hasta que sea reactivado por el administrador.')
+                            return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
+                    except Exception:
+                        pass
+                if not db_user.is_active:
                     LoginAttempt.objects.create(username=username, ip_address=ip_address, successful=False)
                     messages.error(request, 'Tu cuenta está inactiva. Contacta al administrador.')
                     return render(request, 'iam/login.html', {'form': form, 'blocked': blocked})
@@ -644,7 +653,7 @@ def dashboard_view(request):
         pending_count = 0
 
     return render(request, 'iam/dashboard.html', {
-        'collaborators': collaborators.select_related('area'),
+        'collaborators': collaborators.select_related('area', 'certificate'),
         'form': form,
         'stats': {'total': total, 'active': active, 'revoked': revoked, 'deleted': expired},
         'pending_onboarding_count': pending_count,
@@ -1357,7 +1366,8 @@ def certificate_mgmt_suspend_view(request, cert_id):
     _log(request.user, 'CERT_MGMT_SUSPENDED',
          f'Certificado {cert.fingerprint[:12]} suspendido. Motivo: {reason}',
          target=cert.collaborator, request=request)
-    messages.success(request, 'Certificado suspendido correctamente.')
+    _flush_user_sessions(cert.collaborator_id)
+    messages.success(request, 'Certificado suspendido correctamente. Las sesiones activas del coordinador han sido cerradas.')
     return redirect('iam:certificate_mgmt_list')
 
 

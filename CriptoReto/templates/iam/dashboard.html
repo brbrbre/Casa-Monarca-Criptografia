@@ -146,7 +146,7 @@
           <td>{{ collaborator.role }}</td>
           <td>{{ collaborator.area }}</td>
           <td>
-            <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">
+            <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Cert. Suspendido' %}status-cert-suspended{% elif collaborator.status_label == 'Cert. Revocado' %}status-cert-revoked{% elif collaborator.status_label == 'Activo — Cert. Baja' %}status-cert-baja{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">
               {{ collaborator.status_label }}
             </span>
           </td>

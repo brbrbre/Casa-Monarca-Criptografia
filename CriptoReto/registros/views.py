@@ -194,11 +194,18 @@ def registro_new(request):
                     Ticket.create_for_workflow_request(wf, request.user)
                     request.session.pop('registro_draft', None)
                     _remove_permission_messages(request)
-                    messages.success(
-                        request,
-                        'Tu solicitud fue enviada al Coordinador. Puedes seguir su estado en Tickets.',
-                    )
-                    return redirect('registros:ticket_list')
+                    if request.user.access_level == 4:
+                        messages.success(
+                            request,
+                            'Tu solicitud fue enviada. El operador la revisará pronto.',
+                        )
+                        return redirect('registros:registro_new')
+                    else:
+                        messages.success(
+                            request,
+                            'Tu solicitud fue enviada. Puedes seguir su estado en el flujo de trabajo.',
+                        )
+                        return redirect('registros:workflow_list')
                 except ValueError as exc:
                     messages.error(request, str(exc))
             else:
