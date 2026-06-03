@@ -90,6 +90,14 @@
   </div>
 </div>
 
+{% if expired_certs_count > 0 %}
+<div style="background:#FFF8E1;border:1px solid #FFE082;border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:14px;color:#F57F17;display:flex;align-items:center;gap:10px;">
+  <i class="fa-solid fa-clock-rotate-left"></i>
+  <span>Hay <strong>{{ expired_certs_count }}</strong> certificado{{ expired_certs_count|pluralize:",s" }} expirado{{ expired_certs_count|pluralize:",s" }}. El coordinador afectado no puede firmar registros hasta que se reemita.</span>
+  <a href="{% url 'iam:dashboard' %}" style="margin-left:auto;color:#F57F17;font-weight:600;text-decoration:underline;">Ver colaboradores</a>
+</div>
+{% endif %}
+
 {% if pending_onboarding_count > 0 %}
 <div style="background:#FFFBEA;border:1px solid var(--cm-accent);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:14px;color:var(--cm-warning);display:flex;align-items:center;gap:10px;">
   <i class="fa-solid fa-bell"></i>
@@ -146,7 +154,7 @@
           <td>{{ collaborator.role }}</td>
           <td>{{ collaborator.area }}</td>
           <td>
-            <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Cert. Suspendido' %}status-cert-suspended{% elif collaborator.status_label == 'Cert. Revocado' %}status-cert-revoked{% elif collaborator.status_label == 'Activo — Cert. Baja' %}status-cert-baja{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">
+            <span class="status-pill {% if collaborator.status_label == 'Activo' %}status-active{% elif collaborator.status_label == 'Activo — Cert. Expirado' %}status-cert-expirado{% elif collaborator.status_label == 'Cert. Suspendido' %}status-cert-suspended{% elif collaborator.status_label == 'Cert. Revocado' %}status-cert-revoked{% elif collaborator.status_label == 'Activo — Cert. Baja' %}status-cert-baja{% elif collaborator.status_label == 'Revocado' %}status-revoked{% elif collaborator.status_label == 'Inactivo' %}status-inactive{% else %}status-deleted{% endif %}">
               {{ collaborator.status_label }}
             </span>
           </td>

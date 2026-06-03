@@ -55,6 +55,14 @@ def _log(actor, action, details='', target=None, request=None):
 # ONBOARDING GATE — state machine
 # ─────────────────────────────────────────────
 
+def _cert_expired(user):
+    """True when a level-1/2 user has an active but expired certificate."""
+    if user.access_level > 2:
+        return False
+    cert = getattr(user, 'certificate', None)
+    return cert is not None and cert.effective_status == UserCertificate.STATUS_EXPIRED
+
+
 def _needs_cert_relogin(user, request):
     """
     A level-1 or level-2 user who downloaded both credential files must re-login
@@ -91,6 +99,9 @@ def _is_onboarding_user(user, request=None):
         return True
     # Level-1/2 user downloaded files but hasn't re-logged in with cert+key
     if request and _needs_cert_relogin(user, request):
+        return True
+    # Level-1/2 user whose certificate has expired
+    if _cert_expired(user):
         return True
     return False
 
@@ -130,8 +141,14 @@ def onboarding_view(request):
     """
     user = request.user
 
-    # Fully onboarded and authenticated with cert → go to dashboard
+    # Fully onboarded and authenticated with cert → go to dashboard (unless cert expired)
     if user.onboarding_approved and user.certificate_delivered_at and not _needs_cert_relogin(user, request):
+        if _cert_expired(user):
+            return render(request, 'iam/onboarding.html', {
+                'onboarding_state': 'cert_expired',
+                'is_coordinator': user.access_level <= 2,
+                'certificate': getattr(user, 'certificate', None),
+            })
         return redirect('iam:dashboard')
 
     # True for both admin (1) and coordinator (2): they both need cert+key files
@@ -652,11 +669,22 @@ def dashboard_view(request):
     else:
         pending_count = 0
 
+    expired_certs_qs = UserCertificate.objects.filter(
+        status=UserCertificate.STATUS_ACTIVE,
+        expires_at__lte=timezone.now(),
+        collaborator__is_deleted=False,
+    )
+    if user.access_level == 2:
+        expired_certs_qs = expired_certs_qs.filter(collaborator__area=user.area)
+    elif user.access_level >= 3:
+        expired_certs_qs = expired_certs_qs.none()
+
     return render(request, 'iam/dashboard.html', {
         'collaborators': collaborators.select_related('area', 'certificate'),
         'form': form,
         'stats': {'total': total, 'active': active, 'revoked': revoked, 'deleted': expired},
         'pending_onboarding_count': pending_count,
+        'expired_certs_count': expired_certs_qs.count(),
     })
 
 

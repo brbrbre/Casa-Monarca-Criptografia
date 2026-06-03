@@ -232,6 +232,8 @@ class Collaborator(AbstractUser):
         if self.access_level <= 2:
             try:
                 cert = self.certificate
+                if cert.effective_status == 'EXPIRED':
+                    return 'Activo — Cert. Expirado'
                 if cert.status == 'SUSPENDED':
                     return 'Activo — Cert. Suspendido'
                 if cert.status == 'REVOKED':
