@@ -139,6 +139,12 @@
         <td style="font-size:13px;">{{ cert.expires_at|date:'d/m/Y' }}</td>
         <td>
           <div class="action-btns">
+            {% if es == 'ACTIVE' or es == 'SUSPENDED' %}
+              <a class="btn btn-light btn-sm"
+                 href="{% url 'iam:certificate_validate' pk=cert.collaborator.pk %}?next={% url 'iam:certificate_mgmt_list' %}">
+                <i class="fa-solid fa-shield-halved"></i> Validar
+              </a>
+            {% endif %}
             {% if es == 'ACTIVE' %}
               <button class="btn btn-warning btn-sm"
                 onclick="openModal('modal-suspender', {{ cert.pk }},

@@ -262,7 +262,9 @@ SEED_USERS = [
 # Datos en texto plano — se cifrarán automáticamente vía EncryptedTextField/EncryptedDateField
 SEED_REGISTRATIONS = [
     {
-        'full_name':                    'Juan Pérez García',
+        'first_name':                   'Juan',
+        'first_surname':                'Pérez',
+        'second_surname':               'García',
         'birth_date':                   date(1985, 3, 15),
         'gender':                       'masculino',
         'nationality':                  'Hondureña',
@@ -290,7 +292,9 @@ SEED_REGISTRATIONS = [
         'data_consent':                 True,
     },
     {
-        'full_name':                    'María Rodríguez López',
+        'first_name':                   'María',
+        'first_surname':                'Rodríguez',
+        'second_surname':               'López',
         'birth_date':                   date(1992, 7, 22),
         'gender':                       'femenino',
         'nationality':                  'Guatemalteca',
@@ -318,7 +322,9 @@ SEED_REGISTRATIONS = [
         'data_consent':                 True,
     },
     {
-        'full_name':                    'Carlos Mendoza Fuentes',
+        'first_name':                   'Carlos',
+        'first_surname':                'Mendoza',
+        'second_surname':               'Fuentes',
         'birth_date':                   date(1978, 11, 3),
         'gender':                       'masculino',
         'nationality':                  'Salvadoreña',
@@ -346,7 +352,9 @@ SEED_REGISTRATIONS = [
         'data_consent':                 True,
     },
     {
-        'full_name':                    'Ana Sofía Torres Vargas',
+        'first_name':                   'Ana Sofía',
+        'first_surname':                'Torres',
+        'second_surname':               'Vargas',
         'birth_date':                   date(2001, 5, 18),
         'gender':                       'femenino',
         'nationality':                  'Venezolana',
@@ -374,7 +382,9 @@ SEED_REGISTRATIONS = [
         'data_consent':                 True,
     },
     {
-        'full_name':                    'Roberto Díaz Herrera',
+        'first_name':                   'Roberto',
+        'first_surname':                'Díaz',
+        'second_surname':               'Herrera',
         'birth_date':                   date(1965, 9, 30),
         'gender':                       'masculino',
         'nationality':                  'Nicaragüense',
@@ -668,7 +678,9 @@ def run_seed(emit_certs: bool = True):
         # al hacer .save() — no necesitamos llamar encrypt_field() manualmente
         creator = admin_user
         reg = MigrantRegistration(
-            full_name=reg_data['full_name'],
+            first_name=reg_data['first_name'],
+            first_surname=reg_data['first_surname'],
+            second_surname=reg_data.get('second_surname', 'X'),
             birth_date=reg_data['birth_date'],
             gender=reg_data['gender'],
             nationality=reg_data['nationality'],
@@ -701,10 +713,10 @@ def run_seed(emit_certs: bool = True):
         )
         reg.save()
         created_registrations.append(reg)
-        print(f'   📄 {reg_data["full_name"]} → ID: {reg.internal_id}')
+        print(f'   📄 {reg.full_name} → ID: {reg.internal_id}')
         # Verificar que el campo en BD no es texto plano
-        raw = _read_raw_field(reg.pk, 'full_name')
-        is_encrypted = raw and 'Pérez' not in raw and 'María' not in raw and 'Carlos' not in raw \
+        raw = _read_raw_field(reg.pk, 'first_name')
+        is_encrypted = raw and 'Juan' not in raw and 'María' not in raw and 'Carlos' not in raw \
                        and 'Ana' not in raw and 'Roberto' not in raw
         status = '🔒 cifrado' if is_encrypted else '⚠️  POSIBLE TEXTO PLANO'
         print(f'      BD: {status} ({raw[:40] if raw else "NULL"}...)')

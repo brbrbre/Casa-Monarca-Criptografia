@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:arco_ticket_list' %}" style="color:var(--cm-primary);text-decoration:none;">← Volver a Tickets ARCO</a>
+</div>
+
+<h2>{{ ticket.ticket_id }} — {{ arco.get_arco_type_display }}</h2>
+<p style="color:var(--cm-text-muted);">{{ ticket.get_state_display }}</p>
+
+<div class="card" style="margin-bottom:20px;">
+  <h4>Información del Ticket</h4>
+  <div style="display:grid;grid-template-columns:200px 1fr;gap:10px 18px;font-size:14px;">
+    <div style="color:var(--cm-text-muted);">Caso ARCO:</div>
+    <div>{{ arco.case_id }}</div>
+
+    <div style="color:var(--cm-text-muted);">Tipo:</div>
+    <div>{{ arco.get_arco_type_display }}</div>
+
+    <div style="color:var(--cm-text-muted);">Estado:</div>
+    <div>{{ ticket.get_state_display }}</div>
+
+    <div style="color:var(--cm-text-muted);">Creado por:</div>
+    <div>{{ ticket.created_by.get_full_name }}</div>
+
+    <div style="color:var(--cm-text-muted);">Fecha creación:</div>
+    <div>{{ ticket.created_at|date:"d/m/Y H:i" }}</div>
+
+    {% if ticket.coordinator_reviewed_by %}
+      <div style="color:var(--cm-text-muted);">Revisado por:</div>
+      <div>{{ ticket.coordinator_reviewed_by.get_full_name }} — {{ ticket.coordinator_reviewed_at|date:"d/m/Y H:i" }}</div>
+
+      {% if ticket.coordinator_notes %}
+        <div style="color:var(--cm-text-muted);">Notas coordinador:</div>
+        <div>{{ ticket.coordinator_notes }}</div>
+      {% endif %}
+    {% endif %}
+
+    {% if ticket.admin_approved_by %}
+      <div style="color:var(--cm-text-muted);">Aprobado por:</div>
+      <div>{{ ticket.admin_approved_by.get_full_name }} — {{ ticket.admin_approved_at|date:"d/m/Y H:i" }}</div>
+
+      {% if ticket.admin_notes %}
+        <div style="color:var(--cm-text-muted);">Notas admin:</div>
+        <div>{{ ticket.admin_notes }}</div>
+      {% endif %}
+    {% endif %}
+
+    {% if ticket.executed_at %}
+      <div style="color:var(--cm-text-muted);">Ejecutado el:</div>
+      <div>{{ ticket.executed_at|date:"d/m/Y H:i" }}</div>
+    {% endif %}
+
+    {% if ticket.rejection_reason %}
+      <div style="color:var(--cm-text-muted);">Motivo de rechazo:</div>
+      <div style="color:var(--cm-danger);">{{ ticket.rejection_reason }}</div>
+    {% endif %}
+  </div>
+</div>
+
+{% if can_review %}
+  <form method="post" action="{% url 'registros:arco_ticket_escalate' ticket.ticket_id %}" enctype="multipart/form-data" style="background:var(--cm-surface);padding:20px;border-radius:8px;margin-bottom:20px;">
+    {% csrf_token %}
+    <h4>Revisar y Escalar a Administración</h4>
+    <textarea name="notes" placeholder="Notas del Coordinador..." style="width:100%;height:100px;padding:8px;border:1px solid var(--cm-border);border-radius:4px;margin-bottom:10px;"></textarea>
+    <h5>Certificado y Clave del Coordinador</h5>
+    <div style="margin:8px 0;">
+      <label>Certificado (.pem / .cert)</label><br>
+      <input type="file" name="cert_file" accept=".pem,.cert" required style="margin-top:4px;">
+    </div>
+    <div style="margin:8px 0;">
+      <label>Llave privada (.key / .pem)</label><br>
+      <input type="file" name="key_file" accept=".key,.pem" required style="margin-top:4px;">
+    </div>
+    <button type="submit" style="background-color:var(--cm-primary);color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;margin-top:10px;">
+      Escalar a Admin
+    </button>
+  </form>
+{% endif %}
+
+{% if can_approve %}
+  <form method="post" action="{% url 'registros:arco_ticket_approve' ticket.ticket_id %}" enctype="multipart/form-data" style="background:var(--cm-surface);padding:20px;border-radius:8px;margin-bottom:20px;">
+    {% csrf_token %}
+    <h4>Aprobar y Ejecutar (Admin)</h4>
+    <textarea name="notes" placeholder="Notas del Admin..." style="width:100%;height:100px;padding:8px;border:1px solid var(--cm-border);border-radius:4px;margin-bottom:10px;"></textarea>
+    <h5>Certificado y Firma Digital del Admin</h5>
+    <div style="margin:8px 0;">
+      <label>Certificado (.pem / .cert)</label><br>
+      <input type="file" name="cert_file" accept=".pem,.cert" required style="margin-top:4px;">
+    </div>
+    <div style="margin:8px 0;">
+      <label>Llave privada (.key / .pem)</label><br>
+      <input type="file" name="key_file" accept=".key,.pem" required style="margin-top:4px;">
+    </div>
+    <button type="submit" style="background-color:var(--cm-success,#28a745);color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;margin-top:10px;">
+      Aprobar y Ejecutar
+    </button>
+  </form>
+{% endif %}
+
+{% if can_review or can_approve %}
+  <form method="post" action="{% url 'registros:arco_ticket_reject' ticket.ticket_id %}" style="margin-top:10px;">
+    {% csrf_token %}
+    <textarea name="reason" placeholder="Motivo del rechazo..." required style="width:100%;height:80px;padding:8px;border:1px solid var(--cm-border);border-radius:4px;"></textarea>
+    <button type="submit" style="background-color:var(--cm-danger,#dc3545);color:white;padding:10px 20px;border:none;border-radius:4px;cursor:pointer;margin-top:10px;">
+      Rechazar Solicitud
+    </button>
+  </form>
+{% endif %}
+
+{% endblock %}

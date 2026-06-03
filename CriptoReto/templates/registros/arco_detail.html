@@ -90,9 +90,10 @@
   {% if arco.action_signature %}
   <div class="detail-row">
     <span class="detail-label">Firma digital</span>
-    <span class="detail-value" style="font-family:monospace;font-size:11px;word-break:break-all;">{{ arco.action_signature.message_hash }}</span>
+    <span class="detail-value" style="color:var(--cm-success);font-weight:600;">
+      <i class="fa-solid fa-shield-halved"></i> Firmada digitalmente
+    </span>
   </div>
-  <div class="detail-row"><span class="detail-label">Posición en cadena</span><span class="detail-value">#{{ arco.action_signature.chain_position }}</span></div>
   {% endif %}
   {% if arco.generated_document %}
   <div style="margin-top:12px;">

@@ -15,9 +15,59 @@ from iam.views import onboarding_required
 from iam.certificates import validate_coordinator_cert_and_key, validate_cert_and_key
 from .forms import ArcoRequestForm, MigrantRegistrationForm, WorkflowApprovalForm, WorkflowUpdateRequestForm
 from .models import (
-    ArcoRequest, MigrantRegistration, MigrantRegistrationSignature,
+    ArcoRequest, ArcoTicket, MigrantRegistration, MigrantRegistrationSignature,
     Notification, RegistrationEvent, Ticket, WorkflowRequest, PRIVACY_NOTICE_VERSION,
 )
+
+# ── Tracked fields for coordinator edits before execution ─────────────────────
+_TRACKED_FIELDS = [
+    'first_name', 'first_surname', 'second_surname', 'birth_date',
+    'gender', 'country_of_origin', 'state_or_region', 'phone',
+    'service_date', 'marital_status', 'age_group', 'population_group',
+]
+
+_FIELD_META = [
+    ('first_name',        'Nombre',                'text',   None),
+    ('first_surname',     'Primer apellido',        'text',   None),
+    ('second_surname',    'Segundo apellido',       'text',   None),
+    ('birth_date',        'Fecha de nacimiento',    'date',   None),
+    ('gender',            'Género',                 'select', MigrantRegistration.GENDER_CHOICES),
+    ('country_of_origin', 'País de origen',         'text',   None),
+    ('state_or_region',   'Departamento/Estado',    'text',   None),
+    ('phone',             'Teléfono',               'text',   None),
+    ('service_date',      'Fecha de servicio',      'date',   None),
+    ('marital_status',    'Estado civil',           'select', MigrantRegistration.MARITAL_STATUS_CHOICES),
+    ('age_group',         'Grupo de edad',          'select', MigrantRegistration.AGE_GROUP_CHOICES),
+    ('population_group',  'Grupo poblacional',      'select', MigrantRegistration.POPULATION_GROUP_CHOICES),
+]
+
+
+def _build_editable_payload_fields(payload):
+    """Return template-ready list of field dicts for coordinator edits."""
+    return [
+        {
+            'field': field,
+            'label': label,
+            'value': payload.get(field, ''),
+            'input_type': input_type,
+            'choices': choices or [],
+        }
+        for field, label, input_type, choices in _FIELD_META
+    ]
+
+
+def _extract_payload_modifications(old_payload, post_data):
+    """
+    Compare POST values (prefixed with 'edit_') against old_payload.
+    Returns {field: {before, after}} for changed fields only.
+    """
+    mods = {}
+    for field in _TRACKED_FIELDS:
+        old_val = str(old_payload.get(field, '') or '')
+        new_val = post_data.get(f'edit_{field}', '').strip()
+        if new_val and old_val != new_val:
+            mods[field] = {'before': old_val, 'after': new_val}
+    return mods
 from .services import (
     batch_sign_actions, get_public_key_pem,
     sign_registration, verify_registration, verify_action_chain,
@@ -82,25 +132,16 @@ def require_level(max_level, redirect_to='registros:registro_new'):
 def _build_review_sections(form):
     sections = [
         ('Datos personales', [
-            'full_name', 'birth_date', 'gender', 'nationality',
-            'country_of_origin', 'document_type', 'document_number',
+            'first_name', 'first_surname', 'second_surname',
+            'birth_date', 'gender',
         ]),
-        ('Contacto', ['phone', 'email']),
-        ('Información de ingreso', [
-            'entry_date', 'entry_point', 'transit_countries', 'intended_destination',
+        ('Origen', [
+            'country_of_origin', 'state_or_region',
         ]),
-        ('Grupo familiar', [
-            'marital_status', 'travels_alone', 'group_size', 'minors_in_group',
-        ]),
-        ('Necesidades y situación', [
-            'assistance_requested', 'migration_reason',
-            'current_legal_status', 'shelter_name',
-        ]),
-        ('Contacto de emergencia', [
-            'emergency_contact_name', 'emergency_contact_phone',
-            'emergency_contact_relationship',
-        ]),
-        ('Observaciones', ['observations']),
+        ('Contacto', ['phone']),
+        ('Fecha de servicio', ['service_date']),
+        ('Grupo familiar', ['marital_status']),
+        ('Clasificación', ['age_group', 'population_group']),
     ]
     result = []
     for title, field_names in sections:
@@ -287,15 +328,10 @@ def registro_exito(request, pk):
 @onboarding_required
 @require_level(3)
 def registro_list(request):
-    qs = MigrantRegistration.objects.filter(is_deleted=False)
+    qs = MigrantRegistration.objects.filter(is_deleted=False, arco_cancelled_at__isnull=True)
     q = request.GET.get('q', '').strip()
     if q:
-        from django.db.models import Q
-        qs = qs.filter(
-            Q(full_name__icontains=q) |
-            Q(nationality__icontains=q) |
-            Q(document_number__icontains=q)
-        )
+        qs = qs.filter(internal_id__icontains=q)
     return render(request, 'registros/list.html', {
         'registrations': qs, 'q': q, 'title': 'Registros Migrantes',
     })
@@ -306,6 +342,19 @@ def registro_list(request):
 @require_level(3)
 def registro_detail(request, pk):
     registration = get_object_or_404(MigrantRegistration, pk=pk, is_deleted=False)
+
+    # ARCO-cancelled records: only admin can see (redirected to audit list)
+    if registration.arco_cancelled_at:
+        if request.user.access_level == 1:
+            messages.info(
+                request,
+                f'El registro {registration.internal_id} fue cancelado por ARCO '
+                f'el {registration.arco_cancelled_at:%d/%m/%Y}. '
+                'Solo se muestra el identificador.',
+            )
+            return redirect('registros:arco_cancelled_list')
+        raise Http404('Este registro fue cancelado por una solicitud ARCO y no es accesible.')
+
     try:
         sig = registration.signature
         verify_result = verify_registration(registration, sig)
@@ -343,9 +392,34 @@ def registro_edit(request, pk):
 
     form = MigrantRegistrationForm(request.POST or None, instance=registration)
     if request.method == 'POST' and form.is_valid():
-        form.save()
+        registration = form.save()
+        # Re-sign so the stored ECDSA signature stays valid after field changes
+        sig_data = sign_registration(registration)
+        from .models import MigrantRegistrationSignature
+        updated = MigrantRegistrationSignature.objects.filter(
+            registration=registration
+        ).update(
+            message_hash=sig_data['message_hash'],
+            signature_r=sig_data['signature_r'],
+            signature_s=sig_data['signature_s'],
+            public_key=sig_data['public_key'],
+            curve_name=sig_data['curve_name'],
+            signed_by=request.user,
+            signed_by_role=request.user.access_level,
+            signed_at=timezone.now(),
+        )
+        if not updated:
+            MigrantRegistrationSignature.objects.create(
+                registration=registration,
+                signed_by=request.user,
+                signed_by_role=request.user.access_level,
+                **sig_data,
+            )
         _log(request.user, 'registro_migrante_editado',
-             f'Registro #{registration.pk} editado directamente.', request=request)
+             f'Registro #{registration.pk} editado. Firma actualizada: {sig_data["message_hash"][:16]}…',
+             request=request)
+        _reg_event(registration, RegistrationEvent.EVENT_UPDATE, request.user,
+                   details=f'Editado directamente. Firma re-calculada.', request=request)
         messages.success(request, f'Registro #{registration.pk} actualizado.')
         return redirect('registros:registro_detail', pk=registration.pk)
 
@@ -357,11 +431,12 @@ def registro_edit(request, pk):
 
 @login_required(login_url='iam:login')
 @onboarding_required
-@require_POST
 def registro_delete(request, pk):
     """
-    Direct soft-delete (Level 1 only).
+    Soft-delete with mandatory cryptographic authentication (Level 1 only).
     Level 2–4 are redirected to create a WorkflowRequest.
+    GET: show confirmation form with password + cert + key.
+    POST: validate all credentials, sign, then soft-delete.
     """
     registration = get_object_or_404(MigrantRegistration, pk=pk, is_deleted=False)
 
@@ -372,9 +447,64 @@ def registro_delete(request, pk):
         return redirect('registros:workflow_request_create',
                         pk=pk, action='delete_registration')
 
+    if request.method == 'GET':
+        return render(request, 'registros/registro_delete_confirm.html', {
+            'registration': registration,
+            'title': f'Eliminar Registro #{registration.internal_id or registration.pk}',
+        })
+
+    # ── POST: validate credentials ────────────────────────────────────────────
+    if not request.user.check_password(request.POST.get('password', '')):
+        messages.error(request, 'Contraseña incorrecta.')
+        return render(request, 'registros/registro_delete_confirm.html', {
+            'registration': registration,
+            'title': f'Eliminar Registro #{registration.internal_id or registration.pk}',
+        })
+
+    cert_file = request.FILES.get('cert_file')
+    key_file = request.FILES.get('key_file')
+    if not cert_file or not key_file:
+        messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key).')
+        return render(request, 'registros/registro_delete_confirm.html', {
+            'registration': registration,
+            'title': f'Eliminar Registro #{registration.internal_id or registration.pk}',
+        })
+
+    try:
+        cert_bytes = cert_file.read()
+        key_bytes = key_file.read()
+    except Exception:
+        cert_bytes, key_bytes = b'', b''
+
+    if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
+        messages.error(request, 'Certificado o llave inválidos. Usa los archivos .cert y .key originales.')
+        return render(request, 'registros/registro_delete_confirm.html', {
+            'registration': registration,
+            'title': f'Eliminar Registro #{registration.internal_id or registration.pk}',
+        })
+
+    # ── Sign the deletion ─────────────────────────────────────────────────────
+    from .services import sign_action as _sign_action
+    action_sig = _sign_action(
+        subject_type='registration',
+        subject_id=registration.pk,
+        extra={
+            'action': 'delete_registration',
+            'internal_id': registration.internal_id,
+            'actor_id': request.user.pk,
+            'actor_role': request.user.access_level,
+            'deleted_at': timezone.now().isoformat(),
+        },
+        signer=request.user,
+    )
+
+    _reg_event(registration, RegistrationEvent.EVENT_DELETE, request.user,
+               details=f'Eliminado con autenticación criptográfica. Firma: {action_sig.message_hash[:16]}…',
+               request=request)
     registration.soft_delete(request.user)
     _log(request.user, 'registro_migrante_eliminado',
-         f'Registro #{registration.pk} eliminado por Nivel 1.', request=request)
+         f'Registro #{registration.pk} eliminado. Firma: {action_sig.message_hash[:16]}…',
+         request=request)
     messages.success(request, f'Registro #{registration.pk} eliminado.')
     return redirect('registros:registro_list')
 
@@ -475,7 +605,7 @@ def workflow_list(request):
     executable_pks = {wf.pk for wf in all_requests if wf.can_execute_by(user)}
     unread_notifications = Notification.objects.filter(
         recipient=user, is_read=False,
-    ).select_related('workflow_request').order_by('-created_at')
+    ).exclude(message__icontains='ARCO').select_related('workflow_request').order_by('-created_at')
     return render(request, 'registros/workflow_list.html', {
         'requests': all_requests,
         'pending_count': pending.count(),
@@ -517,40 +647,25 @@ def workflow_registration_preview(request, pk):
 
     payload = wf.payload or {}
     field_labels = {
-        'full_name': 'Nombre completo',
+        'first_name': 'Nombre',
+        'first_surname': 'Primer apellido',
+        'second_surname': 'Segundo apellido',
         'birth_date': 'Fecha de nacimiento',
         'gender': 'Género',
-        'nationality': 'Nacionalidad',
         'country_of_origin': 'País de origen',
-        'document_type': 'Tipo de documento',
-        'document_number': 'Número de documento',
+        'state_or_region': 'Departamento/Estado',
         'phone': 'Teléfono',
-        'email': 'Correo electrónico',
-        'entry_date': 'Fecha de ingreso al país',
-        'entry_point': 'Punto de ingreso',
-        'transit_countries': 'Países de tránsito',
-        'intended_destination': 'Destino final deseado',
+        'service_date': 'Fecha de servicio',
         'marital_status': 'Estado civil',
-        'travels_alone': 'Viaja solo/a',
-        'group_size': 'Personas en el grupo',
-        'minors_in_group': 'Menores en el grupo',
-        'assistance_requested': 'Tipo de asistencia solicitada',
-        'migration_reason': 'Motivo de migración',
-        'current_legal_status': 'Situación migratoria actual',
-        'shelter_name': 'Nombre del albergue/alojamiento',
-        'emergency_contact_name': 'Nombre del contacto de emergencia',
-        'emergency_contact_phone': 'Teléfono del contacto de emergencia',
-        'emergency_contact_relationship': 'Parentesco del contacto de emergencia',
-        'observations': 'Observaciones adicionales',
+        'age_group': 'Grupo de edad',
+        'population_group': 'Grupo poblacional',
     }
     field_order = [
-        'full_name', 'birth_date', 'gender', 'nationality', 'country_of_origin',
-        'document_type', 'document_number', 'phone', 'email',
-        'entry_date', 'entry_point', 'transit_countries', 'intended_destination',
-        'marital_status', 'travels_alone', 'group_size', 'minors_in_group',
-        'assistance_requested', 'migration_reason', 'current_legal_status', 'shelter_name',
-        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relationship',
-        'observations',
+        'first_name', 'first_surname', 'second_surname',
+        'birth_date', 'gender',
+        'country_of_origin', 'state_or_region',
+        'phone', 'service_date',
+        'marital_status', 'age_group', 'population_group',
     ]
     rows = [
         {
@@ -570,55 +685,122 @@ def workflow_registration_preview(request, pk):
 @onboarding_required
 @require_level(3)
 def workflow_decide(request, pk):
-    """GET: show decision form. POST: approve or reject a workflow request."""
+    """
+    GET: show decision form.
+    POST: approve or reject a workflow request.
+
+    Cambio 1: If the user is the final executor and the action involves registration
+    data, editable payload fields are shown so they can correct data before signing.
+
+    Cambio 2: If the user is the final executor (no more levels after this approval),
+    the request is approved AND executed in one step — no second 'execute' visit.
+    """
     wf = get_object_or_404(WorkflowRequest, pk=pk)
 
     if not wf.is_pending_for(request.user):
         messages.error(request, 'No tienes autorización para decidir sobre esta solicitud.')
         return redirect('registros:workflow_detail', pk=pk)
 
+    # Detect if this actor is the last approver in the chain (= final executor)
+    is_final_executor = (
+        len(wf.pending_levels) == 1
+        and wf.pending_levels[0] == request.user.access_level
+        and request.user.access_level <= 2
+    )
+    # Editable payload fields are only relevant for registration-data actions
+    show_edit_fields = is_final_executor and wf.action_type in (
+        WorkflowRequest.ACTION_CREATE_REGISTRATION,
+        WorkflowRequest.ACTION_UPDATE_REGISTRATION,
+    )
+    editable_payload_fields = _build_editable_payload_fields(wf.payload) if show_edit_fields else []
+
     diff_data = _build_diff_data(wf)
+
+    ctx = {
+        'wf': wf,
+        'diff_data': diff_data,
+        'is_final_executor': is_final_executor,
+        'show_edit_fields': show_edit_fields,
+        'editable_payload_fields': editable_payload_fields,
+    }
+
     if request.method == 'GET':
-        form = WorkflowApprovalForm()
-        return render(request, 'registros/workflow_decide.html', {
-            'wf': wf, 'form': form, 'diff_data': diff_data,
-        })
+        ctx['form'] = WorkflowApprovalForm()
+        return render(request, 'registros/workflow_decide.html', ctx)
 
     form = WorkflowApprovalForm(request.POST)
+    ctx['form'] = form
     if not form.is_valid():
-        return render(request, 'registros/workflow_decide.html', {
-            'wf': wf, 'form': form, 'diff_data': diff_data,
-        })
+        return render(request, 'registros/workflow_decide.html', ctx)
 
     if not request.user.check_password(form.cleaned_data['password']):
         form.add_error('password', 'Contraseña incorrecta.')
-        return render(request, 'registros/workflow_decide.html', {
-            'wf': wf, 'form': form, 'diff_data': diff_data,
-        })
+        return render(request, 'registros/workflow_decide.html', ctx)
 
     decision = form.cleaned_data['decision']
     notes = form.cleaned_data.get('notes', '')
 
+    # Cert + key always required for level 1–2 when approving
     if decision == 'approved' and request.user.access_level <= 2:
         cert_file = request.FILES.get('cert_file')
         key_file = request.FILES.get('key_file')
         if not cert_file or not key_file:
-            messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para aprobar esta solicitud.')
-            return render(request, 'registros/workflow_decide.html', {
-                'wf': wf, 'form': form, 'diff_data': diff_data,
-            })
-        cert_bytes = cert_file.read()
-        key_bytes = key_file.read()
+            messages.error(
+                request,
+                'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para aprobar.',
+            )
+            return render(request, 'registros/workflow_decide.html', ctx)
+        try:
+            cert_bytes = cert_file.read()
+            key_bytes = key_file.read()
+        except Exception:
+            cert_bytes, key_bytes = b'', b''
         if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
-            messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
-            return render(request, 'registros/workflow_decide.html', {
-                'wf': wf, 'form': form, 'diff_data': diff_data,
-            })
+            messages.error(
+                request,
+                'Certificado o llave inválidos. Usa el .cert y la .key originales descargados.',
+            )
+            return render(request, 'registros/workflow_decide.html', ctx)
 
     if decision == 'approved':
+        # Cambio 1: capture edits to payload before signing
+        mods = {}
+        if show_edit_fields:
+            mods = _extract_payload_modifications(wf.payload, request.POST)
+            if mods:
+                new_payload = dict(wf.payload)
+                for field, change in mods.items():
+                    new_payload[field] = change['after']
+                wf.modifications_before_execution = mods
+                wf.payload = new_payload
+                wf.save(update_fields=['modifications_before_execution', 'payload', 'updated_at'])
+
         ok = approve_request(wf, request.user, notes=notes)
         if ok:
-            messages.success(request, f'Solicitud #{wf.pk} aprobada.')
+            # Cambio 2: auto-execute if this was the final approval step
+            if wf.state == WorkflowRequest.STATE_APPROVED:
+                exec_ok = execute_request(wf, request.user, password_verified=True, notes=notes)
+                if exec_ok:
+                    if mods and wf.registration:
+                        changes_str = ', '.join(
+                            f'{k}: {v["before"]} → {v["after"]}' for k, v in mods.items()
+                        )
+                        _reg_event(
+                            wf.registration,
+                            RegistrationEvent.EVENT_WORKFLOW_APPROVED_WITH_CHANGES,
+                            request.user,
+                            details=f'Aceptado con cambios realizados: {changes_str}',
+                            request=request,
+                        )
+                    messages.success(request, f'Solicitud #{wf.pk} aprobada y ejecutada.')
+                else:
+                    messages.warning(
+                        request,
+                        f'Solicitud #{wf.pk} aprobada pero no se pudo ejecutar automáticamente. '
+                        'Procede a ejecutarla manualmente.',
+                    )
+            else:
+                messages.success(request, f'Solicitud #{wf.pk} aprobada y escalada.')
         else:
             messages.error(request, 'No tienes autorización para aprobar esta solicitud.')
     else:
@@ -635,38 +817,89 @@ def workflow_decide(request, pk):
 @onboarding_required
 @require_level(2)
 def workflow_execute(request, pk):
-    """GET: show execution form. POST: execute an APPROVED workflow request (Level 1–2 only)."""
+    """
+    GET: show execution form (with editable payload fields for Cambio 1).
+    POST: optionally apply payload modifications, then execute the APPROVED request.
+
+    This view is the fallback for APPROVED workflows not yet executed.
+    New workflows are approved+executed in one step via workflow_decide (Cambio 2).
+    """
     wf = get_object_or_404(WorkflowRequest, pk=pk)
 
-    if wf.state != 'approved':
+    if wf.state != WorkflowRequest.STATE_APPROVED:
         messages.error(request, 'Esta solicitud no está en estado aprobado.')
         return redirect('registros:workflow_detail', pk=pk)
 
-    if request.method == 'GET':
-        return render(request, 'registros/workflow_execute.html', {'wf': wf})
+    show_edit_fields = wf.action_type in (
+        WorkflowRequest.ACTION_CREATE_REGISTRATION,
+        WorkflowRequest.ACTION_UPDATE_REGISTRATION,
+    )
+    editable_payload_fields = _build_editable_payload_fields(wf.payload) if show_edit_fields else []
 
+    ctx = {
+        'wf': wf,
+        'show_edit_fields': show_edit_fields,
+        'editable_payload_fields': editable_payload_fields,
+    }
+
+    if request.method == 'GET':
+        return render(request, 'registros/workflow_execute.html', ctx)
+
+    # ── POST: validate credentials ────────────────────────────────────────────
     if not request.user.check_password(request.POST.get('password', '')):
         messages.error(request, 'Contraseña incorrecta.')
-        return render(request, 'registros/workflow_execute.html', {'wf': wf})
+        return render(request, 'registros/workflow_execute.html', ctx)
 
     if request.user.access_level <= 2:
         cert_file = request.FILES.get('cert_file')
         key_file = request.FILES.get('key_file')
         if not cert_file or not key_file:
-            messages.error(request, 'Debes subir tu certificado digital (.cert) y tu llave privada (.key) para ejecutar esta solicitud.')
-            return render(request, 'registros/workflow_execute.html', {'wf': wf})
+            messages.error(
+                request,
+                'Debes subir tu certificado digital (.cert) y tu llave privada (.key).',
+            )
+            return render(request, 'registros/workflow_execute.html', ctx)
         try:
             cert_bytes = cert_file.read()
             key_bytes = key_file.read()
         except Exception:
             cert_bytes, key_bytes = b'', b''
         if not validate_cert_and_key(request.user, cert_bytes, key_bytes):
-            messages.error(request, 'Certificado o llave inválidos. Usa el .cert y la .key originales descargados, y no los conviertas a otro formato.')
-            return render(request, 'registros/workflow_execute.html', {'wf': wf})
+            messages.error(
+                request,
+                'Certificado o llave inválidos. Usa el .cert y la .key originales descargados.',
+            )
+            return render(request, 'registros/workflow_execute.html', ctx)
 
-    ok = execute_request(wf, request.user, password_verified=True,
-                         notes=request.POST.get('notes', ''))
+    # ── Cambio 1: capture payload modifications ───────────────────────────────
+    mods = {}
+    if show_edit_fields:
+        mods = _extract_payload_modifications(wf.payload, request.POST)
+        if mods:
+            new_payload = dict(wf.payload)
+            for field, change in mods.items():
+                new_payload[field] = change['after']
+            wf.modifications_before_execution = mods
+            wf.payload = new_payload
+            wf.save(update_fields=['modifications_before_execution', 'payload', 'updated_at'])
+
+    ok = execute_request(
+        wf, request.user,
+        password_verified=True,
+        notes=request.POST.get('notes', ''),
+    )
     if ok:
+        if mods and wf.registration:
+            changes_str = ', '.join(
+                f'{k}: {v["before"]} → {v["after"]}' for k, v in mods.items()
+            )
+            _reg_event(
+                wf.registration,
+                RegistrationEvent.EVENT_WORKFLOW_APPROVED_WITH_CHANGES,
+                request.user,
+                details=f'Aceptado con cambios realizados: {changes_str}',
+                request=request,
+            )
         messages.success(request, f'Solicitud #{wf.pk} ejecutada exitosamente.')
     else:
         messages.error(request, 'No se pudo ejecutar la solicitud. Verifica el estado y tus permisos.')
@@ -861,41 +1094,29 @@ def _generate_access_pdf(arco) -> bytes:
         Spacer(1, 0.4 * cm),
     ]
 
+    second = reg.second_surname or ''
+    second_display = second if second.upper() != 'X' else '—'
     sections = [
         ('Identificación', [
             ('Identificador interno', reg.internal_id or '—'),
-            ('Nombre completo', reg.full_name),
+            ('Nombre', reg.first_name),
+            ('Primer apellido', reg.first_surname),
+            ('Segundo apellido', second_display),
             ('Fecha de nacimiento', str(reg.birth_date)),
             ('Género', reg.get_gender_display()),
-            ('Nacionalidad', reg.nationality),
+        ]),
+        ('Origen', [
             ('País de origen', reg.country_of_origin),
-            ('Tipo de documento', reg.get_document_type_display()),
-            ('Número de documento', reg.document_number or '—'),
+            ('Departamento/Estado', reg.state_or_region or '—'),
         ]),
         ('Contacto', [
             ('Teléfono', reg.phone or '—'),
-            ('Correo electrónico', reg.email or '—'),
         ]),
-        ('Ingreso', [
-            ('Fecha de ingreso', str(reg.entry_date)),
-            ('Punto de ingreso', reg.entry_point),
-            ('Países de tránsito', reg.transit_countries or '—'),
-            ('Destino final', reg.intended_destination or '—'),
-        ]),
-        ('Grupo familiar', [
+        ('Servicio', [
+            ('Fecha de servicio', str(reg.service_date)),
             ('Estado civil', reg.get_marital_status_display()),
-            ('Viaja solo/a', 'Sí' if reg.travels_alone else 'No'),
-            ('Tamaño del grupo', str(reg.group_size)),
-            ('Menores en el grupo', str(reg.minors_in_group)),
-        ]),
-        ('Situación', [
-            ('Situación migratoria', reg.get_current_legal_status_display()),
-            ('Motivo de migración', reg.migration_reason),
-            ('Asistencia solicitada', reg.assistance_requested),
-            ('Nombre del albergue', reg.shelter_name or '—'),
-        ]),
-        ('Observaciones', [
-            ('Observaciones', reg.observations or '—'),
+            ('Grupo de edad', reg.get_age_group_display()),
+            ('Grupo poblacional', reg.get_population_group_display()),
         ]),
     ]
 
@@ -935,6 +1156,22 @@ def _generate_access_pdf(arco) -> bytes:
 @login_required(login_url='iam:login')
 @onboarding_required
 @require_level(3)
+def arco_select_registration(request):
+    """Picker step: choose which migrant to file an ARCO request for."""
+    qs = MigrantRegistration.objects.filter(is_deleted=False, arco_cancelled_at__isnull=True)
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(internal_id__icontains=q)
+    return render(request, 'registros/arco_select_registration.html', {
+        'registrations': qs,
+        'q': q,
+        'title': 'Nueva solicitud ARCO — Seleccionar migrante',
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(3)
 def arco_list(request):
     user = request.user
     if user.access_level <= 2:
@@ -942,8 +1179,13 @@ def arco_list(request):
     else:
         qs = ArcoRequest.objects.filter(requested_by=user)
     qs = qs.select_related('requested_by', 'registration', 'executed_by').order_by('-created_at')
+    arco_notifications = Notification.objects.filter(
+        recipient=user, is_read=False, message__icontains='ARCO',
+    ).order_by('-created_at')
     return render(request, 'registros/arco_list.html', {
-        'requests': qs, 'title': 'Solicitudes ARCO',
+        'requests': qs,
+        'arco_notifications': arco_notifications,
+        'title': 'Solicitudes ARCO',
     })
 
 
@@ -991,10 +1233,8 @@ def arco_create(request, pk):
 
         arco.save()
 
-        # Create linked Ticket
-        ticket = Ticket.create_for_arco(arco, request.user)
-        arco.ticket = ticket
-        arco.save(update_fields=['ticket'])
+        # Create ARCO-specific ticket (NOT a generic Ticket)
+        ArcoTicket.objects.create(arco_request=arco, created_by=request.user)
 
         _log(request.user, 'arco_request_created',
              f'{arco.case_id} {arco.get_arco_type_display()} para Registro #{registration.pk}',
@@ -1150,13 +1390,12 @@ def arco_execute(request, pk):
             reg.save()
 
     elif arco.arco_type == ArcoRequest.ARCO_CANCELLATION:
-        arco.registration.soft_delete(request.user)
+        # Cambio 4: mark as ARCO-cancelled (not soft-deleted) so only internal_id remains visible
+        arco.registration.mark_arco_cancelled('cancellation', request.user)
 
     elif arco.arco_type == ArcoRequest.ARCO_OPPOSITION:
-        reg = arco.registration
-        note = f'[ARCO Oposición {arco.case_id}] {notes or arco.description}'
-        reg.observations = (reg.observations + '\n' + note).strip() if reg.observations else note
-        reg.save(update_fields=['observations'])
+        # Cambio 4: opposition also removes PII access — mark as ARCO-cancelled
+        arco.registration.mark_arco_cancelled('opposition', request.user)
 
     # ── Finalize ─────────────────────────────────────────────────────────────
     arco.state = ArcoRequest.STATE_EXECUTED
@@ -1200,6 +1439,31 @@ def arco_execute(request, pk):
 
     messages.success(request, f'Solicitud ARCO {arco.case_id} ejecutada y firmada.')
     return redirect('registros:arco_detail', pk=pk)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(1)
+def arco_cancelled_list(request):
+    """
+    Admin-only: list of registrations cancelled by ARCO Cancelación or Oposición.
+
+    Per LFPDPPP (derecho al olvido): PII is suppressed — only internal_id,
+    reason, date, and executor are shown. Search is restricted to internal_id.
+    """
+    qs = MigrantRegistration.objects.filter(
+        arco_cancelled_at__isnull=False,
+    ).select_related('arco_cancelled_by').order_by('-arco_cancelled_at')
+
+    q = request.GET.get('q', '').strip()
+    if q:
+        qs = qs.filter(internal_id__icontains=q)
+
+    return render(request, 'registros/arco_cancelled_list.html', {
+        'registrations': qs,
+        'q': q,
+        'title': 'Registros cancelados por ARCO',
+    })
 
 
 @login_required(login_url='iam:login')
@@ -1302,7 +1566,7 @@ def ticket_list(request):
         ) | tickets.filter(
             summary__icontains=q
         ) | tickets.filter(
-            registration__full_name__icontains=q
+            registration__internal_id__icontains=q
         )
 
     priority = request.GET.get('priority', '').strip()
@@ -1345,3 +1609,163 @@ def ticket_detail(request, ticket_id):
         'status_choices': Ticket.STATUS_CHOICES,
         'can_update_status': request.user.access_level <= 2,
     })
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ARCO TICKET VIEWS  (separate from generic Tickets — ARCO-only authorization)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(2)
+def arco_ticket_list(request):
+    """List ARCO tickets. COORDINADOR sees submitted + own; ADMIN sees all."""
+    user = request.user
+    if user.access_level == 1:
+        qs = ArcoTicket.objects.all()
+    else:
+        from django.db.models import Q
+        qs = ArcoTicket.objects.filter(
+            Q(created_by=user) | Q(state=ArcoTicket.STATE_SUBMITTED)
+        )
+    qs = qs.select_related('arco_request__registration', 'created_by').order_by('-created_at')
+    return render(request, 'registros/arco_ticket_list.html', {
+        'tickets': qs,
+        'title': 'Tickets ARCO',
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_level(2)
+def arco_ticket_detail(request, ticket_id):
+    """Detail view for a single ARCO ticket."""
+    ticket = get_object_or_404(ArcoTicket, ticket_id=ticket_id)
+    user = request.user
+    can_review = ticket.can_review(user) and ticket.state == ArcoTicket.STATE_SUBMITTED
+    can_approve = ticket.can_approve(user) and ticket.state == ArcoTicket.STATE_ESCALATED
+    can_execute = ticket.can_approve(user) and ticket.state == ArcoTicket.STATE_ADMIN_APPROVAL
+    return render(request, 'registros/arco_ticket_detail.html', {
+        'ticket': ticket,
+        'arco': ticket.arco_request,
+        'can_review': can_review,
+        'can_approve': can_approve,
+        'can_execute': can_execute,
+    })
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_POST
+@require_level(2)
+def arco_ticket_escalate(request, ticket_id):
+    """Coordinator reviews and escalates an ARCO ticket to Admin."""
+    user = request.user
+    ticket = get_object_or_404(ArcoTicket, ticket_id=ticket_id)
+
+    if ticket.state != ArcoTicket.STATE_SUBMITTED:
+        messages.error(request, 'El ticket no está en estado para revisar.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    cert_file = request.FILES.get('cert_file')
+    key_file = request.FILES.get('key_file')
+    notes = request.POST.get('notes', '')
+
+    if not cert_file or not key_file:
+        messages.error(request, 'Debes subir tu certificado y llave privada.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    cert_bytes = cert_file.read()
+    key_bytes = key_file.read()
+
+    if not validate_cert_and_key(user, cert_bytes, key_bytes):
+        messages.error(request, 'Certificado o llave inválidos.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    from .services import sign_action as _sign_action
+    sig = _sign_action(
+        subject_type='arco_request',
+        subject_id=ticket.arco_request.pk,
+        extra={'action': 'coordinator_escalate', 'ticket_id': ticket_id},
+        signer=user,
+    )
+
+    try:
+        ticket.mark_coordinator_reviewed(user, notes=notes, signature=sig)
+    except PermissionError as exc:
+        messages.error(request, str(exc))
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    _log(user, 'arco_ticket_escalate', f'ArcoTicket:{ticket_id}', request=request)
+    messages.success(request, f'Ticket {ticket_id} escalado a Administración.')
+    return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_POST
+@require_level(1)
+def arco_ticket_approve_and_execute(request, ticket_id):
+    """Admin approves, signs, and executes an ARCO ticket."""
+    user = request.user
+    ticket = get_object_or_404(ArcoTicket, ticket_id=ticket_id)
+
+    if ticket.state != ArcoTicket.STATE_ESCALATED:
+        messages.error(request, 'El ticket no está listo para aprobación admin.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    cert_file = request.FILES.get('cert_file')
+    key_file = request.FILES.get('key_file')
+    notes = request.POST.get('notes', '')
+
+    if not cert_file or not key_file:
+        messages.error(request, 'Debes subir tu certificado y llave privada.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    cert_bytes = cert_file.read()
+    key_bytes = key_file.read()
+
+    if not validate_cert_and_key(user, cert_bytes, key_bytes):
+        messages.error(request, 'Certificado o llave inválidos.')
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    from .services import sign_action as _sign_action
+    sig = _sign_action(
+        subject_type='arco_request',
+        subject_id=ticket.arco_request.pk,
+        extra={'action': 'admin_approve_execute', 'ticket_id': ticket_id},
+        signer=user,
+    )
+
+    try:
+        ticket.mark_admin_approved(user, notes=notes, signature=sig)
+        ticket.mark_executed()
+    except PermissionError as exc:
+        messages.error(request, str(exc))
+        return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+    # Mark underlying ArcoRequest as executed too
+    arco = ticket.arco_request
+    arco.state = ArcoRequest.STATE_EXECUTED
+    arco.executed_by = user
+    arco.executed_at = timezone.now()
+    arco.action_signature = sig
+    arco.save(update_fields=['state', 'executed_by', 'executed_at', 'action_signature'])
+
+    _log(user, 'arco_ticket_executed', f'ArcoTicket:{ticket_id} | caso:{arco.case_id}', request=request)
+    messages.success(request, f'Ticket ARCO {ticket_id} ejecutado y firmado.')
+    return redirect('registros:arco_ticket_detail', ticket_id=ticket_id)
+
+
+@login_required(login_url='iam:login')
+@onboarding_required
+@require_POST
+@require_level(2)
+def arco_ticket_reject(request, ticket_id):
+    """Reject an ARCO ticket."""
+    ticket = get_object_or_404(ArcoTicket, ticket_id=ticket_id)
+    reason = request.POST.get('reason', 'Sin especificar')
+    ticket.mark_rejected(reason)
+    _log(request.user, 'arco_ticket_rejected', f'ArcoTicket:{ticket_id} | motivo:{reason}', request=request)
+    messages.info(request, f'Ticket ARCO {ticket_id} rechazado.')
+    return redirect('registros:arco_ticket_list')

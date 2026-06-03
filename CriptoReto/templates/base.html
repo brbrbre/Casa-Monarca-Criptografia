@@ -265,7 +265,7 @@
     input, select, textarea {
       border: 1px solid var(--cm-border);
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 6px 12px;
       font-size: 14px;
       background: var(--cm-surface);
       color: var(--cm-text);
@@ -433,22 +433,18 @@
           </a>
         </li>
         <li class="nav-child">
-          <a href="{% url 'registros:arco_list' %}" class="{% if request.resolver_match.url_name == 'arco_list' or request.resolver_match.url_name == 'arco_detail' or request.resolver_match.url_name == 'arco_create' %}active{% endif %}">
-            ARCO
+          <a href="{% url 'registros:arco_list' %}" class="{% if request.resolver_match.url_name == 'arco_list' or request.resolver_match.url_name == 'arco_detail' or request.resolver_match.url_name == 'arco_create' or request.resolver_match.url_name == 'arco_ticket_list' or request.resolver_match.url_name == 'arco_ticket_detail' %}active{% endif %}" style="justify-content:space-between;">
+            <span>ARCO</span>
+            {% if unread_arco_notifications_count %}<span class="nav-badge nav-badge-yellow">{{ unread_arco_notifications_count }}</span>{% endif %}
           </a>
         </li>
-        {% if lvl == 1 %}
+        <!-- {% if lvl == 1 %}
         <li class="nav-child">
           <a href="{% url 'registros:registro_deleted_list' %}" class="{% if request.resolver_match.url_name == 'registro_deleted_list' %}active{% endif %}">
             Cancelados ARCO
           </a>
         </li>
-        {% endif %}
-        <li class="nav-child">
-          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
-            {% if lvl >= 3 %}Nueva Solicitud{% else %}Nuevo Registro{% endif %}
-          </a>
-        </li>
+        {% endif %} -->
         {% else %}
         <li>
           <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
@@ -458,18 +454,17 @@
         {% endif %}
       </ul>
 
+      {% if lvl <= 2 %}
       <div class="nav-separator"></div>
 
       <!-- ADMINISTRACIÓN -->
       <span class="nav-section-header">Administración</span>
       <ul class="nav-list">
-        {% if lvl <= 2 %}
         <li>
           <a href="{% url 'iam:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
             <i class="fa-solid fa-clock-rotate-left"></i> Auditoría
           </a>
         </li>
-        {% endif %}
         {% if lvl == 1 %}
         <li>
           <a href="{% url 'iam:certificate_mgmt_list' %}" class="{% if 'certificate_mgmt' in request.resolver_match.url_name %}active{% endif %}">
@@ -477,8 +472,13 @@
           </a>
         </li>
         {% endif %}
-       
+       <!-- <li>
+          <a href="{% url 'registros:ticket_list' %}" class="{% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}">
+            <i class="fa-solid fa-ticket"></i> Tickets
+          </a>
+        </li>-->
       </ul>
+      {% endif %}
 
       {% endwith %}
       {% endif %}

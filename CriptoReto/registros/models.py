@@ -15,19 +15,10 @@ PRIVACY_NOTICE_VERSION = '1.0'
 
 class MigrantRegistration(models.Model):
     GENDER_CHOICES = [
-        ('masculino', 'Masculino'),
         ('femenino', 'Femenino'),
+        ('masculino', 'Masculino'),
         ('no_binario', 'No binario'),
-        ('prefiero_no_decir', 'Prefiero no decir'),
-    ]
-
-    DOCUMENT_TYPE_CHOICES = [
-        ('pasaporte', 'Pasaporte'),
-        ('id_nacional', 'Identificación nacional'),
-        ('acta_nacimiento', 'Acta de nacimiento'),
-        ('visa', 'Visa'),
-        ('sin_documentos', 'Sin documentos'),
-        ('otro', 'Otro'),
+        ('lgbtiq', 'LGBTIQ+'),
     ]
 
     MARITAL_STATUS_CHOICES = [
@@ -38,68 +29,41 @@ class MigrantRegistration(models.Model):
         ('viudo', 'Viudo/a'),
     ]
 
-    LEGAL_STATUS_CHOICES = [
-        ('solicitante_asilo', 'Solicitante de asilo'),
-        ('refugiado_reconocido', 'Refugiado reconocido'),
-        ('migrante_regular', 'Migrante en situación regular'),
-        ('migrante_irregular', 'Migrante en situación irregular'),
-        ('desconoce', 'Desconoce su situación'),
+    AGE_GROUP_CHOICES = [
+        ('infancia', 'Infancia (0-11 años)'),
+        ('adolescencia', 'Adolescencia (12-17 años)'),
+        ('adulto', 'Adulto (18-59 años)'),
+        ('adulto_mayor', 'Adulto mayor (60+ años)'),
     ]
 
-    ASSISTANCE_CHOICES = [
-        ('legal', 'Asesoría legal'),
-        ('medica', 'Atención médica'),
-        ('alimentaria', 'Apoyo alimentario'),
-        ('alojamiento', 'Alojamiento temporal'),
-        ('psicologica', 'Apoyo psicológico'),
-        ('educacion', 'Servicios educativos'),
-        ('laboral', 'Apoyo laboral'),
-        ('documentacion', 'Gestión documental'),
-        ('transporte', 'Apoyo de transporte'),
-        ('otro', 'Otro'),
+    POPULATION_GROUP_CHOICES = [
+        ('adulto', 'Adulto (18-59)'),
+        ('adulto_mayor', 'Adulto mayor (+60)'),
+        ('nina_acompanada', 'Niña acompañada'),
+        ('nino_acompanado', 'Niño acompañado'),
+        ('adolescente_hombre', 'Adolescente hombre acompañado'),
+        ('adolescente_mujer', 'Adolescente mujer acompañada'),
+        ('nna_no_acompanado', 'NNA No acompañado'),
     ]
 
-    # ── Personal ──────────────────────────────────────────────────────────────
+    # ── Personal (PII — encrypted) ────────────────────────────────────────────
     internal_id = models.CharField('Identificador interno', max_length=32, unique=True, blank=True, null=True)
-    full_name = EncryptedTextField('Nombre completo')
+    first_name = EncryptedTextField('Nombre')
+    first_surname = EncryptedTextField('Primer apellido')
+    second_surname = EncryptedTextField('Segundo apellido', blank=True, default='X')
     birth_date = EncryptedDateField('Fecha de nacimiento')
-    gender = models.CharField('Género', max_length=20, choices=GENDER_CHOICES)
-    nationality = EncryptedTextField('Nacionalidad')
-    country_of_origin = EncryptedTextField('País de origen')
-    document_type = models.CharField('Tipo de documento', max_length=30, choices=DOCUMENT_TYPE_CHOICES)
-    document_number = EncryptedTextField('Número de documento', blank=True, default='')
-
-    # ── Contact ───────────────────────────────────────────────────────────────
     phone = EncryptedTextField('Teléfono', blank=True, default='')
-    email = EncryptedTextField('Correo electrónico', blank=True, default='')
+    country_of_origin = EncryptedTextField('País de origen')
 
-    # ── Entry ─────────────────────────────────────────────────────────────────
-    entry_date = models.DateField('Fecha de ingreso al país')
-    entry_point = models.CharField('Punto de ingreso', max_length=200)
-    transit_countries = EncryptedTextField('Países de tránsito', blank=True, default='')
-    intended_destination = models.CharField('Destino final deseado', max_length=200, blank=True)
-
-    # ── Family / Group ────────────────────────────────────────────────────────
+    # ── Personal (plain) ──────────────────────────────────────────────────────
+    gender = models.CharField('Género', max_length=20, choices=GENDER_CHOICES)
+    state_or_region = models.CharField('Departamento/Estado', max_length=100)
     marital_status = models.CharField('Estado civil', max_length=20, choices=MARITAL_STATUS_CHOICES)
-    travels_alone = models.BooleanField('Viaja solo/a', default=True)
-    group_size = models.PositiveSmallIntegerField('Personas en el grupo', default=1)
-    minors_in_group = models.PositiveSmallIntegerField('Menores en el grupo', default=0)
+    service_date = models.DateField('Fecha de servicio', null=True, blank=True)
+    age_group = models.CharField('Grupo de edad', max_length=30, choices=AGE_GROUP_CHOICES, blank=True, default='')
+    population_group = models.CharField('Grupo poblacional', max_length=50, choices=POPULATION_GROUP_CHOICES, blank=True, default='')
 
-    # ── Needs ─────────────────────────────────────────────────────────────────
-    assistance_requested = models.CharField('Tipo de asistencia solicitada', max_length=500)
-    migration_reason = EncryptedTextField('Motivo de migración')
-    current_legal_status = models.CharField(
-        'Situación migratoria actual', max_length=30, choices=LEGAL_STATUS_CHOICES,
-    )
-    shelter_name = models.CharField('Nombre del albergue/alojamiento', max_length=200, blank=True)
-
-    # ── Emergency contact ─────────────────────────────────────────────────────
-    emergency_contact_name = EncryptedTextField('Nombre del contacto de emergencia')
-    emergency_contact_phone = EncryptedTextField('Teléfono del contacto de emergencia')
-    emergency_contact_relationship = EncryptedTextField('Parentesco del contacto de emergencia')
-
-    # ── Additional ────────────────────────────────────────────────────────────
-    observations = EncryptedTextField('Observaciones adicionales', blank=True, default='')
+    # ── Consent ───────────────────────────────────────────────────────────────
     data_consent = models.BooleanField('Consentimiento de tratamiento de datos personales', default=False)
 
     # ── Privacy consent audit trail ───────────────────────────────────────────
@@ -152,10 +116,37 @@ class MigrantRegistration(models.Model):
         verbose_name='Eliminado por',
     )
 
+    # ── ARCO Cancelación / Oposición ──────────────────────────────────────────
+    ARCO_CANCEL_REASON_CHOICES = [
+        ('cancellation', 'Cancelación ARCO'),
+        ('opposition', 'Oposición ARCO'),
+    ]
+    arco_cancellation_reason = models.CharField(
+        'Razón de cancelación ARCO', max_length=20,
+        choices=ARCO_CANCEL_REASON_CHOICES, null=True, blank=True,
+    )
+    arco_cancelled_at = models.DateTimeField('Cancelado por ARCO el', null=True, blank=True)
+    arco_cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_cancellations_executed',
+        verbose_name='Cancelado por (ARCO)',
+    )
+
     class Meta:
         verbose_name = 'Registro migrante'
         verbose_name_plural = 'Registros migrantes'
         ordering = ['-created_at']
+
+    @property
+    def full_name(self):
+        parts = [self.first_name, self.first_surname]
+        second = self.second_surname or ''
+        if second and second.upper() != 'X':
+            parts.append(second)
+        return ' '.join(p for p in parts if p)
 
     def __str__(self):
         return f'{self.full_name} — {self.internal_id or self.pk}'
@@ -163,17 +154,21 @@ class MigrantRegistration(models.Model):
     def save(self, *args, **kwargs):
         if not self.internal_id:
             self.internal_id = f'MIG-{uuid.uuid4().hex[:8].upper()}'
+        if not self.second_surname:
+            self.second_surname = 'X'
         super().save(*args, **kwargs)
-
-    def get_assistance_list(self):
-        label_map = dict(self.ASSISTANCE_CHOICES)
-        return [label_map.get(k.strip(), k.strip()) for k in self.assistance_requested.split(',') if k.strip()]
 
     def soft_delete(self, user):
         self.is_deleted = True
         self.deleted_at = timezone.now()
         self.deleted_by = user
         self.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+
+    def mark_arco_cancelled(self, reason: str, user):
+        self.arco_cancellation_reason = reason
+        self.arco_cancelled_at = timezone.now()
+        self.arco_cancelled_by = user
+        self.save(update_fields=['arco_cancellation_reason', 'arco_cancelled_at', 'arco_cancelled_by'])
 
 
 class MigrantRegistrationSignature(models.Model):
@@ -398,6 +393,10 @@ class WorkflowRequest(models.Model):
     # JSON with the proposed changes (for UPDATE) or the reason (for DELETE/ARCO)
     payload = models.JSONField('Datos de la solicitud', default=dict)
     notes = models.TextField('Notas del solicitante', blank=True)
+    # Modifications applied by the executor before signing (Cambio 1)
+    modifications_before_execution = models.JSONField(
+        'Modificaciones antes de ejecución', default=dict, blank=True,
+    )
 
     # ── Approval routing ──────────────────────────────────────────────────────
     # Level required to act on this request right now (decrements as approved)
@@ -778,19 +777,15 @@ class Ticket(models.Model):
         level = getattr(created_by, 'access_level', 4)
         prefix, rol = _TICKET_ROLE_MAP.get(level, ('VOL', 'Voluntario'))
 
-        assistances = [a.strip() for a in registration.assistance_requested.split(',') if a.strip()]
-        priority = cls._infer_priority(assistances)
-
         summary = (
             f'Nuevo registro migrante: {registration.internal_id} — {registration.full_name}'
         )
 
         lines = [
             f'Folio del beneficiario: {registration.internal_id}',
-            f'Nombre completo: {registration.full_name}',
-            f'Nacionalidad: {registration.nationality}',
-            f'Fecha de ingreso: {registration.entry_date}',
-            f'Asistencia solicitada: {", ".join(assistances) if assistances else "No especificada"}',
+            f'Nombre: {registration.full_name}',
+            f'País de origen: {registration.country_of_origin}',
+            f'Fecha de servicio: {registration.service_date}',
             f'Registrado por: {created_by.get_full_name() or created_by.username} '
             f'(Nivel {level} — {rol})',
         ]
@@ -804,7 +799,7 @@ class Ticket(models.Model):
             rol_display=rol,
             summary=summary,
             description=description,
-            priority=priority,
+            priority=cls.PRIORITY_MEDIA,
         )
 
     @classmethod
@@ -866,15 +861,152 @@ class Ticket(models.Model):
             status=cls.STATUS_ABIERTO,
         )
 
-    @staticmethod
-    def _infer_priority(assistances: list) -> str:
-        high = {'legal', 'medica'}
-        medium = {'alojamiento', 'psicologica', 'documentacion'}
-        if any(a in high for a in assistances):
-            return Ticket.PRIORITY_ALTA
-        if any(a in medium for a in assistances):
-            return Ticket.PRIORITY_MEDIA
-        return Ticket.PRIORITY_BAJA
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ARCO TICKET  (separate from generic Ticket — ARCO-only authorization flow)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ArcoTicket(models.Model):
+    """
+    ARCO-specific ticket for coordinating data-rights requests.
+
+    Authorization:
+      OPERATOR (3): can create (initiates the request)
+      COORDINATOR (2): can review and escalate; must authenticate with certificate
+      ADMIN (1): can approve, sign, and execute
+
+    State flow:
+      submitted → coordinator_review → escalated → admin_approval → executed
+                                    └─ rejected
+    """
+
+    STATE_SUBMITTED = 'submitted'
+    STATE_COORDINATOR_REVIEW = 'coordinator_review'
+    STATE_ESCALATED = 'escalated'
+    STATE_ADMIN_APPROVAL = 'admin_approval'
+    STATE_EXECUTED = 'executed'
+    STATE_REJECTED = 'rejected'
+
+    STATE_CHOICES = [
+        (STATE_SUBMITTED,          'Enviada'),
+        (STATE_COORDINATOR_REVIEW, 'En revisión (Coordinador)'),
+        (STATE_ESCALATED,          'Escalada a Administración'),
+        (STATE_ADMIN_APPROVAL,     'Esperando aprobación de Admin'),
+        (STATE_EXECUTED,           'Ejecutada'),
+        (STATE_REJECTED,           'Rechazada'),
+    ]
+
+    arco_request = models.OneToOneField(
+        ArcoRequest,
+        on_delete=models.CASCADE,
+        related_name='arco_ticket',
+        verbose_name='Solicitud ARCO asociada',
+    )
+
+    ticket_id = models.CharField('ID de ticket ARCO', max_length=30, unique=True, db_index=True)
+    state = models.CharField('Estado', max_length=25, choices=STATE_CHOICES, default=STATE_SUBMITTED, db_index=True)
+
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='arco_tickets_created',
+        verbose_name='Creado por',
+    )
+    created_at = models.DateTimeField('Creado el', auto_now_add=True)
+
+    coordinator_reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_tickets_coordinator_reviewed',
+        verbose_name='Revisado por Coordinador',
+    )
+    coordinator_reviewed_at = models.DateTimeField('Revisado por Coordinador el', null=True, blank=True)
+    coordinator_notes = models.TextField('Notas del Coordinador', blank=True)
+    coordinator_signature = models.OneToOneField(
+        ActionSignature,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_ticket_coordinator_auth',
+        verbose_name='Autenticación del Coordinador',
+    )
+
+    admin_approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_tickets_admin_approved',
+        verbose_name='Aprobado por Admin',
+    )
+    admin_approved_at = models.DateTimeField('Aprobado por Admin el', null=True, blank=True)
+    admin_notes = models.TextField('Notas del Admin', blank=True)
+    admin_signature = models.OneToOneField(
+        ActionSignature,
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='arco_ticket_admin_signature',
+        verbose_name='Firma Digital del Admin',
+    )
+
+    executed_at = models.DateTimeField('Ejecutada el', null=True, blank=True)
+    rejection_reason = models.TextField('Motivo del rechazo', blank=True, null=True)
+    updated_at = models.DateTimeField('Última actualización', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Ticket ARCO'
+        verbose_name_plural = 'Tickets ARCO'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['state', 'created_at']),
+            models.Index(fields=['created_by', 'state']),
+        ]
+
+    def __str__(self):
+        return f'[{self.ticket_id}] {self.arco_request.get_arco_type_display()} — {self.get_state_display()}'
+
+    def save(self, *args, **kwargs):
+        if not self.ticket_id:
+            self.ticket_id = f'ARCO-TKT-{uuid.uuid4().hex[:12].upper()}'
+        super().save(*args, **kwargs)
+
+    def can_review(self, user) -> bool:
+        return getattr(user, 'access_level', 99) <= 2
+
+    def can_approve(self, user) -> bool:
+        return getattr(user, 'access_level', 99) == 1
+
+    def mark_coordinator_reviewed(self, user, notes: str = '', signature=None):
+        if not self.can_review(user):
+            raise PermissionError(f'{user} is not authorized to review ARCO tickets')
+        self.state = self.STATE_ESCALATED
+        self.coordinator_reviewed_by = user
+        self.coordinator_reviewed_at = timezone.now()
+        self.coordinator_notes = notes
+        if signature:
+            self.coordinator_signature = signature
+        self.save()
+
+    def mark_admin_approved(self, user, notes: str = '', signature=None):
+        if not self.can_approve(user):
+            raise PermissionError(f'{user} is not authorized to approve ARCO tickets')
+        self.state = self.STATE_ADMIN_APPROVAL
+        self.admin_approved_by = user
+        self.admin_approved_at = timezone.now()
+        self.admin_notes = notes
+        if signature:
+            self.admin_signature = signature
+        self.save()
+
+    def mark_executed(self):
+        self.state = self.STATE_EXECUTED
+        self.executed_at = timezone.now()
+        self.save()
+
+    def mark_rejected(self, reason: str):
+        self.state = self.STATE_REJECTED
+        self.rejection_reason = reason
+        self.save()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -904,6 +1036,7 @@ class RegistrationEvent(models.Model):
     EVENT_WORKFLOW_APPROVED = 'workflow_approved'
     EVENT_WORKFLOW_REJECTED = 'workflow_rejected'
     EVENT_WORKFLOW_EXECUTED = 'workflow_executed'
+    EVENT_WORKFLOW_APPROVED_WITH_CHANGES = 'approved_with_changes'
 
     EVENT_CHOICES = [
         (EVENT_VIEW, 'Consulta'),
@@ -919,6 +1052,7 @@ class RegistrationEvent(models.Model):
         (EVENT_WORKFLOW_APPROVED, 'Solicitud de flujo aprobada'),
         (EVENT_WORKFLOW_REJECTED, 'Solicitud de flujo rechazada'),
         (EVENT_WORKFLOW_EXECUTED, 'Solicitud de flujo ejecutada'),
+        (EVENT_WORKFLOW_APPROVED_WITH_CHANGES, 'Aprobado con cambios por ejecutor'),
     ]
 
     registration = models.ForeignKey(

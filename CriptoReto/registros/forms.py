@@ -1,15 +1,10 @@
+import re
+
 from django import forms
 from .models import ArcoRequest, MigrantRegistration
 
 
 class MigrantRegistrationForm(forms.ModelForm):
-    # Override to show checkboxes; value stored as comma-separated string in the model
-    assistance_requested = forms.MultipleChoiceField(
-        choices=MigrantRegistration.ASSISTANCE_CHOICES,
-        widget=forms.CheckboxSelectMultiple,
-        label='Tipo de asistencia solicitada',
-        help_text='Selecciona todos los tipos de asistencia que necesita.',
-    )
     # Use id="privacy_accept" so the privacy-modal partial can check it
     data_consent = forms.BooleanField(
         required=True,
@@ -26,7 +21,7 @@ class MigrantRegistrationForm(forms.ModelForm):
     consent_by_proxy = forms.BooleanField(
         required=False,
         label='El personal capturó el consentimiento en nombre del beneficiario',
-        help_text='Marcar cuando el beneficiario NO puede operar el sistema (sin dispositivo, analfabetismo funcional, etc.) y el personal actúa como intermediario.',
+        help_text='Marcar cuando el beneficiario NO puede operar el sistema y el personal actúa como intermediario.',
     )
 
     class Meta:
@@ -35,47 +30,51 @@ class MigrantRegistrationForm(forms.ModelForm):
             'created_by', 'created_by_role',
             'created_at', 'updated_at',
             'is_deleted', 'deleted_at', 'deleted_by',
-            # Privacy audit fields are set by the view, not the form
             'privacy_accepted_at', 'privacy_accepted_ip', 'privacy_notice_version',
+            # ARCO cancellation fields — managed only by system logic, not editable in forms
+            'arco_cancellation_reason', 'arco_cancelled_at', 'arco_cancelled_by',
         ]
         widgets = {
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
-            'entry_date': forms.DateInput(attrs={'type': 'date'}),
-            'migration_reason': forms.Textarea(attrs={'rows': 4}),
-            'transit_countries': forms.Textarea(attrs={'rows': 2}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
+            # format='%Y-%m-%d' is required because USE_I18N=True (es-mx) formats as
+            # DD/MM/YYYY by default, which <input type="date"> rejects and shows blank.
+            'birth_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'service_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'first_name': forms.TextInput(attrs={'maxlength': '50'}),
+            'first_surname': forms.TextInput(attrs={'maxlength': '50'}),
+            'second_surname': forms.TextInput(attrs={'maxlength': '50'}),
+            'country_of_origin': forms.TextInput(attrs={'maxlength': '100'}),
+            'phone': forms.TextInput(attrs={'maxlength': '30'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Pre-select checkboxes when editing an existing instance
-        if self.instance and self.instance.pk and self.instance.assistance_requested:
-            self.initial['assistance_requested'] = [
-                v.strip() for v in self.instance.assistance_requested.split(',') if v.strip()
-            ]
+    def clean_second_surname(self):
+        val = self.cleaned_data.get('second_surname', '').strip()
+        return val if val else 'X'
 
-    def clean_assistance_requested(self):
-        values = self.cleaned_data.get('assistance_requested', [])
-        if not values:
-            raise forms.ValidationError('Selecciona al menos un tipo de asistencia.')
-        return ','.join(values)
+    def clean_phone(self):
+        val = self.cleaned_data.get('phone', '').strip()
+        if val and not re.match(r'^\+\d{1,3}-\d{1,5}-\d{4,15}$', val):
+            raise forms.ValidationError(
+                'Formato inválido. Usa: +país-área-número (ej: +52-55-12345678).'
+            )
+        return val
 
-    def clean_group_size(self):
-        value = self.cleaned_data.get('group_size', 1)
-        if value < 1:
-            raise forms.ValidationError('El tamaño del grupo debe ser al menos 1.')
-        return value
+    def clean_first_name(self):
+        val = self.cleaned_data.get('first_name', '').strip()
+        if len(val) > 50:
+            raise forms.ValidationError('El nombre no puede superar los 50 caracteres.')
+        return val
 
-    def clean(self):
-        cleaned = super().clean()
-        minors = cleaned.get('minors_in_group', 0)
-        group = cleaned.get('group_size', 1)
-        travels_alone = cleaned.get('travels_alone', True)
-        if minors > group:
-            self.add_error('minors_in_group', 'Los menores no pueden superar el tamaño del grupo.')
-        if travels_alone and group > 1:
-            self.add_error('travels_alone', 'Si viaja acompañado/a, desmarca "Viaja solo/a".')
-        return cleaned
+    def clean_first_surname(self):
+        val = self.cleaned_data.get('first_surname', '').strip()
+        if len(val) > 50:
+            raise forms.ValidationError('El primer apellido no puede superar los 50 caracteres.')
+        return val
+
+    def clean_country_of_origin(self):
+        val = self.cleaned_data.get('country_of_origin', '').strip()
+        if len(val) > 100:
+            raise forms.ValidationError('El país de origen no puede superar los 100 caracteres.')
+        return val
 
 
 class ArcoRequestForm(forms.ModelForm):
@@ -113,7 +112,6 @@ class ArcoRequestForm(forms.ModelForm):
         doc = self.cleaned_data.get('attached_document')
         if not doc:
             return doc
-        # Validate PDF by content type or extension
         content_type = getattr(doc, 'content_type', '')
         name = doc.name.lower()
         if content_type not in ('application/pdf', 'application/octet-stream') and not name.endswith('.pdf'):
@@ -127,8 +125,7 @@ class ArcoRequestForm(forms.ModelForm):
         arco_type = cleaned.get('arco_type')
         doc = cleaned.get('attached_document')
         if arco_type == ArcoRequest.ARCO_RECTIFICATION and not doc:
-            # Not a hard error — document is optional but recommended
-            pass
+            pass  # document recommended but not required
         return cleaned
 
 
@@ -152,57 +149,39 @@ class WorkflowApprovalForm(forms.Form):
 
 class WorkflowUpdateRequestForm(forms.ModelForm):
     """
-    Form for operators/volunteers to propose field changes via a WorkflowRequest.
+    Propose field changes via a WorkflowRequest.
     Mirrors MigrantRegistrationForm but omits the privacy consent checkbox.
+    Only the 12 tracked registration fields are shown; all metadata / ARCO fields
+    are excluded so they don't appear when the template iterates the form.
     """
-    assistance_requested = forms.MultipleChoiceField(
-        choices=MigrantRegistration.ASSISTANCE_CHOICES,
-        widget=forms.CheckboxSelectMultiple,
-        label='Tipo de asistencia solicitada',
-        required=False,
-    )
-
     class Meta:
         model = MigrantRegistration
-        exclude = [
-            'created_by', 'created_by_role',
-            'created_at', 'updated_at',
-            'is_deleted', 'deleted_at', 'deleted_by',
-            'privacy_accepted_at', 'privacy_accepted_ip', 'privacy_notice_version',
-            'data_consent',
+        fields = [
+            'first_name', 'first_surname', 'second_surname',
+            'birth_date', 'gender',
+            'country_of_origin', 'state_or_region',
+            'phone', 'service_date',
+            'marital_status', 'age_group', 'population_group',
         ]
         widgets = {
-            'birth_date': forms.DateInput(attrs={'type': 'date'}),
-            'entry_date': forms.DateInput(attrs={'type': 'date'}),
-            'migration_reason': forms.Textarea(attrs={'rows': 4}),
-            'transit_countries': forms.Textarea(attrs={'rows': 2}),
-            'observations': forms.Textarea(attrs={'rows': 3}),
+            # format='%Y-%m-%d' fixes blank dates under es-mx locale (see MigrantRegistrationForm)
+            'birth_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'service_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'first_name': forms.TextInput(attrs={'maxlength': '50'}),
+            'first_surname': forms.TextInput(attrs={'maxlength': '50'}),
+            'second_surname': forms.TextInput(attrs={'maxlength': '50'}),
+            'country_of_origin': forms.TextInput(attrs={'maxlength': '100'}),
+            'phone': forms.TextInput(attrs={'maxlength': '30'}),
         }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if self.instance and self.instance.pk and self.instance.assistance_requested:
-            self.initial['assistance_requested'] = [
-                v.strip() for v in self.instance.assistance_requested.split(',') if v.strip()
-            ]
+    def clean_second_surname(self):
+        val = self.cleaned_data.get('second_surname', '').strip()
+        return val if val else 'X'
 
-    def clean_assistance_requested(self):
-        values = self.cleaned_data.get('assistance_requested', [])
-        return ','.join(values) if values else ''
-
-    def clean_group_size(self):
-        value = self.cleaned_data.get('group_size', 1)
-        if value < 1:
-            raise forms.ValidationError('El tamaño del grupo debe ser al menos 1.')
-        return value
-
-    def clean(self):
-        cleaned = super().clean()
-        minors = cleaned.get('minors_in_group', 0)
-        group = cleaned.get('group_size', 1)
-        travels_alone = cleaned.get('travels_alone', True)
-        if minors > group:
-            self.add_error('minors_in_group', 'Los menores no pueden superar el tamaño del grupo.')
-        if travels_alone and group > 1:
-            self.add_error('travels_alone', 'Si viaja acompañado/a, desmarca "Viaja solo/a".')
-        return cleaned
+    def clean_phone(self):
+        val = self.cleaned_data.get('phone', '').strip()
+        if val and not re.match(r'^\+\d{1,3}-\d{1,5}-\d{4,15}$', val):
+            raise forms.ValidationError(
+                'Formato inválido. Usa: +país-área-número (ej: +52-55-12345678).'
+            )
+        return val

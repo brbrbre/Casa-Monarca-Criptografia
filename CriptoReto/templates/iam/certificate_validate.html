@@ -16,7 +16,7 @@
       </div>
       <div class="inline-actions">
         <button type="submit" class="btn"><i class="fa-solid fa-shield-halved"></i> Validar certificado</button>
-        <a href="{% url 'iam:detail' collaborator.pk %}" class="btn btn-light">Cancelar</a>
+        <a href="{{ cancel_url }}" class="btn btn-light">Cancelar</a>
       </div>
     </form>
   </div>

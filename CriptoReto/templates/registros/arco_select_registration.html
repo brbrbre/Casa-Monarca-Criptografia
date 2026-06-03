@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{% url 'registros:arco_list' %}" style="color:var(--cm-primary);text-decoration:none;">← Volver a Solicitudes ARCO</a>
+</div>
+
+<h2 style="margin-bottom:6px;">Nueva solicitud ARCO</h2>
+<p style="color:var(--cm-text-muted);margin-bottom:20px;">Selecciona el migrante para el que se presentará la solicitud.</p>
+
+<form method="get" style="display:flex;gap:8px;margin-bottom:20px;">
+  <input type="text" name="q" value="{{ q }}" placeholder="Buscar por ID interno…"
+         style="flex:1;max-width:340px;">
+  <button type="submit" class="btn">Buscar</button>
+  {% if q %}<a href="{% url 'registros:arco_select_registration' %}" class="btn btn-light">Limpiar</a>{% endif %}
+</form>
+
+<div class="card" style="padding:0;overflow:hidden;">
+  {% if registrations %}
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID interno</th>
+          <th>Nombre</th>
+          <th>País de origen</th>
+          <th>Fecha de servicio</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for reg in registrations %}
+          <tr>
+            <td style="font-family:monospace;font-size:13px;">{{ reg.internal_id }}</td>
+            <td>{{ reg.full_name }}</td>
+            <td>{{ reg.country_of_origin }}</td>
+            <td>{{ reg.service_date|date:"d/m/Y"|default:"—" }}</td>
+            <td>
+              <a href="{% url 'registros:arco_create' reg.pk %}" class="btn btn-sm">
+                Seleccionar →
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
+      {% if q %}No se encontraron migrantes con ID "{{ q }}".{% else %}No hay registros disponibles.{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+{% endblock %}

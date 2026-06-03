@@ -38,6 +38,32 @@
     </table>
   </div>
 
+  {% if show_edit_fields %}
+  <div style="background:var(--cm-bg);border:1px solid var(--cm-border);border-radius:10px;padding:16px;margin-bottom:20px;">
+    <h4 style="margin:0 0 8px;font-size:14px;"><i class="fa-solid fa-pen-to-square" style="color:var(--cm-primary);"></i> Ajuste de datos antes de firmar</h4>
+    <p style="color:var(--cm-text-muted);font-size:12px;margin:0 0 14px;">Puedes corregir los datos antes de ejecutar. Deja en blanco los campos que no requieren cambio.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      {% for fd in editable_payload_fields %}
+        <div class="field-group" style="margin-bottom:0;">
+          <label style="font-size:12px;font-weight:600;color:var(--cm-text-muted);">{{ fd.label }}</label>
+          {% if fd.input_type == 'select' %}
+            <select name="edit_{{ fd.field }}" style="font-size:13px;">
+              <option value="">— sin cambio —</option>
+              {% for cv, cl in fd.choices %}
+                <option value="{{ cv }}" {% if fd.value == cv %}selected{% endif %}>{{ cl }}</option>
+              {% endfor %}
+            </select>
+          {% elif fd.input_type == 'date' %}
+            <input type="date" name="edit_{{ fd.field }}" value="{{ fd.value }}" style="font-size:13px;">
+          {% else %}
+            <input type="text" name="edit_{{ fd.field }}" value="{{ fd.value }}" style="font-size:13px;">
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
   <form method="post" enctype="multipart/form-data">
     {% csrf_token %}
 

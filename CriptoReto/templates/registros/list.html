@@ -23,11 +23,11 @@
   </a>
 </div>
 
-<!-- Search -->
+<!-- Search by internal ID (PII fields are encrypted — cannot be searched) -->
 <form method="get" class="search-pill">
   <div class="search-pill-wrap">
     <i class="fa-solid fa-magnifying-glass"></i>
-    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por nombre, nacionalidad o documento…">
+    <input type="text" name="q" value="{{ q }}" placeholder="Buscar por folio (ej: MIG-A1B2C3D4)…">
   </div>
   <button type="submit" class="btn btn-light">Buscar</button>
   {% if q %}<a href="{% url 'registros:registro_list' %}" class="btn btn-light">Limpiar</a>{% endif %}
@@ -38,10 +38,10 @@
     <table class="table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Nombre completo</th>
-          <th>Nacionalidad</th>
-          <th>Ingreso</th>
+          <th>Folio</th>
+          <th>Nombre</th>
+          <th>Fecha de servicio</th>
+          <th>Género</th>
           <th>Creado por</th>
           <th>Firma</th>
           <th>Acciones</th>
@@ -50,10 +50,10 @@
       <tbody>
         {% for reg in registrations %}
           <tr>
-            <td style="font-family:monospace;color:var(--cm-text-muted);">{{ reg.pk }}</td>
+            <td style="font-family:monospace;color:var(--cm-text-muted);font-size:12px;">{{ reg.internal_id|default:reg.pk }}</td>
             <td>{{ reg.full_name }}</td>
-            <td>{{ reg.nationality }}</td>
-            <td>{{ reg.entry_date|date:"d/m/Y" }}</td>
+            <td>{{ reg.service_date|date:"d/m/Y"|default:"—" }}</td>
+            <td>{{ reg.get_gender_display }}</td>
             <td>{{ reg.created_by.get_full_name|default:reg.created_by.username }}</td>
             <td>
               {% if reg.signature %}
@@ -84,7 +84,7 @@
   {% else %}
     <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       {% if q %}
-        No se encontraron registros para <strong>{{ q }}</strong>.
+        No se encontraron registros para el folio <strong>{{ q }}</strong>.
       {% else %}
         Aún no hay registros.
         <a href="{% url 'registros:registro_new' %}" style="color:var(--cm-primary);">Crear el primero.</a>
