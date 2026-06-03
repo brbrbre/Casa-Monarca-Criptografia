@@ -32,6 +32,7 @@ urlpatterns = [
     path('<int:pk>/workflow/<str:action>/', views.workflow_request_create, name='workflow_request_create'),
 
     # ── ARCO rights ────────────────────────────────────────────────────────────
+    path('arco/nueva/',                   views.arco_select_registration, name='arco_select_registration'),
     path('arco/',                         views.arco_list,           name='arco_list'),
     path('arco/cancelados/',             views.arco_cancelled_list,  name='arco_cancelled_list'),
     path('<int:pk>/arco/nueva/',          views.arco_create,         name='arco_create'),

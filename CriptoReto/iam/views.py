@@ -896,10 +896,13 @@ def validate_certificate_view(request, pk):
         messages.error(request, 'No tienes permisos para validar este certificado.')
         return redirect('iam:dashboard')
 
+    from django.urls import reverse
+    cancel_url = request.GET.get('next') or reverse('iam:detail', args=[collaborator.pk])
+
     if request.method == 'POST':
         cert_file = request.FILES.get('cert_file')
         key_file = request.FILES.get('key_file')
-        
+
         if not cert_file or not key_file:
             messages.error(request, 'Debes proporcionar tanto el certificado (.cert) como la clave privada (.key).')
         else:
@@ -908,14 +911,14 @@ def validate_certificate_view(request, pk):
                 key_bytes = key_file.read()
             except Exception as e:
                 messages.error(request, f'Error al leer los archivos: {str(e)}')
-                return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator})
-            
+                return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator, 'cancel_url': cancel_url})
+
             if validate_cert_and_key(collaborator, cert_bytes, key_bytes):
                 messages.success(request, 'Certificado validado correctamente. ✓')
             else:
                 messages.error(request, 'La validación del certificado falló. Revisa los archivos.')
 
-    return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator})
+    return render(request, 'iam/certificate_validate.html', {'collaborator': collaborator, 'cancel_url': cancel_url})
 
 
 @login_required(login_url='iam:login')

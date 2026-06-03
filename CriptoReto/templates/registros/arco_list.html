@@ -19,6 +19,9 @@
 
 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
   <h2 style="margin:0;">Solicitudes ARCO</h2>
+  <a href="{% url 'registros:arco_select_registration' %}" class="btn">
+    <i class="fa-solid fa-plus"></i> Nueva solicitud ARCO
+  </a>
 </div>
 
 {% if arco_notifications %}

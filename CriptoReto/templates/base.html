@@ -445,11 +445,6 @@
           </a>
         </li>
         {% endif %} -->
-        <li class="nav-child">
-          <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
-            {% if lvl >= 3 %}Nueva Solicitud{% else %}Nuevo Registro{% endif %}
-          </a>
-        </li>
         {% else %}
         <li>
           <a href="{% url 'registros:registro_new' %}" class="{% if request.resolver_match.app_name == 'registros' and request.resolver_match.url_name == 'registro_new' %}active{% endif %}">
@@ -459,18 +454,17 @@
         {% endif %}
       </ul>
 
+      {% if lvl <= 2 %}
       <div class="nav-separator"></div>
 
       <!-- ADMINISTRACIÓN -->
       <span class="nav-section-header">Administración</span>
       <ul class="nav-list">
-        {% if lvl <= 2 %}
         <li>
           <a href="{% url 'iam:audit_log' %}" class="{% if request.resolver_match.url_name == 'audit_log' %}active{% endif %}">
             <i class="fa-solid fa-clock-rotate-left"></i> Auditoría
           </a>
         </li>
-        {% endif %}
         {% if lvl == 1 %}
         <li>
           <a href="{% url 'iam:certificate_mgmt_list' %}" class="{% if 'certificate_mgmt' in request.resolver_match.url_name %}active{% endif %}">
@@ -484,6 +478,7 @@
           </a>
         </li>-->
       </ul>
+      {% endif %}
 
       {% endwith %}
       {% endif %}
