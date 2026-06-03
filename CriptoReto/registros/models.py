@@ -6,6 +6,8 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
+from crypto_core.fields import EncryptedDateField, EncryptedTextField
+
 # Version string for the current privacy notice text.
 # Bump this whenever the notice is amended.
 PRIVACY_NOTICE_VERSION = '1.0'
@@ -59,22 +61,22 @@ class MigrantRegistration(models.Model):
 
     # ── Personal ──────────────────────────────────────────────────────────────
     internal_id = models.CharField('Identificador interno', max_length=32, unique=True, blank=True, null=True)
-    full_name = models.CharField('Nombre completo', max_length=255)
-    birth_date = models.DateField('Fecha de nacimiento')
+    full_name = EncryptedTextField('Nombre completo')
+    birth_date = EncryptedDateField('Fecha de nacimiento')
     gender = models.CharField('Género', max_length=20, choices=GENDER_CHOICES)
-    nationality = models.CharField('Nacionalidad', max_length=100)
-    country_of_origin = models.CharField('País de origen', max_length=100)
+    nationality = EncryptedTextField('Nacionalidad')
+    country_of_origin = EncryptedTextField('País de origen')
     document_type = models.CharField('Tipo de documento', max_length=30, choices=DOCUMENT_TYPE_CHOICES)
-    document_number = models.CharField('Número de documento', max_length=100, blank=True)
+    document_number = EncryptedTextField('Número de documento', blank=True, default='')
 
     # ── Contact ───────────────────────────────────────────────────────────────
-    phone = models.CharField('Teléfono', max_length=20, blank=True)
-    email = models.EmailField('Correo electrónico', blank=True)
+    phone = EncryptedTextField('Teléfono', blank=True, default='')
+    email = EncryptedTextField('Correo electrónico', blank=True, default='')
 
     # ── Entry ─────────────────────────────────────────────────────────────────
     entry_date = models.DateField('Fecha de ingreso al país')
     entry_point = models.CharField('Punto de ingreso', max_length=200)
-    transit_countries = models.TextField('Países de tránsito', blank=True)
+    transit_countries = EncryptedTextField('Países de tránsito', blank=True, default='')
     intended_destination = models.CharField('Destino final deseado', max_length=200, blank=True)
 
     # ── Family / Group ────────────────────────────────────────────────────────
@@ -85,21 +87,19 @@ class MigrantRegistration(models.Model):
 
     # ── Needs ─────────────────────────────────────────────────────────────────
     assistance_requested = models.CharField('Tipo de asistencia solicitada', max_length=500)
-    migration_reason = models.TextField('Motivo de migración')
+    migration_reason = EncryptedTextField('Motivo de migración')
     current_legal_status = models.CharField(
         'Situación migratoria actual', max_length=30, choices=LEGAL_STATUS_CHOICES,
     )
     shelter_name = models.CharField('Nombre del albergue/alojamiento', max_length=200, blank=True)
 
     # ── Emergency contact ─────────────────────────────────────────────────────
-    emergency_contact_name = models.CharField('Nombre del contacto de emergencia', max_length=255)
-    emergency_contact_phone = models.CharField('Teléfono del contacto de emergencia', max_length=20)
-    emergency_contact_relationship = models.CharField(
-        'Parentesco del contacto de emergencia', max_length=100,
-    )
+    emergency_contact_name = EncryptedTextField('Nombre del contacto de emergencia')
+    emergency_contact_phone = EncryptedTextField('Teléfono del contacto de emergencia')
+    emergency_contact_relationship = EncryptedTextField('Parentesco del contacto de emergencia')
 
     # ── Additional ────────────────────────────────────────────────────────────
-    observations = models.TextField('Observaciones adicionales', blank=True)
+    observations = EncryptedTextField('Observaciones adicionales', blank=True, default='')
     data_consent = models.BooleanField('Consentimiento de tratamiento de datos personales', default=False)
 
     # ── Privacy consent audit trail ───────────────────────────────────────────
