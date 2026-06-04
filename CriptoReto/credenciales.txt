@@ -1,0 +1,96 @@
+============================================================
+  CASA MONARCA — CREDENCIALES DE PRUEBA
+============================================================
+
+NIVEL 1 — ADMINISTRADOR
+  Usuario : admin
+  Password: Admin1234!
+  Email   : admin@casamonarca.org
+  Área    : TI / Sistemas
+  Cert    : certs/admin.cert + certs/admin.key
+
+------------------------------------------------------------
+
+NIVEL 2 — COORDINADORES  (todos con password: Coord1234!)
+
+  Usuario : coord_humanitario
+  Email   : coord.humanitario@casamonarca.org
+  Área    : Humanitario
+  Cert    : certs/coord_humanitario.cert + certs/coord_humanitario.key
+
+  Usuario : coord_psicosocial
+  Email   : coord.psicosocial@casamonarca.org
+  Área    : Psicosocial
+  Cert    : certs/coord_psicosocial.cert + certs/coord_psicosocial.key
+
+  Usuario : coord_legal
+  Email   : coord.legal@casamonarca.org
+  Área    : Legal
+  Cert    : certs/coord_legal.cert + certs/coord_legal.key
+
+  Usuario : coord_comunicaciones
+  Email   : coord.comunicaciones@casamonarca.org
+  Área    : Comunicaciones
+  Cert    : certs/coord_comunicaciones.cert + certs/coord_comunicaciones.key
+
+  Usuario : coord_almacen
+  Email   : coord.almacen@casamonarca.org
+  Área    : Almacén
+  Cert    : certs/coord_almacen.cert + certs/coord_almacen.key
+
+  Usuario : coord_it
+  Email   : coord.it@casamonarca.org
+  Área    : TI / Sistemas
+  Cert    : certs/coord_it.cert + certs/coord_it.key
+
+------------------------------------------------------------
+
+NIVEL 3 — OPERATIVOS  (todos con password: Oper1234!)
+
+  Usuario : op_humanitario
+  Email   : op.humanitario@casamonarca.org
+  Área    : Humanitario
+
+  Usuario : op_psicosocial
+  Email   : op.psicosocial@casamonarca.org
+  Área    : Psicosocial
+
+  Usuario : op_legal
+  Email   : op.legal@casamonarca.org
+  Área    : Legal
+
+  Usuario : op_comunicaciones
+  Email   : op.comunicaciones@casamonarca.org
+  Área    : Comunicaciones
+
+  Usuario : op_almacen
+  Email   : op.almacen@casamonarca.org
+  Área    : Almacén
+
+------------------------------------------------------------
+
+NIVEL 4 — EXTERNOS  (todos con password: Ext1234!)
+
+  Usuario : externo_auditor
+  Email   : auditor@externo.org
+  Rol     : Auditor externo (solo lectura)
+
+  Usuario : externo_proveedor
+  Email   : proveedor@externo.org
+  Rol     : Proveedor de servicios externos
+
+============================================================
+  NOTAS
+============================================================
+
+  - Los usuarios de nivel 1 y 2 requieren subir su .cert y .key
+    al iniciar sesión para realizar acciones firmadas.
+
+  - Los archivos de certificados se generan en CriptoReto/certs/
+    al ejecutar:  python seed.py
+
+  - Para regenerar todo desde cero:
+      python seed.py              (con certificados X.509)
+      python seed.py --no-certs   (sin certificados, más rápido)
+
+============================================================

@@ -309,11 +309,13 @@ def execute_request(wf, actor, password_verified: bool = False, notes: str = '')
         details=f'[Nivel {actor.access_level}] WF#{wf.pk} ejecutado. '
                 f'Firma: {action_sig.message_hash[:16]}…',
     )
-    _notify(
-        wf.requested_by,
-        wf,
-        f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue aprobada y ejecutada.',
-    )
+    _ARCO_TYPES = {'arco_access', 'arco_rectification', 'arco_cancellation', 'arco_opposition'}
+    if wf.action_type not in _ARCO_TYPES:
+        _notify(
+            wf.requested_by,
+            wf,
+            f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue aprobada y ejecutada.',
+        )
     return True
 
 
