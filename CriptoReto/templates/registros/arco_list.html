@@ -68,8 +68,6 @@
   </p>
 </div>
 
-{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
-
 <div class="card" style="padding:0;overflow:hidden;">
   {% if requests %}
     <table class="table">
@@ -110,9 +108,7 @@
             <td>
               <div style="display:flex;gap:6px;flex-wrap:wrap;">
                 <a href="{% url 'registros:arco_detail' arco.pk %}" class="btn btn-light btn-sm">Ver</a>
-                {% if arco.workflow_request %}
-                  <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}" class="btn btn-light btn-sm">Flujo</a>
-                {% endif %}
+    
                 {% if arco.state != 'executed' and arco.state != 'rejected' %}
                   {% if request.user.access_level <= 2 %}
                     {% if arco.arco_type == 'cancellation' %}

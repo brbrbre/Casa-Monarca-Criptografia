@@ -621,6 +621,11 @@ class ArcoRequest(models.Model):
         verbose_name='Flujo de aprobación',
     )
 
+    # ── Rectificación data ────────────────────────────────────────────────────
+    # Stored directly on ArcoRequest so the data survives without a WorkflowRequest.
+    rectif_field = models.CharField('Campo a rectificar', max_length=50, blank=True, default='')
+    rectif_value = models.TextField('Nuevo valor para rectificación', blank=True, default='')
+
     execution_notes = models.TextField('Notas de ejecución', blank=True)
     legal_deadline = models.DateField(
         'Plazo legal de respuesta',

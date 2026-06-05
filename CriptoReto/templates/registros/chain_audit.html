@@ -8,11 +8,7 @@
   Cada entrada compromete criptográficamente toda la historia anterior mediante encadenamiento de hashes.
 </p>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+
 
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;">
   <div class="card" style="text-align:center;margin-bottom:0;">

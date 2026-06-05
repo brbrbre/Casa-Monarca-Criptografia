@@ -14,6 +14,20 @@ from django.core.exceptions import ImproperlyConfigured
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load .env so DB_ENCRYPTION_MASTER_PASSWORD and DB_ENCRYPTION_SALT are available
+# at server runtime (required for transparent AES-256-GCM field decryption).
+_env_path = BASE_DIR / '.env'
+if _env_path.exists():
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(_env_path)
+    except ImportError:
+        for _line in _env_path.read_text().splitlines():
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _, _v = _line.partition('=')
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 
 # Quick-start development settings - unsuitable for production
 SECRET_KEY = 'django-insecure-2p6xd2nr56uat=ax+n$duv9im5gx-3%6l7h$o8%-xc6@!pp6y2'

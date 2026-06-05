@@ -18,6 +18,7 @@ def workflow_context(request):
     arco_unread = all_unread.filter(message__icontains='ARCO')
     non_arco_unread = all_unread.exclude(message__icontains='ARCO')
 
+    # pending_requests_for already excludes ARCO action types
     return {
         'pending_workflow_count': pending_requests_for(u).count(),
         'unread_notifications_count': non_arco_unread.count(),

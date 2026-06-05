@@ -158,17 +158,6 @@
   <p style="color:var(--cm-text-muted);margin-bottom:18px;">Completa tus datos para que el administrador revise tu registro y apruebe tu acceso al sistema.</p>
   {% endif %}
 
-  {% if messages %}
-  {% for message in messages %}
-  {% if message.tags == 'error' %}
-  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;">{{ message }}</div>
-  {% elif message.tags == 'success' %}
-  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-success-bg);color:var(--cm-success);border:1px solid #A5D6A7;">{{ message }}</div>
-  {% else %}
-  <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;font-size:14px;background:var(--cm-info-bg);color:var(--cm-info);border:1px solid #90CAF9;">{{ message }}</div>
-  {% endif %}
-  {% endfor %}
-  {% endif %}
 
   {% if form.errors %}
   <div style="padding:12px 16px;margin-bottom:14px;border-radius:10px;background:var(--cm-danger-bg);color:var(--cm-danger);border:1px solid #FFCDD2;font-size:14px;">

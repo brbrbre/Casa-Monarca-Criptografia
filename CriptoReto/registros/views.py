@@ -335,12 +335,26 @@ def registro_exito(request, pk):
 @onboarding_required
 @require_level(3)
 def registro_list(request):
-    qs = MigrantRegistration.objects.filter(is_deleted=False, arco_cancelled_at__isnull=True)
+    from django.core.paginator import Paginator
+    
+    qs = MigrantRegistration.objects.filter(
+        is_deleted=False, arco_cancelled_at__isnull=True
+    ).select_related('created_by').prefetch_related('signature')
+    
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(internal_id__icontains=q)
+    
+    # Paginar: 20 registros por página
+    paginator = Paginator(qs, 20)
+    page_num = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_num)
+    
     return render(request, 'registros/list.html', {
-        'registrations': qs, 'q': q, 'title': 'Registros Migrantes',
+        'registrations': page_obj.object_list,
+        'page_obj': page_obj,
+        'q': q,
+        'title': 'Registros Migrantes',
     })
 
 
@@ -594,17 +608,24 @@ def _build_diff_data(wf):
 @onboarding_required
 @require_level(3)
 def workflow_list(request):
-    """All workflow requests visible to the current user."""
+    """All workflow requests visible to the current user, excluding ARCO (managed in their own panel)."""
     user = request.user
+    _arco_types = [
+        WorkflowRequest.ACTION_ARCO_ACCESS,
+        WorkflowRequest.ACTION_ARCO_RECTIFICATION,
+        WorkflowRequest.ACTION_ARCO_CANCELLATION,
+        WorkflowRequest.ACTION_ARCO_OPPOSITION,
+    ]
     if user.access_level == 1:
-        qs = WorkflowRequest.objects.all()
+        qs = WorkflowRequest.objects.exclude(action_type__in=_arco_types)
     elif user.access_level == 2:
-        qs = WorkflowRequest.objects.all()
+        qs = WorkflowRequest.objects.exclude(action_type__in=_arco_types)
     else:
         # Operativo sees requests they can act on + requests they created
-        qs = WorkflowRequest.objects.filter(
-            current_approver_level=user.access_level
-        ) | WorkflowRequest.objects.filter(requested_by=user)
+        qs = (
+            WorkflowRequest.objects.filter(current_approver_level=user.access_level)
+            | WorkflowRequest.objects.filter(requested_by=user)
+        ).exclude(action_type__in=_arco_types)
 
     all_requests = list(qs.select_related('requested_by', 'registration').order_by('-created_at'))
     pending = pending_requests_for(user)
@@ -1165,12 +1186,23 @@ def _generate_access_pdf(arco) -> bytes:
 @require_level(3)
 def arco_select_registration(request):
     """Picker step: choose which migrant to file an ARCO request for."""
-    qs = MigrantRegistration.objects.filter(is_deleted=False, arco_cancelled_at__isnull=True)
+    from django.core.paginator import Paginator
+    
+    qs = MigrantRegistration.objects.filter(
+        is_deleted=False, arco_cancelled_at__isnull=True
+    ).select_related('created_by')
     q = request.GET.get('q', '').strip()
     if q:
         qs = qs.filter(internal_id__icontains=q)
+    
+    # Paginar: 20 registros por página
+    paginator = Paginator(qs, 20)
+    page_num = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_num)
+    
     return render(request, 'registros/arco_select_registration.html', {
-        'registrations': qs,
+        'registrations': page_obj.object_list,
+        'page_obj': page_obj,
         'q': q,
         'title': 'Nueva solicitud ARCO — Seleccionar migrante',
     })
@@ -1217,37 +1249,33 @@ def arco_create(request, pk):
         if arco.arco_type != ArcoRequest.ARCO_RECTIFICATION:
             arco.attached_document = None
 
-        action_map = {
-            ArcoRequest.ARCO_ACCESS: WorkflowRequest.ACTION_ARCO_ACCESS,
-            ArcoRequest.ARCO_RECTIFICATION: WorkflowRequest.ACTION_ARCO_RECTIFICATION,
-            ArcoRequest.ARCO_CANCELLATION: WorkflowRequest.ACTION_ARCO_CANCELLATION,
-            ArcoRequest.ARCO_OPPOSITION: WorkflowRequest.ACTION_ARCO_OPPOSITION,
-        }
-        wf_action = action_map[arco.arco_type]
+        # For Rectificación: store field + new value directly on the ArcoRequest
+        if arco.arco_type == ArcoRequest.ARCO_RECTIFICATION:
+            arco.rectif_field = form.cleaned_data.get('rectif_field', '')
+            arco.rectif_value = form.cleaned_data.get('rectif_value', '')
 
-        try:
-            wf = create_workflow_request(
-                action_type=wf_action,
-                requester=request.user,
-                registration=registration,
-                payload={'arco_type': arco.arco_type, 'description': arco.description},
-                notes=arco.description,
-            )
-            arco.workflow_request = wf
-        except ValueError:
-            # User has direct authority — mark as in_review immediately
-            arco.state = ArcoRequest.STATE_IN_REVIEW
-
+        # ARCO requests do NOT create workflow entries — they have their own independent flow.
+        # Coordinador/Admin can execute directly; Operativo creates and Coordinador executes.
         arco.save()
 
         # Create ARCO-specific ticket (NOT a generic Ticket)
         ArcoTicket.objects.create(arco_request=arco, created_by=request.user)
 
-        _log(request.user, 'arco_request_created',
-             f'{arco.case_id} {arco.get_arco_type_display()} para Registro #{registration.pk}',
-             request=request)
+        # Audit log — for Rectificación include the specific field requested
+        if arco.arco_type == ArcoRequest.ARCO_RECTIFICATION:
+            rectif_detail = (
+                f'{arco.case_id} Rectificación — campo: {arco.rectif_field} '
+                f'→ "{arco.rectif_value}" | Registro #{registration.pk}'
+            )
+        else:
+            rectif_detail = f'{arco.case_id} {arco.get_arco_type_display()} para Registro #{registration.pk}'
+
+        _log(request.user, 'arco_request_created', rectif_detail, request=request)
         _reg_event(registration, RegistrationEvent.EVENT_ARCO_CREATED, request.user,
-                   details=f'{arco.case_id} — {arco.get_arco_type_display()}', request=request)
+                   details=f'{arco.case_id} — {arco.get_arco_type_display()}'
+                           + (f' | {arco.rectif_field} → "{arco.rectif_value}"'
+                              if arco.arco_type == ArcoRequest.ARCO_RECTIFICATION else ''),
+                   request=request)
 
         messages.success(request, f'Solicitud ARCO {arco.case_id} registrada.')
         return redirect('registros:arco_detail', pk=arco.pk)
@@ -1377,24 +1405,26 @@ def arco_execute(request, pk):
         )
 
     elif arco.arco_type == ArcoRequest.ARCO_RECTIFICATION:
-        # Apply field changes from workflow payload if present
-        if arco.workflow_request and arco.workflow_request.payload:
-            payload = arco.workflow_request.payload
-            reg = arco.registration
+        # Apply the field change stored directly on the ArcoRequest
+        rectif_field = (arco.rectif_field or '').strip()
+        rectif_value = (arco.rectif_value or '').strip()
+        reg = arco.registration
+        if rectif_field and hasattr(reg, rectif_field):
             import datetime
-            from django.db.models import DateField
-            date_fields = {f.name for f in reg._meta.get_fields() if isinstance(f, DateField)}
-            skip = {'arco_type', 'description'}
-            for field, value in payload.items():
-                if field in skip or not hasattr(reg, field):
-                    continue
-                if field in date_fields and isinstance(value, str):
-                    try:
-                        value = datetime.date.fromisoformat(value)
-                    except (ValueError, TypeError):
-                        continue
-                setattr(reg, field, value)
-            reg.save()
+            if rectif_field == 'birth_date' and isinstance(rectif_value, str):
+                try:
+                    rectif_value = datetime.date.fromisoformat(rectif_value)
+                except (ValueError, TypeError):
+                    rectif_value = None
+            if rectif_value is not None and rectif_value != '':
+                old_val = getattr(reg, rectif_field, None)
+                setattr(reg, rectif_field, rectif_value)
+                reg.save(update_fields=[rectif_field])
+                # Specific audit entry for the field mutation (outer _reg_event covers closure)
+                _log(request.user, 'arco_rectification_applied',
+                     f'{arco.case_id} — campo "{rectif_field}": "{old_val}" → "{rectif_value}" | '
+                     f'Registro #{reg.pk}',
+                     request=request)
 
     elif arco.arco_type == ArcoRequest.ARCO_CANCELLATION:
         # Cambio 4: mark as ARCO-cancelled (not soft-deleted) so only internal_id remains visible
@@ -1424,7 +1454,7 @@ def arco_execute(request, pk):
     from .models import Notification
     Notification.objects.create(
         recipient=arco.requested_by,
-        workflow_request=arco.workflow_request,
+        workflow_request=None,
         message=(
             f'Tu solicitud ARCO {arco.case_id} '
             f'({arco.get_arco_type_display()}) fue ejecutada.'
@@ -1432,12 +1462,16 @@ def arco_execute(request, pk):
         ),
     )
 
+    _rectif_suffix = ''
+    if arco.arco_type == ArcoRequest.ARCO_RECTIFICATION and arco.rectif_field:
+        _rectif_suffix = f' | campo: {arco.rectif_field} → "{arco.rectif_value}"'
+
     _log(request.user, 'arco_request_executed',
-         f'{arco.case_id} {arco.get_arco_type_display()} | '
+         f'{arco.case_id} {arco.get_arco_type_display()}{_rectif_suffix} | '
          f'firma: {action_sig.message_hash[:16]}…',
          request=request)
     _reg_event(arco.registration, RegistrationEvent.EVENT_ARCO_EXECUTED, request.user,
-               details=(f'{arco.case_id} — {arco.get_arco_type_display()} | '
+               details=(f'{arco.case_id} — {arco.get_arco_type_display()}{_rectif_suffix} | '
                         f'firma: {action_sig.message_hash[:16]}…'),
                request=request)
     if arco.arco_type == ArcoRequest.ARCO_ACCESS:

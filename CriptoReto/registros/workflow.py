@@ -407,8 +407,13 @@ def _perform_action(wf, actor):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_ARCO_ACTION_TYPES = [
+    'arco_access', 'arco_rectification', 'arco_cancellation', 'arco_opposition',
+]
+
+
 def pending_requests_for(user):
-    """Return all WorkflowRequests currently waiting on the user's level."""
+    """Return non-ARCO WorkflowRequests currently waiting on the user's level."""
     from .models import WorkflowRequest
     return WorkflowRequest.objects.filter(
         state__in=[
@@ -417,7 +422,7 @@ def pending_requests_for(user):
             WorkflowRequest.STATE_ESCALATED,
         ],
         current_approver_level=user.access_level,
-    ).select_related('requested_by', 'registration')
+    ).exclude(action_type__in=_ARCO_ACTION_TYPES).select_related('requested_by', 'registration')
 
 
 def _notify(recipient, wf, message: str):

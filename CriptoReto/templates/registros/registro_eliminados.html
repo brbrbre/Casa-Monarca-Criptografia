@@ -16,11 +16,7 @@
   </span>
 </div>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+
 
 <div class="card" style="padding:0;overflow:hidden;">
   {% if registrations %}

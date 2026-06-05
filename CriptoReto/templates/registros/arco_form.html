@@ -16,8 +16,6 @@
   Rectificación, Cancelación u Oposición. Esta solicitud será gestionada según el nivel de aprobación requerido.
 </p>
 
-{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
-
 <div class="card" style="max-width:680px;margin-bottom:20px;">
   <h4 style="margin:0 0 10px;font-size:14px;">¿Qué derecho deseas ejercer?</h4>
   <table class="table" style="font-size:13px;">
@@ -30,7 +28,7 @@
       </tr>
       <tr>
         <td style="background:var(--cm-warning-bg);color:var(--cm-warning);font-weight:700;">Rectificación</td>
-        <td>Corregir datos personales inexactos o incompletos. <em>Requiere PDF de respaldo.</em></td>
+        <td>Corregir datos personales inexactos o incompletos. <em>Requiere indicar el campo exacto y adjuntar PDF de respaldo (Art. 25 LFPDPPP).</em></td>
         <td>Coordinador</td>
       </tr>
       <tr>
@@ -47,30 +45,57 @@
   </table>
 </div>
 
-<div class="card" style="max-width:560px;">
+<div class="card" style="max-width:580px;">
   <form method="post" enctype="multipart/form-data" id="arcoForm">
     {% csrf_token %}
 
+    {# ── Tipo ARCO ── #}
     <div class="field-group">
       <label for="{{ form.arco_type.id_for_label }}">{{ form.arco_type.label }}</label>
       {{ form.arco_type }}
       {% if form.arco_type.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.arco_type.errors.0 }}</div>{% endif %}
     </div>
 
-    <div class="field-group">
-      <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
-      {{ form.description }}
-      <small style="color:var(--cm-text-muted);font-size:12px;">Mínimo 20 caracteres. Sé específico/a sobre tu solicitud.</small>
-      {% if form.description.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.description.errors.0 }}</div>{% endif %}
-    </div>
+    {# ── Sección exclusiva de Rectificación ── #}
+    <div id="rectifSection" style="display:none;">
+      <div style="background:var(--cm-warning-bg);border:1px solid #FFCC80;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:var(--cm-warning);">
+        <i class="fa-solid fa-circle-info"></i>
+        <strong>Rectificación (Art. 25 LFPDPPP):</strong> Indica exactamente qué campo deseas corregir y cuál es el valor correcto.
+        Adjunta el documento que lo acredite (acta de nacimiento, pasaporte, etc.).
+      </div>
 
-    <div id="pdfField" style="margin-bottom:24px;display:none;">
+      {# Campo a rectificar #}
       <div class="field-group">
-        <label for="{{ form.attached_document.id_for_label }}">{{ form.attached_document.label }}</label>
+        <label for="{{ form.rectif_field.id_for_label }}">{{ form.rectif_field.label }}</label>
+        {{ form.rectif_field }}
+        {% if form.rectif_field.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.rectif_field.errors.0 }}</div>{% endif %}
+      </div>
+
+      {# Nuevo valor — el input se reemplaza dinámicamente por JS #}
+      <div class="field-group" id="rectifValueGroup" style="display:none;">
+        <label id="rectifValueLabel">{{ form.rectif_value.label }}</label>
+        <div id="rectifValueContainer">
+          {{ form.rectif_value }}
+        </div>
+        <small style="color:var(--cm-text-muted);font-size:12px;">Escribe el valor correcto tal como debe quedar registrado.</small>
+        {% if form.rectif_value.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.rectif_value.errors.0 }}</div>{% endif %}
+      </div>
+
+      {# PDF de evidencia #}
+      <div class="field-group">
+        <label for="{{ form.attached_document.id_for_label }}">{{ form.attached_document.label }} <span style="color:var(--cm-danger);">*</span></label>
         {{ form.attached_document }}
         <small style="color:var(--cm-text-muted);font-size:12px;">{{ form.attached_document.help_text }}</small>
         {% if form.attached_document.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.attached_document.errors.0 }}</div>{% endif %}
       </div>
+    </div>
+
+    {# ── Motivo / descripción ── #}
+    <div class="field-group">
+      <label for="{{ form.description.id_for_label }}">{{ form.description.label }}</label>
+      {{ form.description }}
+      <small style="color:var(--cm-text-muted);font-size:12px;">Mínimo 20 caracteres. Para Rectificación explica por qué el dato actual es incorrecto.</small>
+      {% if form.description.errors %}<div style="color:var(--cm-danger);font-size:13px;margin-top:4px;">{{ form.description.errors.0 }}</div>{% endif %}
     </div>
 
     <div style="display:flex;gap:12px;">
@@ -82,13 +107,100 @@
 
 <script>
 (function () {
-  var typeSelect = document.getElementById('{{ form.arco_type.id_for_label }}');
-  var pdfField = document.getElementById('pdfField');
-  function togglePdf() {
-    pdfField.style.display = (typeSelect.value === 'rectification') ? 'block' : 'none';
+  // Config driven from Python RECTIFIABLE_FIELDS constant
+  var FIELD_CONFIGS = {
+    "first_name":       { label: "Nombre",               type: "text",   choices: null },
+    "first_surname":    { label: "Primer apellido",      type: "text",   choices: null },
+    "second_surname":   { label: "Segundo apellido",     type: "text",   choices: null },
+    "birth_date":       { label: "Fecha de nacimiento",  type: "date",   choices: null },
+    "phone":            { label: "Teléfono",             type: "text",   choices: null },
+    "country_of_origin":{ label: "País de origen",       type: "text",   choices: null },
+    "gender":           { label: "Género",               type: "select", choices: [
+                            ["femenino","Femenino"],["masculino","Masculino"],
+                            ["no_binario","No binario"],["lgbtiq","LGBTIQ+"]
+                          ]},
+    "state_or_region":  { label: "Departamento/Estado",  type: "text",   choices: null },
+    "marital_status":   { label: "Estado civil",         type: "select", choices: [
+                            ["soltero","Soltero/a"],["casado","Casado/a"],
+                            ["union_libre","Unión libre"],["divorciado","Divorciado/a"],
+                            ["viudo","Viudo/a"]
+                          ]}
+  };
+
+  var typeSelect    = document.getElementById('{{ form.arco_type.id_for_label }}');
+  var rectifSection = document.getElementById('rectifSection');
+  var fieldSelect   = document.getElementById('{{ form.rectif_field.id_for_label }}');
+  var valueGroup    = document.getElementById('rectifValueGroup');
+  var valueLabel    = document.getElementById('rectifValueLabel');
+  var valueContainer= document.getElementById('rectifValueContainer');
+  // Keep reference to the original text input (for its name/id attributes)
+  var originalInput = valueContainer.querySelector('input, select, textarea');
+  var inputName = originalInput ? originalInput.name : 'rectif_value';
+  var inputId   = originalInput ? originalInput.id   : 'id_rectif_value';
+
+  function buildInput(cfg, existingValue) {
+    var el;
+    if (cfg.type === 'select') {
+      el = document.createElement('select');
+      el.name = inputName; el.id = inputId;
+      el.className = originalInput ? originalInput.className : '';
+      cfg.choices.forEach(function(pair) {
+        var opt = document.createElement('option');
+        opt.value = pair[0]; opt.textContent = pair[1];
+        if (existingValue && existingValue === pair[0]) opt.selected = true;
+        el.appendChild(opt);
+      });
+    } else {
+      el = document.createElement('input');
+      el.type = cfg.type;
+      el.name = inputName; el.id = inputId;
+      el.className = originalInput ? originalInput.className : '';
+      el.autocomplete = 'off';
+      if (cfg.type === 'date') {
+        el.setAttribute('style', 'width:100%;box-sizing:border-box;');
+      }
+      if (existingValue) el.value = existingValue;
+    }
+    return el;
   }
-  typeSelect.addEventListener('change', togglePdf);
-  togglePdf();
+
+  function onFieldChange() {
+    var selected = fieldSelect.value;
+    if (!selected) {
+      valueGroup.style.display = 'none';
+      return;
+    }
+    var cfg = FIELD_CONFIGS[selected];
+    if (!cfg) { valueGroup.style.display = 'none'; return; }
+
+    valueLabel.textContent = 'Nuevo valor — ' + cfg.label;
+    var current = valueContainer.querySelector('input,select,textarea');
+    var existingVal = current ? current.value : '';
+    // Replace input with the appropriate type
+    var newInput = buildInput(cfg, existingVal);
+    valueContainer.innerHTML = '';
+    valueContainer.appendChild(newInput);
+    valueGroup.style.display = 'block';
+  }
+
+  function onTypeChange() {
+    var isRectif = typeSelect.value === 'rectification';
+    rectifSection.style.display = isRectif ? 'block' : 'none';
+    if (!isRectif) {
+      // Clear rectif fields so they don't submit stale data
+      fieldSelect.value = '';
+      valueGroup.style.display = 'none';
+    } else {
+      onFieldChange(); // restore value input if field is already selected
+    }
+  }
+
+  typeSelect.addEventListener('change', onTypeChange);
+  fieldSelect.addEventListener('change', onFieldChange);
+
+  // Initialize on page load (handles back-button / validation error re-render)
+  onTypeChange();
+  if (fieldSelect.value) onFieldChange();
 }());
 </script>
 

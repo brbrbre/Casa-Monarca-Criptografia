@@ -20,8 +20,6 @@
 
 <h2>Solicitud de flujo #{{ wf.pk }} — {{ wf.get_action_type_display }}</h2>
 
-{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
-
 <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
   <div class="card">
     <h4 style="margin:0 0 12px;">Detalles</h4>

@@ -2,6 +2,7 @@ import re
 
 from django import forms
 from .models import ArcoRequest, MigrantRegistration
+import phonenumbers
 
 
 class MigrantRegistrationForm(forms.ModelForm):
@@ -51,12 +52,26 @@ class MigrantRegistrationForm(forms.ModelForm):
         return val if val else 'X'
 
     def clean_phone(self):
-        val = self.cleaned_data.get('phone', '').strip()
-        if val and not re.match(r'^\+\d{1,3}-\d{1,5}-\d{4,15}$', val):
-            raise forms.ValidationError(
-                'Formato inválido. Usa: +país-área-número (ej: +52-55-12345678).'
+        phone = self.cleaned_data.get("phone", "").strip()
+
+        if not phone:
+            return phone
+
+        try:
+            parsed = phonenumbers.parse(phone, None)
+
+            if not phonenumbers.is_valid_number(parsed):
+                raise forms.ValidationError("Número telefónico inválido.")
+
+            return phonenumbers.format_number(
+                parsed,
+                phonenumbers.PhoneNumberFormat.E164
             )
-        return val
+
+        except phonenumbers.NumberParseException:
+            raise forms.ValidationError(
+                "Ingresa un número válido con código de país (ej. +5215512345678)."
+            )
 
     def clean_first_name(self):
         val = self.cleaned_data.get('first_name', '').strip()
@@ -77,11 +92,51 @@ class MigrantRegistrationForm(forms.ModelForm):
         return val
 
 
+# Fields the titular can request to rectify, with their input type and display label.
+# (field_name, label, input_type, choices_or_None)
+RECTIFIABLE_FIELDS = [
+    ('first_name',      'Nombre',               'text',   None),
+    ('first_surname',   'Primer apellido',       'text',   None),
+    ('second_surname',  'Segundo apellido',      'text',   None),
+    ('birth_date',      'Fecha de nacimiento',   'date',   None),
+    ('phone',           'Teléfono',              'text',   None),
+    ('country_of_origin', 'País de origen',      'text',   None),
+    ('gender',          'Género',                'select', [
+        ('femenino', 'Femenino'), ('masculino', 'Masculino'),
+        ('no_binario', 'No binario'), ('lgbtiq', 'LGBTIQ+'),
+    ]),
+    ('state_or_region', 'Departamento/Estado',   'text',   None),
+    ('marital_status',  'Estado civil',          'select', [
+        ('soltero', 'Soltero/a'), ('casado', 'Casado/a'),
+        ('union_libre', 'Unión libre'), ('divorciado', 'Divorciado/a'),
+        ('viudo', 'Viudo/a'),
+    ]),
+]
+
+_RECTIF_FIELD_CHOICES = [('', '— Selecciona el campo a rectificar —')] + [
+    (f[0], f[1]) for f in RECTIFIABLE_FIELDS
+]
+_RECTIF_FIELD_NAMES = {f[0] for f in RECTIFIABLE_FIELDS}
+
+
 class ArcoRequestForm(forms.ModelForm):
+    # Extra fields for Rectificación — not model fields, handled in view
+    rectif_field = forms.ChoiceField(
+        label='Campo a rectificar',
+        choices=_RECTIF_FIELD_CHOICES,
+        required=False,
+    )
+    rectif_value = forms.CharField(
+        label='Nuevo valor',
+        required=False,
+        max_length=200,
+        widget=forms.TextInput(attrs={'autocomplete': 'off'}),
+    )
+
     attached_document = forms.FileField(
         label='Documento de respaldo (PDF)',
         required=False,
-        help_text='Solo Rectificación: adjunta el PDF con la evidencia de los datos correctos. Máx. 5 MB.',
+        help_text='Adjunta el PDF que acredita el dato correcto (acta, pasaporte, etc.). Máx. 5 MB.',
         widget=forms.ClearableFileInput(attrs={'accept': '.pdf,application/pdf'}),
     )
 
@@ -90,16 +145,16 @@ class ArcoRequestForm(forms.ModelForm):
         fields = ['arco_type', 'description', 'attached_document']
         widgets = {
             'description': forms.Textarea(attrs={
-                'rows': 5,
+                'rows': 4,
                 'placeholder': (
-                    'Describe detalladamente tu solicitud: qué datos deseas '
-                    'acceder / corregir / eliminar y el motivo.'
+                    'Motivo de la solicitud. Para Rectificación indica por qué '
+                    'el dato actual es incorrecto.'
                 ),
             }),
         }
         labels = {
             'arco_type': 'Tipo de derecho ARCO',
-            'description': 'Descripción de la solicitud',
+            'description': 'Motivo / descripción',
         }
 
     def clean_description(self):
@@ -123,9 +178,25 @@ class ArcoRequestForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         arco_type = cleaned.get('arco_type')
-        doc = cleaned.get('attached_document')
-        if arco_type == ArcoRequest.ARCO_RECTIFICATION and not doc:
-            pass  # document recommended but not required
+
+        if arco_type == ArcoRequest.ARCO_RECTIFICATION:
+            field = cleaned.get('rectif_field', '').strip()
+            value = cleaned.get('rectif_value', '').strip()
+
+            if not field:
+                self.add_error('rectif_field', 'Selecciona el campo que deseas rectificar.')
+            elif field not in _RECTIF_FIELD_NAMES:
+                self.add_error('rectif_field', 'Campo no válido.')
+
+            if not value:
+                self.add_error('rectif_value', 'Indica el nuevo valor para el campo seleccionado.')
+
+            if not cleaned.get('attached_document'):
+                self.add_error(
+                    'attached_document',
+                    'La Rectificación requiere un PDF que acredite el dato correcto (Art. 25 LFPDPPP).',
+                )
+
         return cleaned
 
 

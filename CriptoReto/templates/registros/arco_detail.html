@@ -22,8 +22,6 @@
   <a href="{% url 'registros:arco_list' %}" style="color:var(--cm-primary);text-decoration:none;">← Solicitudes ARCO</a>
 </div>
 
-{% if messages %}{% for msg in messages %}<div class="message message-{{ msg.tags }}" style="margin-bottom:12px;">{{ msg }}</div>{% endfor %}{% endif %}
-
 <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;flex-wrap:wrap;">
   <h2 style="margin:0;font-family:monospace;">{{ arco.case_id }}</h2>
   <span class="arco-badge arco-{{ arco.arco_type }}">{{ arco.get_arco_type_display }}</span>
@@ -60,7 +58,7 @@
       <span class="detail-label">Nombre</span>
       <span class="detail-value"><a href="{% url 'registros:registro_detail' arco.registration.pk %}" style="color:var(--cm-primary);">{{ arco.registration.full_name }}</a></span>
     </div>
-    <div class="detail-row"><span class="detail-label">Nacionalidad</span><span class="detail-value">{{ arco.registration.nationality }}</span></div>
+    <div class="detail-row"><span class="detail-label">País de origen</span><span class="detail-value">{{ arco.registration.country_of_origin }}</span></div>
   </div>
 
 </div>
@@ -105,14 +103,6 @@
 </div>
 {% endif %}
 
-{% if arco.workflow_request %}
-<div class="card" style="margin-bottom:20px;">
-  <h4 style="margin:0 0 8px;">Flujo de aprobación</h4>
-  <a href="{% url 'registros:workflow_detail' arco.workflow_request.pk %}" style="color:var(--cm-primary);">
-    WF#{{ arco.workflow_request.pk }} — {{ arco.workflow_request.get_state_display }}
-  </a>
-</div>
-{% endif %}
 
 {% if can_execute %}
 <div class="card" style="margin-bottom:20px;border-left:4px solid {% if arco.arco_type == 'cancellation' %}var(--cm-danger){% else %}var(--cm-success){% endif %};">
