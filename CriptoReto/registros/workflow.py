@@ -309,11 +309,13 @@ def execute_request(wf, actor, password_verified: bool = False, notes: str = '')
         details=f'[Nivel {actor.access_level}] WF#{wf.pk} ejecutado. '
                 f'Firma: {action_sig.message_hash[:16]}…',
     )
-    _notify(
-        wf.requested_by,
-        wf,
-        f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue aprobada y ejecutada.',
-    )
+    _ARCO_TYPES = {'arco_access', 'arco_rectification', 'arco_cancellation', 'arco_opposition'}
+    if wf.action_type not in _ARCO_TYPES:
+        _notify(
+            wf.requested_by,
+            wf,
+            f'Tu solicitud #{wf.pk} ({wf.get_action_type_display()}) fue aprobada y ejecutada.',
+        )
     return True
 
 
@@ -405,8 +407,13 @@ def _perform_action(wf, actor):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+_ARCO_ACTION_TYPES = [
+    'arco_access', 'arco_rectification', 'arco_cancellation', 'arco_opposition',
+]
+
+
 def pending_requests_for(user):
-    """Return all WorkflowRequests currently waiting on the user's level."""
+    """Return non-ARCO WorkflowRequests currently waiting on the user's level."""
     from .models import WorkflowRequest
     return WorkflowRequest.objects.filter(
         state__in=[
@@ -415,7 +422,7 @@ def pending_requests_for(user):
             WorkflowRequest.STATE_ESCALATED,
         ],
         current_approver_level=user.access_level,
-    ).select_related('requested_by', 'registration')
+    ).exclude(action_type__in=_ARCO_ACTION_TYPES).select_related('requested_by', 'registration')
 
 
 def _notify(recipient, wf, message: str):

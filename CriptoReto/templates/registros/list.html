@@ -81,6 +81,25 @@
         {% endfor %}
       </tbody>
     </table>
+    
+    <!-- Paginación -->
+    {% if page_obj.has_other_pages %}
+      <div style="padding:16px;border-top:1px solid var(--cm-border);display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+        {% if page_obj.has_previous %}
+          <a href="?page=1{% if q %}&q={{ q }}{% endif %}" class="btn btn-light btn-sm">« Primera</a>
+          <a href="?page={{ page_obj.previous_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn btn-light btn-sm">‹ Anterior</a>
+        {% endif %}
+        
+        <span style="padding:8px 12px;color:var(--cm-text-muted);font-size:13px;">
+          Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+        </span>
+        
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if q %}&q={{ q }}{% endif %}" class="btn btn-light btn-sm">Siguiente ›</a>
+          <a href="?page={{ page_obj.paginator.num_pages }}{% if q %}&q={{ q }}{% endif %}" class="btn btn-light btn-sm">Última »</a>
+        {% endif %}
+      </div>
+    {% endif %}
   {% else %}
     <div style="padding:40px;text-align:center;color:var(--cm-text-muted);">
       {% if q %}

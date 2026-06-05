@@ -1,0 +1,91 @@
+============================================================
+  CASA MONARCA — CREDENCIALES DE DEMO
+  Generado: 2026-06-04
+  Convencion de username:  <iniciales_area>_<inicial_nombre><apellido>
+    ti = TI/Sistemas  |  le = Legal  |  hu = Humanitario
+============================================================
+
+NIVEL 1 -- ADMINISTRADORA
+  Nombre  : Mariel Alvarez
+  Usuario : ti_malvarez
+  Password: Mariel2026!
+  Email   : m.alvarez@casamonarca.org
+  Area    : TI / Sistemas
+  Cert    : certs/ti_malvarez.cert      <- sube en "Certificado (.cert)"
+  Key     : certs/ti_malvarez.key       <- sube en "Llave privada (.key)"
+
+------------------------------------------------------------
+
+NIVEL 2 -- COORDINADOR
+  Nombre  : Emiliano Ruiz
+  Usuario : le_eruiz
+  Password: Emiliano2026!
+  Email   : e.ruiz@casamonarca.org
+  Area    : Legal
+  Cert    : certs/le_eruiz.cert         <- sube en "Certificado (.cert)"
+  Key     : certs/le_eruiz.key          <- sube en "Llave privada (.key)"
+
+------------------------------------------------------------
+
+NIVEL 3 -- OPERATIVA
+  Nombre  : Brisma Alvarez
+  Usuario : hu_balvarez
+  Password: Brisma2026!
+  Email   : b.alvarez@casamonarca.org
+  Area    : Humanitario
+  Cert    : (no aplica -- nivel 3 no tiene certificado X.509)
+
+------------------------------------------------------------
+
+NIVEL 4 -- VOLUNTARIA
+  Nombre  : Karen Ramirez
+  Usuario : hu_kramirez
+  Password: Karen2026!
+  Email   : k.ramirez@casamonarca.org
+  Area    : Humanitario
+  Cert    : (no aplica -- nivel 4 no tiene certificado X.509)
+
+============================================================
+  PATRON DE CONTRASENAS
+  Formato: <NombrePropio>2026!
+    Mariel   -> Mariel2026!
+    Emiliano -> Emiliano2026!
+    Brisma   -> Brisma2026!
+    Karen    -> Karen2026!
+============================================================
+
+  AUTORIDAD CERTIFICADORA (CA) -- NO COMPARTIR
+  Cert CA   : certs/ca_cert.pem
+  Key CA    : certs/ca_key.enc.pem   (cifrada con AES-GCM)
+  Password CA: CasaMonarca_CA_Seed_2026!
+
+============================================================
+  NOTAS DE USO
+============================================================
+
+  - Los usuarios de nivel 1 y 2 deben subir su .cert y .key
+    al iniciar sesion para realizar acciones firmadas.
+
+  - Los archivos de cert/key estan en CriptoReto/certs/
+
+  - Para regenerar todo desde cero (sin tocar la CA):
+      python seed.py
+
+  - Para regenerar la CA tambien (rompe los certs existentes):
+      rm certs/ca_cert.pem certs/ca_key.enc.pem
+      python seed.py
+
+============================================================
+  REGISTROS MIGRANTES DE PRUEBA
+============================================================
+
+  MIG-CE3EDFB7  Santiago Morales Fuentes          (Honduras, Cortes)
+  MIG-C9DE2404  Valentina Cruz Mendoza             (Guatemala, Quetzaltenango)
+  MIG-B009103B  Diego Alejandro Fuentes Maldonado  (Honduras, Cortes)  <- USAR PARA DEMO ARCO
+  MIG-8BC76104  Ana Sofia Torres Vargas            (Venezuela, Caracas)
+  MIG-7F6D4F89  Roberto Diaz Herrera               (Nicaragua, Managua)
+  MIG-FFE00051  Juan Perez Garcia                  (Honduras, San Pedro Sula)
+  MIG-ABB12C77  Maria Rodriguez Lopez              (Guatemala, Ciudad de Guatemala)
+  MIG-11D7E678  Carlos Mendoza Fuentes             (El Salvador, San Salvador)
+
+============================================================

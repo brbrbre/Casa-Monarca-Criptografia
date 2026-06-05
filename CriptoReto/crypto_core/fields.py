@@ -10,12 +10,14 @@ Use non-encrypted identifiers (internal_id, status, pk) for filtering.
 
 import logging
 from datetime import date as date_type
+from functools import lru_cache
 
 from django.db import models
 
 logger = logging.getLogger(__name__)
 
 
+@lru_cache(maxsize=1)
 def _get_key():
     from .encryption import get_encryption_key_from_env
     return get_encryption_key_from_env()
