@@ -178,13 +178,10 @@ Abre [http://127.0.0.1:8000](http://127.0.0.1:8000) en tu navegador.
 
 | Usuario | Contraseña | Nivel | Rol |
 |---|---|---|---|
-| `admin` | `Admin2026!` | 1 — Admin | Administración total |
-| `legal_coordinator` | `Legal2026!` | 2 — Coordinador | Área Legal |
-| `humanitario_ops` | `Humanitario2026!` | 3 — Operativo | Área Humanitaria |
-| `external_comms` | `Comms2026!` | 3 — Operativo | Comunicaciones |
-| `warehouse_manager` | `Almacen2026!` | 3 — Operativo | Almacén |
-| `psychologist` | `Psico2026!` | 3 — Operativo | Psicosocial |
-| `external_support` | `Soporte2026!` | 4 — Voluntario | Apoyo externo |
+| `mariel_alvarez` | `Mariel2026!` | 1 — Admin | Administración total |
+| `emiliano_ruiz` | `Emiliano2026!` | 2 — Coordinador | Área Legal |
+| `brisma_alvarez` | `Brisma2026!` | 3 — Operativo | Área Humanitaria |
+| `karen_estrada` | `Karen2026!` | 4 — Voluntario | Apoyo externo |
 
 > Los usuarios de nivel 1 y 2 requieren cargar su certificado `.cert` y llave `.key` para ejecutar acciones firmadas. Los certificados de prueba se generan al correr el seed.
 
