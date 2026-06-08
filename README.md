@@ -7,7 +7,6 @@
 [![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)](https://python.org)
 [![Django](https://img.shields.io/badge/Django-5.x-092E20?logo=django&logoColor=white)](https://djangoproject.com)
 [![Cryptography](https://img.shields.io/badge/Cryptography-ECDSA%20·%20X.509%20·%20AES--GCM-red)](https://cryptography.io)
-[![License](https://img.shields.io/badge/License-Academic-orange)](.)
 
 > Proyecto desarrollado para **MA2006B – Uso de Álgebras Modernas para Seguridad y Criptografía**  
 > Tecnológico de Monterrey · Equipo 1 · Grupo 602
