@@ -314,11 +314,11 @@ Tecnológico de Monterrey · 2026
 
 | Nombre | Matrícula |
 |---|---|
-| Mariel Álvarez Salas | A01198828 |
-| Brisma Alvarez Valdez | A00839238 |
-| Emiliano Ruiz López | A01659693 |
-| Ana Sofia Nagao Alvarez | A01285034 |
-| Karen Aylen Estrada Ceferino | A00838403 |
+| Mariel Álvarez Salas | A01198828@tec.mx |
+| Brisma Alvarez Valdez | A00839238@tec.mx |
+| Emiliano Ruiz López | A01659693@tec.mx |
+| Ana Sofia Nagao Alvarez | A01285034@tec.mx |
+| Karen Aylen Estrada Ceferino | A00838403@tec.mx |
 
 ---
 
