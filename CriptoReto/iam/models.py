@@ -1,3 +1,20 @@
+"""
+Django models for Identity and Access Management (IAM) — subsystem (a).
+
+Implements the four-level access hierarchy required by Casa Monarca:
+  - Level 1 (admin):       Full system access, CA management, certificate issuance.
+  - Level 2 (coordinador): Area-scoped management, workflow approval, batch signing.
+  - Level 3 (operativo):   Record creation within assigned area, basic signing.
+  - Level 4 (externo):     Read-only, restricted to authorized views.
+
+Key models:
+  - Collaborator:         Django user extended with access level, TOTP, onboarding state.
+  - UserCertificate:      X.509 certificate lifecycle (ACTIVE/SUSPENDED/REVOKED/INACTIVE).
+  - CertificateAuditLog:  Append-only audit trail for certificate state changes.
+  - AuditLog:             General system action log (actor, target, action, timestamp).
+  - LoginAttempt:         Tracks failed logins for brute-force detection.
+"""
+
 import uuid
 from datetime import timedelta
 

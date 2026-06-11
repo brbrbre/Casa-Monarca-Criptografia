@@ -1,3 +1,24 @@
+"""
+Django models for migrant record management, ARCO rights, and workflow — subsystems (b), (d), (e).
+
+Key models:
+  - MigrantRegistration:  Core migrant record with AES-GCM encrypted PII fields.
+  - RegistrationSignature: ECDSA signature tied to a MigrantRegistration at creation.
+  - ActionSignature:       Server-side ECDSA signature in a SHA-256 hash chain.
+  - BatchSignSession:      Groups multiple ActionSignatures signed in one operation.
+  - WorkflowRequest:       Multi-level approval request with escalation state machine.
+  - ApprovalStep:          Single step in a workflow, append-only with hash chain.
+  - Ticket:                Simple notification/task ticket for operators.
+  - ArcoRequest:           ARCO rights request (Acceso/Rectificación/Cancelación/Oposición).
+  - ArcoTicket:            Formal ARCO case with legal deadline tracking.
+  - SignedFlowLog:         X.509-signed log entry for irreversible (final) actions.
+  - Notification:          In-app notification for ARCO and workflow events.
+
+All fields containing personally identifiable information (PII) use
+EncryptedTextField or EncryptedDateField for transparent AES-256-GCM
+encryption at the Django ORM layer.
+"""
+
 import uuid
 import hashlib
 import json

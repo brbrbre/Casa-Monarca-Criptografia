@@ -1,3 +1,17 @@
+"""
+Django views for migrant record management, ARCO rights, and workflow — subsystems (b), (d), (e).
+
+View categories:
+  - MigrantRegistration CRUD:  create, list, detail, soft-delete with audit trail.
+  - Document signing:          sign at creation (ECDSA), verify from expediente view.
+  - Workflow:                  request creation, approval/rejection, execution (multi-level).
+  - Batch signing:             sign multiple workflow requests in a single session.
+  - ARCO rights:               access, rectification, cancellation, opposition flows.
+  - ArcoTicket:                dedicated ARCO case management with legal deadline.
+  - Chain audit:               public view showing hash-chain integrity status.
+  - External verification:     verify document signatures without authentication.
+"""
+
 import io
 import json
 from functools import wraps

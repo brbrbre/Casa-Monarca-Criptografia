@@ -1,3 +1,19 @@
+"""
+Django views for IAM (Identity and Access Management) — subsystem (a).
+
+Handles authentication, onboarding, certificate lifecycle management, and
+audit log access.  All privileged operations (certificate issuance, revocation,
+onboarding approval) require access_level 1 (admin) or 2 (coordinator).
+
+View categories:
+  - Authentication:        login, logout, TOTP verification.
+  - Onboarding:            self-service form, coordinator/admin approval flow.
+  - Certificate management: issue, suspend, reactivate, revoke, deactivate.
+  - Certificate validation: public-facing verification panel (no auth required).
+  - Collaborator CRUD:     list, detail, create, edit (level-gated).
+  - Audit log:             tamper-evident action history for admins.
+"""
+
 import secrets
 from functools import wraps
 

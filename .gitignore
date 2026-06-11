@@ -1,1 +1,54 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.env
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+
+# Keys and certificates — NEVER commit real cryptographic material
+*.key
+*.pem
+*.p12
+*.pfx
+*.der
+*.csr
+firma.bin
+ca_key_encrypted.txt
+
+# step-ca
+~/.step/
+
+# IDE
+.vscode/settings.json
+.vscode/launch.json
+*.code-workspace
+.idea/
+*.swp
+*.swo
+*~
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
