@@ -11,6 +11,8 @@
 > **MA2006B** — Uso de Álgebras Modernas para Seguridad y Criptografía  
 > Tecnológico de Monterrey · Equipo 1 · Grupo 602 · 2026
 
+![Dashboard](entregas/ManualdeUsuario/dashboard_admin.png)
+
 </div>
 
 ---
@@ -246,6 +248,31 @@ La suite cubre: generación de llaves ECDSA, firma y verificación, emisión de 
 
 ---
 
+## Contribuciones
+
+¿Quieres colaborar con el proyecto? Sigue estos pasos:
+
+1. **Clona el repositorio** y explora la estructura antes de modificar cualquier archivo:
+   ```bash
+   git clone https://github.com/brbrbre/Casa-Monarca-Criptografia.git
+   cd Casa-Monarca-Criptografia
+   ```
+
+2. **Lee primero** `README.md` (este archivo), `TODO.md` (tareas pendientes) y `CHANGELOG.md` (historial de cambios) para entender el estado actual del proyecto.
+
+3. **Entiende el módulo criptográfico** — `CriptoReto/crypto_core/` es el núcleo del sistema. Toda la criptografía pasa por ahí; los demás módulos solo delegan.
+
+4. **Corre las pruebas** antes de hacer cualquier cambio:
+   ```bash
+   cd CriptoReto && pytest tests/ -v
+   ```
+
+5. **Crea una rama** para tu contribución y abre un Pull Request con una descripción clara del cambio y las pruebas que lo respaldan.
+
+6. **No modifiques** la lógica criptográfica sin entender las implicaciones de seguridad. Consulta `TODO.md` sección "Problemas conocidos" para issues activos.
+
+---
+
 ## Licencia
 
 Este proyecto se distribuye bajo la **Licencia MIT**. Ver [LICENSE](LICENSE) para el texto completo.
@@ -266,6 +293,18 @@ Tecnológico de Monterrey · 2026
 | Emiliano Ruiz López | A01659693@tec.mx |
 | Ana Sofia Nagao Alvarez | A01285034@tec.mx |
 | Karen Aylen Estrada Ceferino | A00838403@tec.mx |
+
+---
+
+## Contacto
+
+Para dudas sobre el proyecto, reportar un problema o solicitar autorización de uso:
+
+| Motivo | Contacto |
+|---|---|
+| Preguntas técnicas sobre el código | Equipo 1 — ver correos en la tabla de abajo |
+| Solicitudes de uso institucional o comercial | [Casa Monarca A.C.](https://www.casamonarca.org.mx/) |
+| Reportar una vulnerabilidad de seguridad | Contactar directamente a un integrante del equipo por correo institucional |
 
 ---
 
