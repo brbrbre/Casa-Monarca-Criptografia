@@ -221,18 +221,6 @@ Casa-Monarca-Criptografia/
 
 ---
 
-## Propiedades de seguridad por subsistema
-
-| Subsistema | Confidencialidad | Integridad | Autenticidad | No-repudio | Disponibilidad |
-|---|:---:|:---:|:---:|:---:|:---:|
-| (a) Gestión de Identidades | ✓ | ✓ | ✓ | ✓ | ✓ |
-| (b) Gestión de Documentos | ✓ | ✓ | ✓ | ✓ | — |
-| (c) Firma de Correos | — | ✓ | ✓ | ✓ | — |
-| (d) Formularios con Firma | — | ✓ | ✓ | ✓ | ✓ |
-| (e) Verificación Externa | — | ✓ | ✓ | — | ✓ |
-| (f) Gestión de Llaves BD | ✓ | ✓ | ✓ | — | — |
-
----
 
 ## Usuarios de prueba
 
