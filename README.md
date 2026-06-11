@@ -48,51 +48,10 @@ Ciclo de vida completo de certificados X.509 firmados por una CA interna:
 - Proceso de onboarding con aprobación multinivel y verificación de identidad
 - Auditoría criptográfica de todas las acciones de identidad (`CertificateAuditLog`)
 
-### (b) Sistema de Gestión de Documentos
-
-Integridad, autenticidad, confidencialidad y no-repudio de registros migrantes:
-
-- Firma digital ECDSA secp256k1 de cada registro en el momento de su creación
-- Cifrado AES-256-GCM de todos los campos PII en la base de datos
-- Hash-chain SHA-256 anti-tampering sobre todas las acciones del sistema
-- Verificación de autenticidad en cualquier momento desde el expediente
-
-### (c) Sistema de Firma de Correos Electrónicos
-
-Firma y verificación inspirada en PGP para comunicaciones de la organización:
-
-- Firma de contenido de correos y adjuntos con clave privada EC/RSA
-- Verificación de integridad y autenticidad por el receptor
-- No-repudio: el firmante no puede negar haber enviado el mensaje
-- Disponible en el SDK (`sdk/email_sign.py`)
-
-### (d) Sistema de Gestión de Formularios con Firma
-
-Formularios firmados análogos a la e.firma del SAT mexicano:
-
-- Consentimiento informado firmado digitalmente por el operador
-- Solicitudes ARCO con flujo de autorización multinivel firmado
-- Generación de PDF de respuesta con firma digital del autorizador
-- Workflow: `submitted → pending_review → escalated → approved → executed`
-
-### (e) Sistema de Verificación Externa de Documentos
-
-Verificación de documentos por terceros sin acceso al sistema interno:
-
-- Panel de verificación público (sin autenticación requerida)
-- Verificación de certificados X.509 contra la CA interna
-- Verificación de firmas ECDSA de registros migrantes
-- API pública de solo lectura para agentes externos
-
-### (f) Sistema de Gestión de Llaves de Base de Datos
-
-Protección de claves secretas con criptografía de clave pública:
-
-- Clave maestra AES-256 derivada con PBKDF2-HMAC-SHA256 (600,000 iteraciones, OWASP 2023)
-- Clave privada de la CA cifrada en reposo con AES-GCM + contraseña maestra del admin
-- Campos PII cifrados de forma transparente mediante `EncryptedTextField` / `EncryptedDateField`
-- La clave maestra nunca se guarda en texto plano — solo existe en memoria durante la sesión
-
+### (b) Sistema de gestión de registros. 
+Se busca cubrir con integridad, autenticidad, confidencialidad, no repudio y disponibilidad sobre los formatos que son llenados por las personas que buscan ser apoyadas por la OSF. 
+- Proveer de características que existen en sistemas similares, tales como la e.firma del SAT, donde el contribuyente llena formatos con sus datos personales y fiscales para posteriormente proceder a presentar sus obligaciones ante la autoridad.
+- Fortalecer a la OSF en el cumplimiento de la Ley Federal de Protección de Datos Personales en Posesión de Particulares, Derecho ARCO y Avisos de Privacidad. 
 ---
 
 ## Arquitectura del sistema
