@@ -246,6 +246,22 @@ La suite cubre: generación de llaves ECDSA, firma y verificación, emisión de 
 
 ---
 
+## Limitaciones del sistema
+
+El sistema no contempla:
+
+- La verificación física o presencial de la identidad de los colaboradores durante el proceso de onboarding.
+- La gestión de identidades de organizaciones externas ajenas a Casa Monarca A.C.
+- La recuperación de información eliminada fuera de los mecanismos de respaldo establecidos para la base de datos y las claves maestras.
+- La protección de dispositivos finales comprometidos por malware, pérdida física o accesos no autorizados al equipo del operador.
+- La sustitución de políticas organizacionales, procedimientos administrativos internos o medidas de seguridad físicas existentes en Casa Monarca.
+- La interoperabilidad automática con sistemas gubernamentales, registros migratorios oficiales o plataformas externas de certificación digital (e.firma SAT, CERTIMEX, etc.).
+- La emisión de sellos de tiempo certificados por una autoridad externa (TSA); los timestamps son generados por el reloj del servidor.
+- El envío y firma de correos electrónicos directamente desde la interfaz web; esta funcionalidad está disponible únicamente a través del SDK (`sdk/email_sign.py`).
+- El despliegue multi-organización; una instancia del sistema corresponde a una sola organización bajo una CA interna.
+
+---
+
 ## Licencia
 
 Este proyecto se distribuye bajo la **Licencia MIT**. Ver [LICENSE](LICENSE) para el texto completo.
