@@ -11,7 +11,7 @@
 > **MA2006B** — Uso de Álgebras Modernas para Seguridad y Criptografía  
 > Tecnológico de Monterrey · Equipo 1 · Grupo 602 · 2026
 
-![Dashboard](entregas/ManualdeUsuario/dashboard_admin.png)
+![Dashboard](dashboard_admin.png)
 
 </div>
 
