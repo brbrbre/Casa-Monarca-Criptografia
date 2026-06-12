@@ -8,7 +8,7 @@ Tecnológico de Monterrey · Equipo 1 · Grupo 602 · 2026
 
 ---
 
-## Acto I: Los Cimientos
+## Acto I: Primer Acercamiento
 *Sesiones 1–3: Diseño e Investigación*
 
 ### Sesión 1: El Problema
