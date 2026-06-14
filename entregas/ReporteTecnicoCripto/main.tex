@@ -23,6 +23,7 @@
 \usepackage{enumitem}
 \usepackage{booktabs}
 \usepackage{caption}
+\usepackage{float}
 \usepackage{tocloft}
 \usepackage{indentfirst}
 \usepackage{longtable}
@@ -36,8 +37,14 @@
 \counterwithout{table}{chapter}
 
 \newcommand{\citeref}[2]{\hyperlink{ref:#1}{(#2)}}
-\newcommand{\fechaentrega}{11 de junio de 2026}
+\newcommand{\fechaentrega}{14 de junio de 2026}
 \newcommand{\cmark}{\ding{51}}   % marca de aprobado
+\newcommand{\safeincludegraphics}[2][]{%
+    \IfFileExists{#2}{\includegraphics[#1]{#2}}{%
+        \fbox{\parbox{0.85\textwidth}{\centering Imagen no encontrada: \texttt{#2}}}%
+    }%
+}
+
 
 % ---------------------------------------------------------------------------
 % Rutas de búsqueda de imágenes
@@ -149,7 +156,7 @@ La verificación requiere únicamente la clave pública $Q_A = d_A G$ \citeref{j
 
 \begin{table}[h!]
 \centering
-\caption{Tamaño de clave equivalente para 128 bits de seguridad (elaboración propia basada en \citeref{nist2023}{NIST, 2023}).}
+\caption{Tamaño de clave equivalente para 128 bits de seguridad (elaboración propia basada en NIST, 2023).}
 \label{tab:keysizes}
 \begin{tabular}{lcc}
 \toprule
@@ -212,6 +219,8 @@ Para la firma digital se eligió ECDSA sobre RSA por razones de eficiencia: ECDS
 \captionof{figure}{Diagrama de arquitectura del sistema de gestión de identidades y registro de migrantes de Casa Monarca. Generado con Claude (Anthropic, 2026).}
 \label{fig:arquitectura}
 \end{center}
+
+La figura 1 muestra el diagrama de arquitectura del sistema desarrollado para Casa Monarca. Las capas consisten en los usuarios, el frontend, los 2 modulos de la solucion, las bibliotecas y las herramientas utilizadas en las bases de datos.
 
 \section{Backend}
 
@@ -284,74 +293,90 @@ Para el frontend se utilizaron plantillas de Django con HTML5 y CSS propio, sin 
     \item Login (con carga de \texttt{.cert}/\texttt{.key} para Niveles 1 y 2)
     \begin{center}
         \includegraphics[width=0.85\textwidth]{login.png}
-        \captionof{figure}{Pantalla de login con campos de usuario, contraseña y carga de \texttt{.cert}/\texttt{.key} (Niveles 1 y 2) (elaboración propia).}
+        \captionof{figure}{Pantalla de login con campos de usuario, contraseña y carga de \texttt{.cert}/\texttt{.key} (Niveles 1 y 2).}
         \label{fig:login}
     \end{center}
+    Esta imagen aparece cuando un administrador o coordinador intenta iniciar sesión.
     \item Dashboard de colaboradores
     \begin{center}
         \includegraphics[width=0.85\textwidth]{dashboard.png}
-        \captionof{figure}{Dashboard de colaboradores con tarjetas de estadísticas (elaboración propia).}
+        \captionof{figure}{Dashboard de colaboradores con tarjetas de estadísticas.}
         \label{fig:dashboard}
     \end{center}
+    Listado de colaboradores de Casa Monarca.
+
     \item Onboarding
     \begin{center}
         \includegraphics[width=0.85\textwidth]{onboarding.png}
-        \captionof{figure}{Formulario de onboarding de nuevos colaboradores (elaboración propia).}
+        \captionof{figure}{Formulario de onboarding de nuevos colaboradores.}
         \label{fig:onboarding}
     \end{center}
+    Esta pantalla aparece cuando el colaborador quiere crear su usuario. El coordinador lo tiene que aprobar para que el colaborador se vuelva parte del sistema.
+
     \item Detalle de colaborador
     \begin{center}
         \includegraphics[width=0.85\textwidth]{detalle.png}
-        \captionof{figure}{Vista de detalle de un colaborador con historial de acciones (elaboración propia).}
+        \captionof{figure}{Vista de detalle de un colaborador con historial de acciones.}
         \label{fig:detalle}
     \end{center}
+    Información detallada del colaborador, muestra la información personal, los datos y estado de su onboarding.
+
     \item Auditoría IAM
     \begin{center}
         \includegraphics[width=0.85\textwidth]{auditoria.png}
-        \captionof{figure}{Módulo de auditoría IAM con filtros por fecha, acción y actor (elaboración propia).}
+        \captionof{figure}{Módulo de auditoría IAM con filtros por fecha, acción y actor.}
         \label{fig:auditoria}
     \end{center}
+    En la auditoría se puede rastrear la actividad de los colaboradores, solamente con el nivel necesario.
+
     \item Gestión de certificados
     \begin{center}
         \includegraphics[width=0.85\textwidth]{gestion.png}
-        \captionof{figure}{Módulo de gestión de certificados con resumen por estado (elaboración propia).}
+        \captionof{figure}{Módulo de gestión de certificados con resumen por estado.}
         \label{fig:gestion}
     \end{center}
+    En la gestión de certificados se puede verificar el estatus de los certificados y realizar distintas acciones de ser necesario.
 \end{itemize}
 
-\textbf{Etapa 2 --- Registro de migrantes:}
+\textbf{Etapa 2: Registro de migrantes:}
 
 \begin{itemize}
     \item Formulario de nuevo registro
     \begin{center}
         \includegraphics[width=0.85\textwidth]{nuevo.png}
-        \captionof{figure}{Formulario de nuevo registro de migrante (elaboración propia).}
+        \captionof{figure}{Formulario de nuevo registro de migrante.}
         \label{fig:nuevo}
     \end{center}
+    Si se busca registrar a un migrante, debe llevar a esta página. Se llena el formulario para agregarlo.
     \item Revisión y confirmación con firma
     \begin{center}
         \includegraphics[width=0.85\textwidth]{firma.png}
-        \captionof{figure}{Pantalla de revisión y confirmación con solicitud de contraseña para firmar (elaboración propia).}
+        \captionof{figure}{Pantalla de revisión y confirmación con solicitud de contraseña para firmar.}
         \label{fig:firma}
     \end{center}
+    En caso de querer firmar un registro, se llega a esta pantalla, solo aplica para el nivel necesario.
     \item Listado de registros
     \begin{center}
         \includegraphics[width=0.85\textwidth]{listado.png}
-        \captionof{figure}{Listado de registros de migrantes con buscador por identificador interno (elaboración propia).}
+        \captionof{figure}{Listado de registros de migrantes con buscador por identificador interno.}
         \label{fig:listado}
     \end{center}
+    En la figura 10 aparece la forma en la que se enlistan a los migrantes en e modulo de registros.
     \item Detalle con firma ECDSA
     \begin{center}
         \includegraphics[width=0.85\textwidth]{ECDSA.png}
-        \captionof{figure}{Detalle de registro con bloque de firma ECDSA verificada (elaboración propia).}
+        \captionof{figure}{Detalle de registro con bloque de firma ECDSA verificada.}
         \label{fig:ECDSA}
     \end{center}
+    En la parte superior de la figura 11 se observa donde el registro se firmó correctamente.
+
     \item Expediente completo
     \begin{center}
         \includegraphics[width=0.85\textwidth]{Expediente.png}
-        \captionof{figure}{Expediente completo con línea de tiempo de eventos del registro (elaboración propia).}
+        \captionof{figure}{Expediente completo con línea de tiempo de eventos del registro.}
         \label{fig:Expediente}
     \end{center}
+    En la figura 12 se puede visualizar el expediente de un migrante registrado previamente.
 \end{itemize}
 
 \textbf{Workflow y ARCO:}
@@ -360,27 +385,33 @@ Para el frontend se utilizaron plantillas de Django con HTML5 y CSS propio, sin 
     \item Listado de solicitudes
     \begin{center}
         \includegraphics[width=0.85\textwidth]{listsolicitudes.png}
-        \captionof{figure}{Listado de solicitudes de cambio con estados del flujo de aprobación (elaboración propia).}
+        \captionof{figure}{Listado de solicitudes de cambio con estados del flujo de aprobación.}
         \label{fig:listsolicitudes}
     \end{center}
+    En esta pantalla aparece el listado de todas las solicitudes ARCO (en caso de que existan).
+
     \item Decisión con firma obligatoria
     \begin{center}
         \includegraphics[width=0.85\textwidth]{obligatoria.png}
-        \captionof{figure}{Pantalla de decisión sobre solicitud con firma digital obligatoria (elaboración propia).}
+        \captionof{figure}{Pantalla de decisión sobre solicitud con firma digital obligatoria.}
         \label{fig:obligatoria}
     \end{center}
+    Para decidir sobre una solicitud arco, el administrador debe firmar, esto se observa en la figura 14.
     \item Formulario ARCO
     \begin{center}
         \includegraphics[width=0.85\textwidth]{ARCO.png}
-        \captionof{figure}{Formulario de nueva solicitud de derechos ARCO (elaboración propia).}
+        \captionof{figure}{Formulario de nueva solicitud de derechos ARCO.}
         \label{fig:ARCO}
     \end{center}
+    En caso de que un migrante quiera ejercer un derecho ARCO, tendrá que llenar el formulario de la figura 15.
+
     \item Detalle de solicitud ARCO
     \begin{center}
         \includegraphics[width=0.85\textwidth]{DETARCO.png}
-        \captionof{figure}{Detalle de caso ARCO con flujo de aprobación vinculado y plazo legal calculado (elaboración propia).}
+        \captionof{figure}{Detalle de caso ARCO con flujo de aprobación vinculado y plazo legal calculado.}
         \label{fig:DETARCO}
     \end{center}
+    En caso de querer finalizar el ticket de la solicitud, aparece la pantalla de la figura 16. El administrador debe agregar sus credenciales para proceder.
 \end{itemize}
 
 \textbf{Perfil:}
@@ -389,15 +420,17 @@ Para el frontend se utilizaron plantillas de Django con HTML5 y CSS propio, sin 
     \item Cambio de contraseña
     \begin{center}
         \includegraphics[width=0.85\textwidth]{cambio.png}
-        \captionof{figure}{Pantalla de cambio de contraseña (elaboración propia).}
+        \captionof{figure}{Pantalla de cambio de contraseña.}
         \label{fig:cambio}
     \end{center}
+    La figura 17 aparece si el usuario quiere cambiar su contraseña.
     \item Configuración de pregunta de seguridad
     \begin{center}
         \includegraphics[width=0.85\textwidth]{pregunta.png}
-        \captionof{figure}{Configuración de pregunta de seguridad para recuperación de contraseña (elaboración propia).}
+        \captionof{figure}{Configuración de pregunta de seguridad para recuperación de contraseña.}
         \label{fig:pregunta}
     \end{center}
+    La figura 18 aparece cuando el usuario quiera configurar su pregunta de seguridad por si requiere recuperar su contraseña-
 \end{itemize}
 
 \section{Conexión de componentes}
@@ -429,7 +462,7 @@ El sistema cumple de forma integral con los objetivos del reto. Gestiona el cicl
 
 Para validar el correcto funcionamiento del sistema se ejecutaron 23 casos de prueba distribuidos en dos módulos: IAM (Inicio de Sesión) y Registro de Migrantes (CRUD). La Tabla~\ref{tab:validaciones_resumen} presenta los casos más representativos de cada funcionalidad crítica; la cobertura completa se documenta en el Anexo~\ref{anx:casos_prueba}.
 
-\textit{Nota:} No se incluyen capturas de todos los casos para mantener la proporción texto/imagen del documento. Las evidencias completas están disponibles en la carpeta \texttt{Casos de Prueba/} del repositorio y en los archivos adjuntos de casos de prueba.
+\textit{Nota:} No se incluyen capturas de todos los casos para mantener la proporción texto/imagen del documento. Las evidencias completas están disponibles en la carpeta \texttt{Casos de Prueba/} del repositorio \citeref{repo2026}{Álvarez Salas et al., 2026} y en los archivos adjuntos de casos de prueba.
 
 \begin{longtable}{c p{2.0cm} p{3.2cm} p{3.2cm} c}
 \caption{Casos de uso representativos y resultados de validación (elaboración propia).}
@@ -446,7 +479,7 @@ Para validar el correcto funcionamiento del sistema se ejecutaron 23 casos de pr
 \endfoot
 CP-01 & IAM --- Login & Acceso con credenciales válidas & Redirige al dashboard; crea registro en \texttt{AuditLog} & \cmark \\[4pt]
 CP-02 & IAM --- Login & Contraseña incorrecta & Mensaje \textit{``Usuario o contraseña incorrectos''}; registra intento fallido & \cmark \\[4pt]
-CP-04 & IAM --- Login & Cuenta revocada (\texttt{is\_revoked=True}) & Mensaje \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
+CP-04 & IAM --- Login & Cuenta revocada (\texttt{is\_revoked= True}) & Mensaje \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
 CP-07 & IAM --- Login & Onboarding pendiente & Redirección a \texttt{/onboarding/} con mensaje informativo & \cmark \\[4pt]
 CP-08 & IAM --- Login & Aprobado, certificado no descargado & Redirección a descarga de credenciales & \cmark \\[4pt]
 REG-01 & Registros --- Create & Registro exitoso & Guardado con firma ECDSA y aparece en lista & \cmark \\[4pt]
@@ -457,7 +490,7 @@ REG-07 & Registros --- Read & Operativo ve registros & Lista filtrada según per
 REG-09 & Registros --- Update & Edición directa por admin & Registro actualizado; firma ECDSA recalculada & \cmark \\[4pt]
 REG-10 & Registros --- Update & Edición por operativo vía workflow & Solicitud queda en estado \textit{Pendiente de aprobación} & \cmark \\[4pt]
 REG-11 & Registros --- Update & Aprobación de cambio propuesto & Cambio se aplica al registro tras firma del coordinador & \cmark \\[4pt]
-REG-13 & Registros --- Delete & Eliminación lógica por admin & \texttt{is\_deleted=True}; no desaparece de la BD & \cmark \\[4pt]
+REG-13 & Registros --- Delete & Eliminación lógica por admin & \texttt{is\_deleted= True}; no desaparece de la BD & \cmark \\[4pt]
 REG-14 & Registros --- Delete & Búsqueda de registro eliminado & No aparece en la lista activa normal & \cmark \\
 \end{longtable}
 
@@ -468,15 +501,21 @@ Todos los casos ejecutados resultaron aprobados. Las evidencias fotográficas de
 % ===========================================================================
 \chapter{Conclusiones y Trabajo Futuro}
 
-\section{Conclusiones}
+A lo largo de las dos etapas del reto se diseñó e implementó un sistema funcional que apoya en la resolución de las necesidades de Casa Monarca. La Etapa 1 consistió en un gestor de identidades con trazabilidad completa mediante un espacio de auditoría.La Etapa 2 añadió un módulo de registro de migrantes que cifra los datos sensibles con AES-256, firma cada expediente con ECDSA sobre SHA-256, gestiona los cambios mediante aprobación por niveles y permite ejercer los cuatro derechos ARCO en los plazos legales. La cadena criptográfica de auditoría garantiza que el historial de acciones sea verificable e inalterable. Esto fortalece la confianza del sistema porque cada evento relevante queda asociado con un usuario, una fecha, una acción y una evidencia técnica que puede revisarse posteriormente. Con esta solución, Casa Monarca dispondrá de herramientas para responder solicitudes ARCO dentro del plazo legal y para detectar brechas de seguridad de forma temprana. Además, el sistema contribuye a ordenar procesos que antes podían depender de controles manuales o de registros dispersos.
 
-A lo largo de las dos etapas del reto se diseñó e implementó un sistema funcional que apoya en la resolución de las necesidades de Casa Monarca. La Etapa 1 consistió en un gestor de identidades con trazabilidad completa mediante un espacio de auditoría. La Etapa 2 añadió un módulo de registro de migrantes que cifra los datos sensibles con AES-256, firma cada expediente con ECDSA sobre SHA-256, gestiona los cambios mediante aprobación por niveles y permite ejercer los cuatro derechos ARCO en los plazos legales. La cadena criptográfica de auditoría garantiza que el historial de acciones sea verificable e inalterable.
+En términos de usabilidad, las pantallas guían al usuario paso a paso, los mensajes de error son descriptivos y las acciones irreversibles requieren confirmación explícita con credenciales digitales. Esto reduce la probabilidad de errores humanos y permite que personal no técnico pueda operar el sistema con mayor seguridad. Desde una perspectiva criptográfica, la elección de ECDSA sobre SECP256K1 combinada con SHA-256 como función de pre-hash demostró ser adecuada para el contexto de la organización. Esta combinación ofrece 128 bits de seguridad con claves suficientemente compactas para que el personal las maneje como archivos .cert y .key sin ningún tipo de problema. El cifrado AES-256 de los campos sensibles garantiza que, incluso ante un acceso no autorizado directo a la base de datos MySQL, los datos personales de los migrantes permanezcan ilegibles. Esta protección es especialmente importante por la naturaleza vulnerable de la población atendida por Casa Monarca.
 
-Con esta solución, Casa Monarca dispondrá de herramientas para responder solicitudes ARCO dentro del plazo legal y para detectar brechas de seguridad de forma temprana. Las pantallas guían al usuario paso a paso, los mensajes de error son descriptivos y las acciones irreversibles requieren confirmación explícita con credenciales digitales, reduciendo los errores humanos.
+La cadena de auditoría criptográfica basada en SHA-256 añade una capa adicional de confianza. Cualquier intento de alterar el historial de acciones resulta detectable de forma matemáticamente verificable, lo que eleva la evidencia disponible para Casa Monarca ante cualquier problema legal o de cumplimiento normativo.Finalmente, el proyecto evidenció que es posible implementar un sistema de seguridad robusto dentro de las restricciones reales de una organización civil con recursos limitados. La solución no requiere costos de licenciamiento ni dependencias de infraestructura incompatible con el entorno disponible.
 
-\section{Trabajo futuro}
+La decisión de construir sobre Django y MySQL demuestra que la seguridad de datos personales sensibles no es exclusiva de organizaciones con grandes presupuestos tecnológicos. Este principio de diseño resulta replicable por otras organizaciones de la sociedad civil que enfrenten retos similares de protección de datos en contextos de vulnerabilidad.
 
-Los siguientes pasos son el despliegue del sistema en el servidor de Casa Monarca y la capacitación del personal. Se propone adicionalmente el desarrollo de un mecanismo de respaldo automático de la base de datos y un sistema de notificaciones por correo ante cualquier cambio irreversible. Cuando los recursos de Casa Monarca lo permitan, se recomienda migrar a una autoridad certificadora de mayor madurez como step-ca, que ofrece gestión automatizada de renovaciones y soporte ante compromisos de seguridad \citeref{smallstep2026}{Smallstep Labs, 2026}.
+Como trabajo futuro, el primer paso consiste en desplegar el sistema en el servidor de Casa Monarca y acompañar este proceso con capacitación del personal. Esta capacitación debe cubrir el uso diario de la plataforma, la gestión de certificados, la atención de solicitudes ARCO y la respuesta ante incidentes.
+
+También se propone el desarrollo de un mecanismo de respaldo automático de la base de datos. Este respaldo permitiría recuperar información ante fallas operativas, errores humanos o incidentes técnicos sin comprometer la continuidad del servicio.
+
+De igual forma, se recomienda implementar un sistema de notificaciones por correo ante cualquier cambio irreversible. Estas alertas permitirían al administrador detectar movimientos críticos en tiempo oportuno, incluso cuando el cambio provenga de una cuenta aparentemente legítima.
+
+Cuando los recursos de Casa Monarca lo permitan, se recomienda migrar a una autoridad certificadora de mayor madurez como step-ca. Esta alternativa ofrece gestión automatizada de renovaciones y soporte ante compromisos de seguridad \citeref{smallstep2026}{Smallstep Labs, 2026}.
 
 % ===========================================================================
 % REFERENCIAS
@@ -497,6 +536,10 @@ Los siguientes pasos son el despliegue del sistema en el servidor de Casa Monarc
 
     \item[\hypertarget{ref:boeyen2008}{}]
     Boeyen, S., Santesson, S., Polk, T., Housley, R., Farrell, S., \& Cooper, D. (2008). \textit{Internet X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile} (RFC 5280). RFC Editor. \url{https://datatracker.ietf.org/doc/rfc5280/}
+
+
+    \item[\hypertarget{ref:repo2026}{}]
+    Álvarez Salas, M., Alvarez Valdez, B., Ruiz López, E., Nagao Alvarez, A. S., \& Estrada Ceferino, K. A. (2026). \textit{Casa-Monarca-Criptografia} [Repositorio de GitHub]. \url{https://github.com/brbrbre/Casa-Monarca-Criptografia}
 
     \item[\hypertarget{ref:camara2010}{}]
     Cámara de Diputados del H. Congreso de la Unión. (2010). \textit{Ley Federal de Protección de Datos Personales en Posesión de Particulares}. Diario Oficial de la Federación. \url{https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf}
@@ -553,7 +596,8 @@ Los siguientes pasos son el despliegue del sistema en el servidor de Casa Monarc
 
 La Tabla~\ref{tab:cp_completo} documenta los 23 casos de prueba ejecutados sobre los módulos IAM (Inicio de Sesión) y Registro de Migrantes (CRUD completo).
 
-\begin{longtable}{c p{1.8cm} p{2.6cm} p{2.0cm} p{2.6cm} c}
+\begingroup\small\sloppy
+\begin{longtable}{c p{1.6cm} p{2.4cm} p{2.8cm} p{3.0cm} c}
 \caption{Tabla completa de casos de prueba y validaciones (elaboración propia).}
 \label{tab:cp_completo}\\
 \toprule
@@ -570,11 +614,11 @@ La Tabla~\ref{tab:cp_completo} documenta los 23 casos de prueba ejecutados sobre
 CP-01 & IAM --- Login & Credenciales válidas (sin cert) & Usuario y contraseña válidos & Redirige al dashboard; crea registro en \texttt{AuditLog} & \cmark \\[4pt]
 CP-02 & IAM --- Login & Contraseña incorrecta & Usuario válido, contraseña errónea & \textit{``Usuario o contraseña incorrectos''}; intento fallido registrado & \cmark \\[4pt]
 CP-03 & IAM --- Login & Usuario inexistente & Usuario que no existe & \textit{``Usuario o contraseña incorrectos''} & \cmark \\[4pt]
-CP-04 & IAM --- Login & Cuenta revocada & \texttt{is\_revoked=True} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
-CP-05 & IAM --- Login & Cuenta eliminada & \texttt{is\_deleted=True} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
-CP-06 & IAM --- Login & Cuenta inactiva & \texttt{is\_active=False} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
-CP-07 & IAM --- Login & Onboarding pendiente & \texttt{onboarding\_status='pending'} & Redirige a \texttt{/onboarding/} con mensaje informativo & \cmark \\[4pt]
-CP-08 & IAM --- Login & Aprobado, sin cert descargado & \texttt{onboarding\_status='approved'}, \texttt{certificate\_delivered\_at=None} & Redirige a pantalla de descarga de credenciales & \cmark \\[4pt]
+CP-04 & IAM --- Login & Cuenta revocada & \texttt{is\_revoked= True} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
+CP-05 & IAM --- Login & Cuenta eliminada & \texttt{is\_deleted= True} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
+CP-06 & IAM --- Login & Cuenta inactiva & \texttt{is\_active= False} & \textit{``Cuenta inactiva o revocada. Contacta al administrador.''} & \cmark \\[4pt]
+CP-07 & IAM --- Login & Onboarding pendiente & \texttt{status= pending} & Redirige a \texttt{/onboarding/} con mensaje informativo & \cmark \\[4pt]
+CP-08 & IAM --- Login & Aprobado, sin cert descargado & \texttt{status= approved}; certificado no descargado & Redirige a pantalla de descarga de credenciales & \cmark \\[4pt]
 CP-09 & IAM --- Login & MFA habilitado, código correcto & OTP válido por TOTP & Acceso concedido; \texttt{AuditLog} indica ``con MFA'' & \cmark \\[4pt]
 % ── Registros: Create ─────────────────────────────────────────────────────
 REG-01 & Registros --- Create & Registro exitoso & Todos los campos obligatorios completos; aviso de privacidad aceptado & Registro guardado con firma ECDSA; aparece en lista & \cmark \\[4pt]
@@ -592,9 +636,10 @@ REG-10 & Registros --- Update & Edición por operativo (workflow) & Operativo pr
 REG-11 & Registros --- Update & Aprobar cambio propuesto & Coordinador aprueba con contraseña & Cambio aplicado al registro & \cmark \\[4pt]
 REG-12 & Registros --- Update & Rechazar cambio propuesto & Coordinador rechaza con nota & Registro sin cambios; solicitud en estado \textit{Rechazada} & \cmark \\[4pt]
 % ── Registros: Delete ─────────────────────────────────────────────────────
-REG-13 & Registros --- Delete & Eliminación lógica (admin) & Admin elimina un registro activo & \texttt{is\_deleted=True} en BD; no desaparece del almacenamiento & \cmark \\[4pt]
+REG-13 & Registros --- Delete & Eliminación lógica (admin) & Admin elimina un registro activo & \texttt{is\_deleted= True} en BD; no desaparece del almacenamiento & \cmark \\[4pt]
 REG-14 & Registros --- Delete & Eliminado no aparece en lista & Búsqueda del registro eliminado en lista normal & No aparece en la lista activa & \cmark \\
 \end{longtable}
+\endgroup
 
 \chapter{Evidencias seleccionadas}
 \label{anx:evidencias}
@@ -603,37 +648,38 @@ Las siguientes figuras son evidencias representativas de los módulos validados.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{61/Resultado.png}
+\safeincludegraphics[width=0.85\textwidth]{61Resultado.png}
 \caption{CP-Evidencia --- Vista de registros en la lista (elaboración propia).}
 \label{fig:ev61}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{63/Resultado.png}
+\safeincludegraphics[width=0.85\textwidth]{63Resultado.png}
 \caption{CP-Evidencia --- Detalle de expediente de migrante con datos completos (elaboración propia).}
 \label{fig:ev63}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{65/Resultado.png}
+\safeincludegraphics[width=0.85\textwidth]{65Resultado.png}
 \caption{CP-Evidencia --- Solicitud de cambio en estado de aprobación pendiente (workflow) (elaboración propia).}
 \label{fig:ev65}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{68/Resultado.png}
+\safeincludegraphics[width=0.85\textwidth]{68Resultado.png}
 \caption{CP-Evidencia --- Resultado de aprobación y ejecución de solicitud workflow (elaboración propia).}
 \label{fig:ev68}
 \end{figure}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{69/Resultado.png}
+\safeincludegraphics[width=0.85\textwidth]{61Resultado.png}
 \caption{CP-Evidencia --- Listado de registros activos tras eliminación lógica de un expediente (elaboración propia).}
 \label{fig:ev69}
 \end{figure}
 
 \end{document}
+
