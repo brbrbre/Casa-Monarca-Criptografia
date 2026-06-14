@@ -63,14 +63,16 @@ Karen Aylen Estrada Ceferino A00838403
 \\[0.5em]
 \vspace{1cm}
 }
-\date{11 de junio de 2026}
+\date{14 de junio de 2026}
 
 \begin{document}
 \maketitle
 \newpage
 
-\section*{1. Resumen Ejecutivo}
-Casa Monarca es una organización de la sociedad civil que brinda apoyo humanitario, legal y psicosocial a personas migrantes en situación vulnerable. Debido a la naturaleza sensible de la información que gestiona datos personales, documentos legales y expedientes de beneficiarios, resulta crítico contar con mecanismos de seguridad que garanticen la confidencialidad, integridad y trazabilidad de dichos datos. Para atender esta problemática, se diseñó e implementó en Django un sistema que integra dos módulos. El gestor de colaboradores permite ver a todos los colaboradores mediante certificados digitales X.509 con firma ECDSA, control de acceso por cuatro niveles de acceso, y una cadena que se puede rastrear por medio de auditoría. El módulo de registro de migrantes incorpora cifrado de campos sensibles, firma ECDSA por expediente mediante hash SHA-256 encadenado, un flujo de aprobación por niveles (1–4) y gestión de los cuatro derechos ARCO con plazos legales calculados automáticamente conforme a la LFPDPPP. Las tecnologías de Django y MySQL fueron seleccionadas con base en la compatibilidad con la infraestructura que Casa Monarca ya opera, eliminando cualquier costo adicional. 
+\section{Resumen ejecutivo}
+Casa Monarca brinda apoyo humanitario, legal y psicosocial a personas migrantes en situación vulnerable. Dado que maneja información muy sensible (datos personales, documentos legales y expedientes de beneficiarios) es fundamental garantizar que esa información esté protegida, sea confiable y deje rastro de quién la consulta o modifica.
+Para atender esta necesidad, se desarrolló un sistema digital con dos funciones principales. La primera es la gestión de colaboradores: permite registrar altas y bajas de colaboradores, asignarles un nivel de acceso según su rol, y llevar un historial completo de toda actividad dentro del sistema. La segunda es el registro de migrantes: los datos sensibles de cada persona quedan resguardados desde el momento en que se capturan, y cualquier acción sobre un expediente debe ser aprobada por el nivel jerárquico correspondiente (1-4). Además, el sistema permite que los migrantes ejerzan su derechos ARCO, con recordatorios automáticos de los plazos legales que la organización debe cumplir.
+El sistema fue construido sobre la misma infraestructura tecnológica que Casa Monarca ya utiliza, por lo que no representa ningún costo adicional de instalación ni de mantenimiento.
 
  
 %% ─── 3. OBJETIVOS VS RESULTADOS ───────────────────────────────────────────
@@ -90,10 +92,11 @@ El cumplimiento de los derechos ARCO se implementó con una ventana específica 
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.82\textwidth]{diagram.png}
-\caption{Diagrama de arquitectura del sistema de gestión de identidades y registro de migrantes de Casa
-Monarca. Generado con Claude (Anthropic, 2026).}
+\includegraphics[width=0.82\textwidth]{flujo_casa_monarca_ejecutivo.png}
+\caption{Diagrama de flujo Generado con Claude (Anthropic, 2026).}
 \end{figure}
+
+La figura 1 muestra quién usa el sistema y qué acciones puede realizar dependiendo de su nivel. 
 
  
 \subsection*{3.1 Backend}
@@ -122,7 +125,7 @@ Monarca. Generado con Claude (Anthropic, 2026).}
 %% ─── 5. IMPACTO DE NEGOCIO ─────────────────────────────────────────────────
 \section*{4. Impacto de Negocio}
  
-De acuerdo a proyecciones del equipo basadas en el flujo operativo estimado de Casa Monarca (35 colaboradores en promedio, 3 actualizaciones de la base por semana, 5 registros de migrantes semanales, aproximadamente 2 solicitudes ARCO por mes y procesos adicionales manuales), el sistema permite ahorrar un total de 189 horas/año. El ahorro financiero es un aproximado de \$700 USD por año al comparar el costo del sistema desarrollado frente a una solución comercial equivalente. Con la aplicación se mejora la productividad de los colaboradores, especialmente de aquellos que se involucran en el registro o ingreso de los colaboradores y migrantes  a Casa Monarca. Esto se debe a que se eficientizan los procesos y se vuelven digitales, bajando la cantidad de error humano al registrarse directamente en una base digital más que un proceso manual que después se tiene que registrar en línea. Esto permite que se realice todo en una misma interfaz, ahorrando tiempo y minimizando errores. Por otro lado, el sistema permite que el administrador emita certificados y lleve un rastreo de los movimientos de los colaboradores en el sistema, mejorando la seguridad de los procesos. La forma de medir la mejoría respecto a los procesos anteriores aunque tardada, es viable, y sería cronometrar el tiempo del proceso realizado manualmente y el proceso digitalizado por medio del sistema. Por otro lado, algo que no requiere comparación ni contabilidad, es el hecho de que se reduce el error humano.
+De acuerdo a proyecciones del equipo basadas en el flujo operativo estimado de Casa Monarca (35 colaboradores en promedio, 3 actualizaciones de la base por semana, 5 registros de migrantes semanales, aproximadamente 2 solicitudes ARCO por mes y procesos adicionales manuales), el sistema permite ahorrar un total de 189 horas/año. El ahorro financiero es un aproximado de \$67 USD por año al comparar el costo del sistema desarrollado frente a una solución comercial equivalente (Hostinger, 2024). Con la aplicación se mejora la productividad de los colaboradores, especialmente de aquellos que se involucran en el registro o ingreso de los colaboradores y migrantes  a Casa Monarca. Esto se debe a que se eficientizan los procesos y se vuelven digitales, bajando la cantidad de error humano al registrarse directamente en una base digital más que un proceso manual que después se tiene que registrar en línea. Esto permite que se realice todo en una misma interfaz, ahorrando tiempo y minimizando errores. Por otro lado, el sistema permite que el administrador emita certificados y lleve un rastreo de los movimientos de los colaboradores en el sistema, mejorando la seguridad de los procesos. La forma de medir la mejoría respecto a los procesos anteriores aunque tardada, es viable, y sería cronometrar el tiempo del proceso realizado manualmente y el proceso digitalizado por medio del sistema. Por otro lado, algo que no requiere comparación ni contabilidad, es el hecho de que se reduce el error humano.
 
 \begin{table}[H]
 \centering
@@ -149,12 +152,14 @@ Eliminación de re-capturas y errores de transcripción           & \textasciiti
 \toprule
 \textbf{Concepto} & \textbf{Costo/año} \\
 \midrule
-Solución comercial             & \textasciitilde\$800 USD \\
-Este sistema (hosting + dominio) & \textasciitilde\$100 USD \\
-\textbf{Ahorro anual}          & \textbf{\textasciitilde\$700 USD} \\
+Hosting alternativo (promedio Bluehost / Hostinger / SiteGround) & \textasciitilde\$130 USD \\
+Autoridad certificadora externa — Sectigo OV (referencia)        & \textasciitilde\$37 USD \\
+\textbf{Total solución externa}                                   & \textbf{\textasciitilde\$167 USD} \\
+Nuestro sistema (HostGator + CA propia)                          & \textasciitilde\$100 USD \\
+\textbf{Ahorro anual}                                            & \textbf{\textasciitilde\$67 USD} \\
 \bottomrule
 \end{tabularx}
-\caption{Comparación de costos anuales entre el sistema desarrollado y una solución comercial equivalente.}
+\caption{Comparación de costos anuales entre el sistema desarrollado y alternativas comerciales equivalentes.}
 \end{table}
 
 %% ─── 6. LECCIONES Y HALLAZGOS ──────────────────────────────────────────────
@@ -199,6 +204,9 @@ En los próximos pasos se encuentra la capacitación del personal, comenzando po
 \item Cámara de Diputados del H. Congreso de la Unión. (2010). \textit{Ley Federal de Protección de Datos Personales en Posesión de Particulares}. Diario Oficial de la Federación. Disponible en: \url{https://www.diputados.gob.mx/LeyesBiblio/pdf/LFPDPPP.pdf}
  
 \item Django Software Foundation. (2026). \textit{Django documentation}. Disponible en: \url{https://www.djangoproject.com/}
+ 
+ 
+\item Hostinger. (2026). \textit{Hosting web}. Disponible en: \url{https://www.hostinger.com/mx}
  
 \item Keycloak Project. (2026). \textit{Keycloak documentation}. Disponible en: \url{https://www.keycloak.org/}
  
