@@ -5,9 +5,37 @@
 MA2006B — Uso de Álgebras Modernas para Seguridad y Criptografía
 
 Tecnológico de Monterrey · Equipo 1 · Grupo 602 · 2026
-
+Link del github: [https://github.com/brbrbre/Casa-Monarca-Criptografia](https://github.com/brbrbre/Casa-Monarca-Criptografia)
 ---
+ENTREGABLES IMPORTANTES:
+```
+Casa-Monarca-Criptografia/
+│
+├── bitacora/
+│   ├── BITACORA.md          # Bitácora del equipo (principal)
+│   └── BITACORA.pdf         # PDF generado
+│
+├── entregas/
+│   ├── Manual_Desarrollador.pdf
+│   ├── Manual_Usuario.pdf
+│   ├── Reporte_Ejecutivo.pdf
+│   └── Reporte_Tecnico.pdf
+│
+├── gantt/
+│   └── Gantt_CasaMonarca_MA2006B.xlsx
+│
+└── sdk/
+    ├── README.md
+    ├── __init__.py
+    ├── documents.py       # Generación/manejo de documentos
+    ├── email_sign.py      # Firma de correos
+    ├── forms.py           # Formularios
+    ├── identity.py        # Gestión de identidades
+    ├── key_manager.py     # Manejo de llaves criptográficas
+    └── verification.py    # Verificación de firmas/certificados
 
+
+```
 ## Acto I: Primer Acercamiento
 *Sesiones 1–3: Diseño e Investigación*
 
@@ -183,3 +211,23 @@ Después de 17 sesiones de desarrollo colaborativo, el equipo entregó:
 - **Derechos ARCO** (acceso, rectificación, cancelación, oposición con trazabilidad legal)
 
 ---
+
+Ultima sesión 12 junio:
+* Manual del desarrollador:
+    * Describir todas las figuras (en todas las evidencias)
+    * Actualizar la fecha 
+    * Agregar una figura para el flujo del punto 9 (página 18-20 manual del desarollador)
+* Reporte técnico: 
+    * (página 9) Mencionar la figura en el texto
+    * describir todas las figuras
+    * meter más conclusiones 
+    * agregar el enlace a github 
+    * arreglar texto encimado (página 26)
+* Reporte Ejecutivo:
+    * Menos técnico (en el párrafo introductorio se menciona ECDSA, etc.), hay que ponerlo más genérico 
+    * La figura (página 4) ponerla en lenguaje más ejecutivo 
+    * Impacto del negocio página 5 - hay que agregar de qué páginas sacamos esos precios
+* Manual de usuario:
+    * Todo bien
+
+Despues de esta última sesión, el reto esta listo para ser entregado.
