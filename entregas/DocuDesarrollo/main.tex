@@ -30,6 +30,8 @@
 \usepackage{tocloft}
 \usepackage{xurl}
 \usepackage[most]{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric,arrows.meta,positioning,calc}
 
 \counterwithout{figure}{chapter}
 \counterwithout{table}{chapter}
@@ -75,7 +77,7 @@
 \setcounter{secnumdepth}{3}
 \setcounter{tocdepth}{3}
 
-\newcommand{\fechaentrega}{11 de junio de 2026}
+\newcommand{\fechaentrega}{14 de junio de 2026}
 
 % ===========================================================================
 \begin{document}
@@ -218,7 +220,7 @@ La comunicación cliente--servidor es síncrona (peticiones HTTP convencionales)
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.88\textwidth]{arquitectura.png}
-\caption{Diagrama de arquitectura del sistema. Generado con Claude (Anthropic, 2026).}
+\caption{Diagrama de arquitectura MVT del sistema, ilustrando la separación entre el módulo \textbf{IAM} (gestión de colaboradores, onboarding, certificados X.509 y auditoría), el módulo \textbf{Registros} (expedientes cifrados con AES-256-GCM, flujo de aprobación y solicitudes ARCO) y la capa criptográfica transversal \texttt{crypto\_core}. La comunicación cliente--servidor sigue el patrón HTTP síncrono de Django; la base de datos es MySQL en producción y SQLite en desarrollo. Generado con Claude (Anthropic, 2026).}
 \label{fig:arquitectura}
 \end{figure}
 
@@ -640,6 +642,68 @@ def registro_review(request):
     \item Si el usuario tiene MFA activo: solicita el código TOTP; se verifica con \texttt{pyotp.TOTP.verify}.
     \item Sesión iniciada; registra \texttt{LoginAttempt(successful=True)} y entrada en \texttt{AuditLog}.
 \end{enumerate}
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[
+  every node/.style={font=\small},
+  startstop/.style={rectangle, rounded corners=6pt, draw=black, fill=gray!15,
+    text width=8.2cm, minimum height=0.8cm, align=center},
+  process/.style={rectangle, draw=black, fill=white,
+    text width=8.2cm, minimum height=0.8cm, align=center},
+  decision/.style={diamond, draw=black, fill=gray!10, aspect=3,
+    text width=4cm, minimum height=0.5cm, align=center},
+  errbox/.style={rectangle, draw=black, fill=gray!20,
+    text width=3.4cm, minimum height=0.8cm, align=center},
+  arrow/.style={->, >=Stealth, thick},
+]
+\node (N0) [startstop]
+  {Inicio: usuario envía \texttt{username} + \texttt{password}\\
+   (\texttt{.cert}/\texttt{.key} adicionales para Niveles~1--2)};
+\node (D1) [decision, below=0.7cm of N0]
+  {$\geq$5 intentos fallidos\\en 15 min?};
+\node (E1) [errbox, right=2.2cm of D1]
+  {Rechaza: Error~429\\(cuenta bloqueada)};
+\node (N1) [process, below=0.7cm of D1]
+  {Autenticación Django: \texttt{authenticate(username, password)}};
+\node (E2) [errbox, right=2.2cm of N1]
+  {Registra \texttt{LoginAttempt(False)};\\error de credenciales};
+\node (D2) [decision, below=0.7cm of N1]
+  {\texttt{is\_revoked} o \texttt{is\_deleted}?};
+\node (E3) [errbox, right=2.2cm of D2]
+  {Error: ``Cuenta inactiva o revocada''};
+\node (D3) [decision, below=0.7cm of D2]
+  {\texttt{onboarding\_status}\\= \texttt{'pending'}?};
+\node (E4) [errbox, right=2.2cm of D3]
+  {Redirige a \texttt{/iam/onboarding/}};
+\node (N2) [process, below=0.7cm of D3]
+  {Si Nivel~1 o~2: verificar \texttt{.cert} presentado (fingerprint, estado, vigencia)};
+\node (D4) [decision, below=0.7cm of N2]
+  {¿MFA / TOTP activo?};
+\node (E5) [errbox, right=2.2cm of D4]
+  {Solicitar y validar código TOTP (\texttt{pyotp.TOTP.verify})};
+\node (N3) [startstop, below=0.7cm of D4]
+  {Sesión iniciada; registra \texttt{LoginAttempt(True)} y entrada en \texttt{AuditLog}};
+% Flujo principal
+\draw[arrow] (N0) -- (D1);
+\draw[arrow] (D1) -- node[right, font=\scriptsize]{No} (N1);
+\draw[arrow] (N1) -- (D2);
+\draw[arrow] (D2) -- node[right, font=\scriptsize]{No} (D3);
+\draw[arrow] (D3) -- node[right, font=\scriptsize]{No} (N2);
+\draw[arrow] (N2) -- (D4);
+\draw[arrow] (D4) -- node[right, font=\scriptsize]{No} (N3);
+% Ramas de error (a la derecha)
+\draw[arrow] (D1.east) -- node[above, font=\scriptsize]{Sí} (E1.west);
+\draw[arrow] (N1.east) -- node[above, font=\scriptsize]{Falla} (E2.west);
+\draw[arrow] (D2.east) -- node[above, font=\scriptsize]{Sí} (E3.west);
+\draw[arrow] (D3.east) -- node[above, font=\scriptsize]{Sí} (E4.west);
+\draw[arrow] (D4.east) -- node[above, font=\scriptsize]{Sí} (E5.west);
+% Retorno de TOTP al nodo final
+\draw[arrow] (E5.south) -- ++(0,-0.4) -| (N3.east);
+\end{tikzpicture}
+\caption{Flujo de autenticación del sistema. Las validaciones se ejecutan en secuencia: (1)~bloqueo por exceso de intentos fallidos (Error~429), (2)~autenticación de credenciales con \texttt{authenticate()} de Django, (3)~verificación del estado activo de la cuenta, (4)~redirección al onboarding si está pendiente, (5)~comprobación del certificado X.509 únicamente para Niveles~1--2 (fingerprint, estado y vigencia), y (6)~validación del código TOTP cuando MFA está habilitado. Cada rama de error termina el proceso; la rama ``No'' en cada decisión continúa el flujo principal. Elaboración propia.}
+\label{fig:flujo_login}
+\end{figure}
 
 \section{Flujo de onboarding de nuevo colaborador}
 
